@@ -1,0 +1,218 @@
+:root {
+  color-scheme: only light;
+  font-family: 'Manrope', 'Segoe UI', Tahoma, sans-serif;
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --text: #102a2e;
+  --muted: #4f5d63;
+  --primary: #0b3d2e;
+  --primary-soft: #d8ebe4;
+  --danger: #8c1c13;
+  --line: #d8dee4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, #e2f2ed 0, transparent 45%),
+    linear-gradient(180deg, #f7fafb 0%, var(--bg) 100%);
+  color: var(--text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+}
+
+button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  background: #fff;
+}
+
+button.primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+button.danger {
+  border-color: #ddbdb8;
+  color: var(--danger);
+}
+
+.auth-screen {
+  min-height: 100dvh;
+  padding: 1rem;
+  display: grid;
+  place-items: center;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.mobile-app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+  padding-bottom: 5.2rem;
+}
+
+.app-header {
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.small-label {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.app-content {
+  padding: 0 1rem 1rem;
+}
+
+.page h2 {
+  margin: 0 0 0.8rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem;
+  margin-bottom: 0.8rem;
+}
+
+.card h3 {
+  margin-top: 0;
+  margin-bottom: 0.7rem;
+}
+
+.stack-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.split-2 {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.entity-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.entity-row:first-of-type {
+  border-top: 0;
+}
+
+.entity-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.col-actions {
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
+}
+
+.bottom-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, 100%);
+  background: rgba(255, 255, 255, 0.95);
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0.45rem;
+  gap: 0.35rem;
+}
+
+.tab-btn {
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  padding: 0.65rem 0.25rem;
+  color: #365056;
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.tab-btn.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.muted {
+  margin: 0.2rem 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.error-text {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.88rem;
+}
+
+.list-line {
+  margin: 0.3rem 0;
+}
+
+@media (min-width: 768px) {
+  body::before {
+    content: 'This app is optimized for mobile use.';
+    display: block;
+    text-align: center;
+    padding: 0.6rem;
+    font-size: 0.85rem;
+    color: #345b51;
+  }
+}
