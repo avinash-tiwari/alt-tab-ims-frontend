@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginScreen from './components/LoginScreen';
 import BottomTabs from './components/BottomTabs';
 import {
@@ -10,35 +11,54 @@ import {
 } from './api';
 import ItemsPage from './pages/ItemsPage';
 import CustomersPage from './pages/CustomersPage';
+import CustomerDetailPage from './pages/CustomerDetailPage';
+import CustomerActionsPage from './pages/CustomerActionsPage';
 import OrdersPage from './pages/OrdersPage';
 import DashboardPage from './pages/DashboardPage';
 
-function PageSwitch({ tab, token }) {
-  if (tab === 'items') {
-    return <ItemsPage token={token} />;
-  }
-  if (tab === 'customers') {
-    return <CustomersPage token={token} />;
-  }
-  if (tab === 'dashboard') {
-    return <DashboardPage />;
-  }
-  return <OrdersPage />;
+function AppContent({ token, tenant, logout }) {
+  const initials = useMemo(() => {
+    if (!tenant?.name) return 'IMS';
+    return tenant.name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 3);
+  }, [tenant?.name]);
+
+  return (
+    <div className="mobile-app">
+      <header className="app-header">
+        <div className="header-logo-container">
+          <div className="tenant-logo">{initials}</div>
+          <h1 className="tenant-name-header">{tenant?.name || 'IMS Admin'}</h1>
+        </div>
+        <button type="button" onClick={logout} className="ghost-btn">Logout</button>
+      </header>
+
+      <main className="app-content">
+        <Routes>
+          <Route path="/orders" element={<OrdersPage token={token} />} />
+          <Route path="/items" element={<ItemsPage token={token} />} />
+          <Route path="/customers" element={<CustomersPage token={token} />} />
+          <Route path="/customers/actions" element={<CustomerActionsPage token={token} />} />
+          <Route path="/customer/:id" element={<CustomerDetailPage token={token} />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/" element={<Navigate to="/orders" replace />} />
+        </Routes>
+      </main>
+
+      <BottomTabs />
+    </div>
+  );
 }
 
 export default function App() {
   const [token, setToken] = useState(getStoredToken());
   const [tenant, setTenant] = useState(getStoredTenant());
-  const [activeTab, setActiveTab] = useState('orders');
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
-
-  const title = useMemo(() => {
-    if (activeTab === 'items') return 'Items';
-    if (activeTab === 'customers') return 'Customers';
-    if (activeTab === 'dashboard') return 'Dashboard';
-    return 'Orders';
-  }, [activeTab]);
 
   const handleLogin = async ({ loginId, password }) => {
     setLoading(true);
@@ -48,7 +68,6 @@ export default function App() {
       storeSession(response.token, response.tenant);
       setToken(response.token);
       setTenant(response.tenant || null);
-      setActiveTab('orders');
     } catch (error) {
       setLoginError(error.message);
     } finally {
@@ -60,7 +79,6 @@ export default function App() {
     clearSession();
     setToken('');
     setTenant(null);
-    setActiveTab('orders');
   };
 
   if (!token) {
@@ -68,21 +86,8 @@ export default function App() {
   }
 
   return (
-    <div className="mobile-app">
-      <header className="app-header">
-        <div>
-          <p className="small-label">Tenant</p>
-          <h1>{tenant?.name || 'IMS Admin'}</h1>
-          <p className="muted">{title}</p>
-        </div>
-        <button type="button" onClick={logout}>Logout</button>
-      </header>
-
-      <main className="app-content">
-        <PageSwitch tab={activeTab} token={token} />
-      </main>
-
-      <BottomTabs active={activeTab} onChange={setActiveTab} />
-    </div>
+    <BrowserRouter>
+      <AppContent token={token} tenant={tenant} logout={logout} />
+    </BrowserRouter>
   );
 }
