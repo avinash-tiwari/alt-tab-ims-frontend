@@ -1,30 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import { createItem, deleteItem, listItems, updateItem } from '../api';
-
-const emptyForm = {
-  name: '',
-  sku: '',
-  description: '',
-  stock: '',
-  threshold: '',
-  basePrice: ''
-};
+import { useNavigate } from 'react-router-dom';
+import { Pencil, Trash2, Plus, Filter, X } from 'lucide-react';
+import { deleteItem, listItems } from '../api';
 
 export default function ItemsPage({ token }) {
-  const [activeTab, setActiveTab] = useState('list');
-  const [expandedItem, setExpandedItem] = useState(null);
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({ q: '', minStock: '', maxStock: '' });
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState('');
+  const [tempFilters, setTempFilters] = useState({ q: '', minStock: '', maxStock: '' });
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const thresholdItems = useMemo(
     () => items.filter((item) => Number(item.stock) <= Number(item.threshold)),
     [items]
   );
+
+  const activeFiltersCount = useMemo(() => {
+    return Object.values(filters).filter(v => v !== '').length;
+  }, [filters]);
 
   const loadItems = async (query) => {
     setLoading(true);
@@ -43,67 +38,38 @@ export default function ItemsPage({ token }) {
     loadItems();
   }, []);
 
-  const onFilterChange = (event) => {
+  const onTempFilterChange = (event) => {
     const { name, value } = event.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    setTempFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  const applyFilters = (event) => {
-    event.preventDefault();
-    loadItems(filters);
+  const applyFilters = () => {
+    setFilters(tempFilters);
+    loadItems(tempFilters);
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilter = (key) => {
+    const newFilters = { ...filters, [key]: '' };
+    setFilters(newFilters);
+    setTempFilters(newFilters);
+    loadItems(newFilters);
   };
 
   const resetFilters = () => {
     const reset = { q: '', minStock: '', maxStock: '' };
     setFilters(reset);
+    setTempFilters(reset);
     loadItems(reset);
-  };
-
-  const onFormChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const saveItem = async (event) => {
-    event.preventDefault();
-    const payload = {
-      name: form.name,
-      sku: form.sku,
-      description: form.description,
-      stock: Number(form.stock),
-      threshold: Number(form.threshold),
-      basePrice: Number(form.basePrice)
-    };
-
-    setError('');
-    try {
-      if (editingId) {
-        await updateItem(token, editingId, payload);
-      } else {
-        await createItem(token, payload);
-      }
-      setForm(emptyForm);
-      setEditingId('');
-      await loadItems(filters);
-    } catch (err) {
-      setError(err.message);
-    }
+    setIsFilterModalOpen(false);
   };
 
   const editItem = (item) => {
-    setActiveTab('action');
-    setEditingId(item.id);
-    setForm({
-      name: item.name || '',
-      sku: item.sku || '',
-      description: item.description || '',
-      stock: String(item.stock ?? ''),
-      threshold: String(item.threshold ?? ''),
-      basePrice: String(item.basePrice ?? '')
-    });
+    navigate(`/items/edit/${item.id}`);
   };
 
   const removeItem = async (itemId) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
     setError('');
     try {
       await deleteItem(token, itemId);
@@ -113,117 +79,206 @@ export default function ItemsPage({ token }) {
     }
   };
 
+  const openFilterModal = () => {
+    setTempFilters(filters);
+    setIsFilterModalOpen(true);
+  };
+
   return (
-    <section className="page">
-      <div className="sticky-header">
-        <h2>Inventory Items</h2>
-
-        <div className="page-tabs">
-          <button
-            type="button"
-            className={activeTab === 'list' ? 'page-tab-btn active' : 'page-tab-btn'}
-            onClick={() => setActiveTab('list')}
+    <section className="page" style={{ position: 'relative', minHeight: 'calc(100vh - 8rem)' }}>
+      <div className="items-page-content" style={{ marginTop: '1rem' }}>
+        
+        <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <button 
+            type="button" 
+            className="card" 
+            onClick={openFilterModal}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem', 
+              padding: '1rem', 
+              width: '100%',
+              border: '1px dashed hsl(var(--border))',
+              background: 'hsl(var(--card))',
+              cursor: 'pointer',
+              color: 'hsl(var(--foreground))',
+              textAlign: 'left'
+            }}
           >
-            Item List
+            <Filter size={20} style={{ color: 'hsl(var(--primary))' }} />
+            <span style={{ fontWeight: 500, flex: 1 }}>ADD FILTER</span>
+            {activeFiltersCount > 0 && (
+              <div
+                role="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  resetFilters();
+                }}
+                style={{
+                  background: 'hsl(var(--destructive) / 0.1)',
+                  color: 'hsl(var(--destructive))',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+                title="Clear all filters"
+              >
+                <X size={16} />
+              </div>
+            )}
           </button>
-          <button
-            type="button"
-            className={activeTab === 'action' ? 'page-tab-btn active' : 'page-tab-btn'}
-            onClick={() => setActiveTab('action')}
-          >
-            Actions
-          </button>
-        </div>
-      </div>
 
-      {activeTab === 'action' ? (
-        <>
-          <form className="card stack-form" onSubmit={applyFilters}>
-            <h3>Search & Filter</h3>
-            <input
-              name="q"
-              type="text"
-              placeholder="Search by name or SKU"
-              value={filters.q}
-              onChange={onFilterChange}
-            />
-            <div className="split-2">
-              <input
-                name="minStock"
-                type="number"
-                placeholder="Min stock"
-                value={filters.minStock}
-                onChange={onFilterChange}
-              />
-              <input
-                name="maxStock"
-                type="number"
-                placeholder="Max stock"
-                value={filters.maxStock}
-                onChange={onFilterChange}
-              />
-            </div>
-            <div className="row-actions">
-              <button type="submit" className="primary">Apply</button>
-              <button type="button" onClick={resetFilters}>Reset</button>
-            </div>
-          </form>
-
-          <form className="card stack-form" onSubmit={saveItem}>
-            <h3>{editingId ? 'Edit Item' : 'Add Item'}</h3>
-            <input name="name" placeholder="Name" value={form.name} onChange={onFormChange} required />
-            <input name="sku" placeholder="SKU" value={form.sku} onChange={onFormChange} required />
-            <input name="description" placeholder="Description" value={form.description} onChange={onFormChange} />
-            <div className="split-2">
-              <input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={onFormChange} required />
-              <input
-                name="threshold"
-                type="number"
-                placeholder="Threshold"
-                value={form.threshold}
-                onChange={onFormChange}
-                required
-              />
-            </div>
-            <input
-              name="basePrice"
-              type="number"
-              step="0.01"
-              placeholder="Base Price"
-              value={form.basePrice}
-              onChange={onFormChange}
-              required
-            />
-            <div className="row-actions">
-              <button type="submit" className="primary">{editingId ? 'Update' : 'Create'}</button>
-              {editingId ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId('');
-                    setForm(emptyForm);
+          {activeFiltersCount > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {filters.q && (
+                <div 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '2rem',
+                    background: 'hsl(var(--primary) / 0.1)',
+                    border: '1px dashed black',
+                    fontSize: '0.875rem',
+                    color: 'hsl(var(--primary))'
                   }}
                 >
-                  Cancel
-                </button>
-              ) : null}
+                  <span>Search: <strong>{filters.q}</strong></span>
+                  <button 
+                    type="button" 
+                    onClick={() => clearFilter('q')}
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              {filters.minStock && (
+                <div 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '2rem',
+                    background: 'hsl(var(--primary) / 0.1)',
+                    border: '1px dashed black',
+                    fontSize: '0.875rem',
+                    color: 'hsl(var(--primary))'
+                  }}
+                >
+                  <span>Min Stock: <strong>{filters.minStock}</strong></span>
+                  <button 
+                    type="button" 
+                    onClick={() => clearFilter('minStock')}
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              {filters.maxStock && (
+                <div 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '2rem',
+                    background: 'hsl(var(--primary) / 0.1)',
+                    border: '1px dashed black',
+                    fontSize: '0.875rem',
+                    color: 'hsl(var(--primary))'
+                  }}
+                >
+                  <span>Max Stock: <strong>{filters.maxStock}</strong></span>
+                  <button 
+                    type="button" 
+                    onClick={() => clearFilter('maxStock')}
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
             </div>
-          </form>
+          )}
+        </div>
 
-          <article className="card">
-            <h3>Low Stock Alerts</h3>
-            {thresholdItems.length === 0 ? (
-              <p className="muted">No items currently at or below threshold.</p>
-            ) : (
-              thresholdItems.map((item) => (
-                <p key={item.id} className="list-line">
-                  {item.name}: <strong>{item.stock}</strong> left (threshold {item.threshold})
-                </p>
-              ))
-            )}
-          </article>
-        </>
-      ) : (
+        {isFilterModalOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'hsl(var(--background))',
+            zIndex: 1000,
+            padding: '1rem',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <header style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              paddingBottom: '1rem',
+              borderBottom: '1px solid hsl(var(--border))',
+              marginBottom: '1rem' 
+            }}>
+              <h2 style={{ margin: 0 }}>Filters</h2>
+              <button type="button" className="ghost-btn" onClick={() => setIsFilterModalOpen(false)}>
+                <X size={24} />
+              </button>
+            </header>
+
+            <div className="stack-form" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Search</label>
+                <input
+                  name="q"
+                  type="text"
+                  placeholder="Search by name or SKU"
+                  value={tempFilters.q}
+                  onChange={onTempFilterChange}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Stock Range</label>
+                <div className="split-2">
+                  <input
+                    name="minStock"
+                    type="number"
+                    placeholder="Min stock"
+                    value={tempFilters.minStock}
+                    onChange={onTempFilterChange}
+                  />
+                  <input
+                    name="maxStock"
+                    type="number"
+                    placeholder="Max stock"
+                    value={tempFilters.maxStock}
+                    onChange={onTempFilterChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <footer className="split-2" style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
+              <button type="button" onClick={resetFilters} style={{ width: '100%' }}>Reset All</button>
+              <button type="button" className="primary" onClick={applyFilters} style={{ width: '100%' }}>Apply Filters</button>
+            </footer>
+          </div>
+        )}
+
         <div className="items-list-container">
           {loading ? <p className="muted">Loading...</p> : null}
           {error ? <p className="error-text">{error}</p> : null}
@@ -233,11 +288,10 @@ export default function ItemsPage({ token }) {
             <article 
               key={item.id} 
               className="card customer-card"
-              onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
             >
               <header className="customer-card-header">
                 <h3 className="customer-name-heading" style={{marginBottom: 0}}>{item.name}</h3>
-                <div className="col-actions" onClick={(e) => e.stopPropagation()}>
+                <div className="col-actions">
                   <button 
                     type="button" 
                     className="ghost-btn" 
@@ -255,14 +309,6 @@ export default function ItemsPage({ token }) {
                     title="Delete"
                   >
                     <Trash2 size={18} />
-                  </button>
-                  <button 
-                    type="button" 
-                    className="ghost-btn" 
-                    style={{ padding: '0.4rem', border: 'none' }}
-                    onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
-                  >
-                    {expandedItem === item.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
                 </div>
               </header>
@@ -283,21 +329,19 @@ export default function ItemsPage({ token }) {
                   <span className="stat-value">Rs. {item.basePrice}</span>
                 </div>
               </div>
-
-              {expandedItem === item.id && (
-                <div className="customer-items-section">
-                  <h4 className="items-heading">Description</h4>
-                  <div className="items-data-container">
-                    <p className="muted" style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(195 85% 20%)' }}>
-                      {item.description || 'No description available for this item.'}
-                    </p>
-                  </div>
-                </div>
-              )}
             </article>
           ))}
         </div>
-      )}
+      </div>
+
+      <button 
+        type="button" 
+        className="floating-action-btn"
+        onClick={() => navigate('/items/add')}
+        title="Add Item"
+      >
+        <Plus size={24} />
+      </button>
     </section>
   );
 }

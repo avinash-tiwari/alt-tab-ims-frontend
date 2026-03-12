@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { Pencil, Trash2, Plus, ChevronLeft } from 'lucide-react';
 import {
   listCustomers,
   listItems,
@@ -15,9 +15,6 @@ export default function CustomerDetailPage({ token }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const [itemId, setItemId] = useState('');
-  const [customPrice, setCustomPrice] = useState('');
-  const [priceEntries, setPriceEntries] = useState([]);
   const [lastSavedPrices, setLastSavedPrices] = useState([]);
 
   const loadData = async () => {
@@ -29,6 +26,10 @@ export default function CustomerDetailPage({ token }) {
       const found = customersList.find(c => c.id === id);
       setCustomer(found);
       setItems(Array.isArray(itemsData) ? itemsData : []);
+      
+      // Need to load current customer prices too if we want to show them
+      // Assuming setCustomerPrices or similar API can be used to fetch or they are in customer object
+      // For now, let's keep it consistent with what was there
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,28 +40,6 @@ export default function CustomerDetailPage({ token }) {
   useEffect(() => {
     loadData();
   }, [id]);
-
-  const addPriceEntry = () => {
-    if (!itemId || !customPrice) return;
-    setPriceEntries((prev) => {
-      const filtered = prev.filter((entry) => entry.itemId !== itemId);
-      return [...filtered, { itemId, customPrice: Number(customPrice) }];
-    });
-    setItemId('');
-    setCustomPrice('');
-  };
-
-  const savePriceList = async () => {
-    if (!id || priceEntries.length === 0) return;
-    setError('');
-    try {
-      const data = await setCustomerPrices(token, id, priceEntries);
-      setLastSavedPrices(Array.isArray(data) ? data : []);
-      setPriceEntries([]);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
 
   if (loading && !customer) return <div className="page"><p className="muted">Loading...</p></div>;
   if (!customer && !loading) return <div className="page"><p className="muted">Customer not found.</p></div>;
@@ -77,15 +56,6 @@ export default function CustomerDetailPage({ token }) {
       </div>
 
       <div className="customer-detail-content" style={{ marginTop: '1rem' }}>
-        <div className="customer-address-box card">
-          <p style={{ fontWeight: 600, color: 'hsl(var(--foreground))', marginBottom: '0.25rem' }}>Address Details</p>
-          <p>
-            {[customer.addressLine1, customer.city, customer.state, customer.postalCode].filter(Boolean).join(', ')}
-          </p>
-          <p>{customer.phone}</p>
-          {customer.email && <p>{customer.email}</p>}
-        </div>
-
         <div className="customer-stats-grid card">
           <div className="stat-item">
             <span className="stat-label">Total Spent</span>
@@ -100,45 +70,6 @@ export default function CustomerDetailPage({ token }) {
             <span className="stat-value">0</span>
           </div>
         </div>
-
-        <article className="card stack-form">
-          <h3 className="items-heading">Add Custom Price</h3>
-          <div className="split-2">
-            <select value={itemId} onChange={(event) => setItemId(event.target.value)}>
-              <option value="">Select item</option>
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} (Rs. {item.basePrice})
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Custom price"
-              value={customPrice}
-              onChange={(event) => setCustomPrice(event.target.value)}
-            />
-          </div>
-
-          <div className="row-actions">
-            <button type="button" onClick={addPriceEntry}>Add Entry</button>
-            <button type="button" className="primary" onClick={savePriceList}>Save Price List</button>
-          </div>
-
-          {priceEntries.length > 0 && (
-            <div className="items-data-container" style={{ marginTop: '1rem' }}>
-              {priceEntries.map((entry) => {
-                const item = items.find((it) => it.id === entry.itemId);
-                return (
-                  <p key={entry.itemId} className="list-line">
-                    {item?.name || entry.itemId}: Rs. {entry.customPrice}
-                  </p>
-                );
-              })}
-            </div>
-          )}
-        </article>
 
         <div className="customer-items-section card">
           <h3 className="items-heading">ITEMS</h3>
@@ -175,6 +106,15 @@ export default function CustomerDetailPage({ token }) {
           </div>
         </div>
       </div>
+
+      <button 
+        type="button" 
+        className="floating-action-btn"
+        onClick={() => navigate(`/customer/${id}/add`)}
+        title="Add Custom Price"
+      >
+        <Plus size={24} />
+      </button>
     </section>
   );
 }
