@@ -98,7 +98,7 @@ export default function CustomersPage({ token }) {
         type="button" 
         className="floating-action-btn"
         onClick={() => navigate('/customers/actions')}
-        title="Add Customer Actions"
+        title="Add Customer"
       >
         <Plus size={24} />
       </button>

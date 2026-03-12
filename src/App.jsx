@@ -10,9 +10,11 @@ import {
   storeSession
 } from './api';
 import ItemsPage from './pages/ItemsPage';
+import AddItemPage from './pages/AddItemPage';
 import CustomersPage from './pages/CustomersPage';
 import CustomerDetailPage from './pages/CustomerDetailPage';
 import CustomerActionsPage from './pages/CustomerActionsPage';
+import AddCustomerPricePage from './pages/AddCustomerPricePage';
 import OrdersPage from './pages/OrdersPage';
 import DashboardPage from './pages/DashboardPage';
 
@@ -41,9 +43,12 @@ function AppContent({ token, tenant, logout }) {
         <Routes>
           <Route path="/orders" element={<OrdersPage token={token} />} />
           <Route path="/items" element={<ItemsPage token={token} />} />
+          <Route path="/items/add" element={<AddItemPage token={token} />} />
+          <Route path="/items/edit/:id" element={<AddItemPage token={token} />} />
           <Route path="/customers" element={<CustomersPage token={token} />} />
           <Route path="/customers/actions" element={<CustomerActionsPage token={token} />} />
           <Route path="/customer/:id" element={<CustomerDetailPage token={token} />} />
+          <Route path="/customer/:id/add" element={<AddCustomerPricePage token={token} />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/" element={<Navigate to="/orders" replace />} />
         </Routes>
