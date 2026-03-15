@@ -49,6 +49,7 @@ function AppContent({ token, tenant, logout }) {
           <Route path="/items/edit/:id" element={<AddItemPage token={token} />} />
           <Route path="/customers" element={<CustomersPage token={token} />} />
           <Route path="/customers/actions" element={<CustomerActionsPage token={token} />} />
+          <Route path="/customers/actions/:id" element={<CustomerActionsPage token={token} />} />
           <Route path="/customer/:id" element={<CustomerDetailPage token={token} />} />
           <Route path="/customer/:id/add" element={<AddCustomerPricePage token={token} />} />
           <Route path="/dashboard" element={<DashboardPage />} />

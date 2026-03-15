@@ -1,31 +1,34 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Trash2, Plus, Filter, X } from 'lucide-react';
-import { deleteItem, listItems } from '../api';
+import { deleteItem, listItems, listLowStockItems } from '../api';
 
 export default function ItemsPage({ token }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [filters, setFilters] = useState({ q: '', minStock: '', maxStock: '' });
-  const [tempFilters, setTempFilters] = useState({ q: '', minStock: '', maxStock: '' });
+  const [filters, setFilters] = useState({ q: '', minStock: '', maxStock: '', lowStock: false });
+  const [tempFilters, setTempFilters] = useState({ q: '', minStock: '', maxStock: '', lowStock: false });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  const thresholdItems = useMemo(
-    () => items.filter((item) => Number(item.stock) <= Number(item.threshold)),
-    [items]
-  );
-
   const activeFiltersCount = useMemo(() => {
-    return Object.values(filters).filter(v => v !== '').length;
+    return Object.entries(filters).filter(([key, value]) => {
+      if (key === 'lowStock') return value === true;
+      return value !== '';
+    }).length;
   }, [filters]);
 
-  const loadItems = async (query) => {
+  const loadItems = async (appliedFilters = filters) => {
     setLoading(true);
     setError('');
     try {
-      const data = await listItems(token, query);
+      let data;
+      if (appliedFilters.lowStock) {
+        data = await listLowStockItems(token);
+      } else {
+        data = await listItems(token, appliedFilters);
+      }
       setItems(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message);
@@ -57,7 +60,7 @@ export default function ItemsPage({ token }) {
   };
 
   const resetFilters = () => {
-    const reset = { q: '', minStock: '', maxStock: '' };
+    const reset = { q: '', minStock: '', maxStock: '', lowStock: false };
     setFilters(reset);
     setTempFilters(reset);
     loadItems(reset);
@@ -207,6 +210,30 @@ export default function ItemsPage({ token }) {
                   </button>
                 </div>
               )}
+              {filters.lowStock && (
+                <div 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '2rem',
+                    background: 'hsl(var(--destructive) / 0.1)',
+                    border: '1px dashed black',
+                    fontSize: '0.875rem',
+                    color: 'hsl(var(--destructive))'
+                  }}
+                >
+                  <span>Low Stock Only</span>
+                  <button 
+                    type="button" 
+                    onClick={() => clearFilter('lowStock')}
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -269,6 +296,18 @@ export default function ItemsPage({ token }) {
                     onChange={onTempFilterChange}
                   />
                 </div>
+              </div>
+
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  id="lowStock"
+                  name="lowStock"
+                  type="checkbox"
+                  checked={tempFilters.lowStock}
+                  onChange={(e) => setTempFilters(prev => ({ ...prev, lowStock: e.target.checked }))}
+                  style={{ width: 'auto' }}
+                />
+                <label htmlFor="lowStock" style={{ fontSize: '0.875rem', fontWeight: 500 }}>Show Low Stock Only</label>
               </div>
             </div>
 

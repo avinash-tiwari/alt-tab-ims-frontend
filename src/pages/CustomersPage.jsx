@@ -60,6 +60,15 @@ export default function CustomersPage({ token }) {
                 <button 
                   type="button" 
                   className="ghost-btn" 
+                  style={{ padding: '0.4rem', border: 'none' }}
+                  onClick={() => navigate(`/customers/actions/${customer.id}`)}
+                  title="Edit"
+                >
+                  <Pencil size={18} />
+                </button>
+                <button 
+                  type="button" 
+                  className="ghost-btn" 
                   style={{ padding: '0.4rem', border: 'none', color: 'hsl(var(--destructive))' }}
                   onClick={(e) => removeCustomer(customer.id, e)}
                   title="Delete"
