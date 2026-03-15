@@ -85,6 +85,14 @@ export async function listItems(token, query) {
   return request('/items', { token, query });
 }
 
+export async function getItem(token, itemId) {
+  return request(`/items/${itemId}`, { token });
+}
+
+export async function listLowStockItems(token) {
+  return request('/items/low-stock', { token });
+}
+
 export async function createItem(token, payload) {
   return request('/items', {
     method: 'POST',
@@ -110,6 +118,10 @@ export async function deleteItem(token, itemId) {
 
 export async function listCustomers(token) {
   return request('/customers', { token });
+}
+
+export async function getCustomer(token, customerId) {
+  return request(`/customers/${customerId}`, { token });
 }
 
 export async function createCustomer(token, payload) {

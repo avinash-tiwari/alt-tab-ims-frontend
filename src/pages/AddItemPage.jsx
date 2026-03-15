@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
-import { createItem, updateItem, listItems } from '../api';
+import { createItem, updateItem, getItem } from '../api';
 
 const emptyForm = {
   name: '',
@@ -23,9 +23,7 @@ export default function AddItemPage({ token }) {
     if (!id) return;
     setLoading(true);
     try {
-      const data = await listItems(token);
-      const items = Array.isArray(data) ? data : [];
-      const item = items.find(it => it.id === id);
+      const item = await getItem(token, id);
       if (item) {
         setForm({
           name: item.name || '',

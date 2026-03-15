@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import {
-  listCustomers,
+  getCustomer,
   listItems,
   setCustomerPrices
 } from '../api';
@@ -23,14 +23,24 @@ export default function AddCustomerPricePage({ token }) {
     setLoading(true);
     setError('');
     try {
-      const [customersData, itemsData] = await Promise.all([listCustomers(token), listItems(token)]);
-      const customersList = Array.isArray(customersData) ? customersData : [];
-      const found = customersList.find(c => c.id === id);
-      setCustomer(found);
-      const itemsDataList = Array.isArray(itemsData) ? itemsData : [];
-      setItems(itemsDataList);
-      if (itemsDataList.length > 0) {
-        setItemId(itemsDataList[0].id);
+      const [customerData, itemsData] = await Promise.all([
+        getCustomer(token, id),
+        listItems(token)
+      ]);
+      setCustomer(customerData);
+      const itemsList = Array.isArray(itemsData) ? itemsData : [];
+      setItems(itemsList);
+      
+      // Initialize priceEntries with existing custom prices
+      if (customerData?.priceList) {
+        setPriceEntries(customerData.priceList.map(p => ({
+          itemId: p.itemId,
+          customPrice: Number(p.customPrice)
+        })));
+      }
+
+      if (itemsList.length > 0) {
+        setItemId(itemsList[0].id);
       }
     } catch (err) {
       setError(err.message);
