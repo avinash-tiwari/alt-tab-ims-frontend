@@ -142,3 +142,62 @@ export async function setCustomerPrices(token, customerId, prices) {
     body: { prices }
   });
 }
+
+export async function listOrders(token) {
+  return request('/orders', { token });
+}
+
+export async function createOrder(token, payload) {
+  return request('/orders', {
+    method: 'POST',
+    token,
+    body: payload
+  });
+}
+
+export async function getOrder(token, orderId) {
+  return request(`/orders/${orderId}`, { token });
+}
+
+export async function updateOrder(token, orderId, payload) {
+  return request(`/orders/${orderId}`, {
+    method: 'PATCH',
+    token,
+    body: payload
+  });
+}
+
+export async function deleteOrder(token, orderId) {
+  return request(`/orders/${orderId}`, {
+    method: 'DELETE',
+    token
+  });
+}
+
+export async function updateOrderStatus(token, orderId, status) {
+  return request(`/orders/${orderId}/status`, {
+    method: 'PATCH',
+    token,
+    body: { status }
+  });
+}
+
+export async function downloadOrderPDF(token, orderId) {
+  const headers = {};
+  if (token) {
+    headers['x-tenant-token'] = token;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/orders/${orderId}/pdf`, {
+    method: 'GET',
+    headers
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    const message = text || `Request failed: ${response.status}`;
+    throw new Error(message);
+  }
+
+  return response.blob();
+}

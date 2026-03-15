@@ -17,6 +17,7 @@ import CustomerActionsPage from './pages/CustomerActionsPage';
 import AddCustomerPricePage from './pages/AddCustomerPricePage';
 import OrdersPage from './pages/OrdersPage';
 import DashboardPage from './pages/DashboardPage';
+import OrderDetailsPage from './pages/OrderDetailsPage';
 
 function AppContent({ token, tenant, logout }) {
   const initials = useMemo(() => {
@@ -41,6 +42,7 @@ function AppContent({ token, tenant, logout }) {
 
       <main className="app-content">
         <Routes>
+          <Route path="/orders/:id" element={<OrderDetailsPage token={token} />} />
           <Route path="/orders" element={<OrdersPage token={token} />} />
           <Route path="/items" element={<ItemsPage token={token} />} />
           <Route path="/items/add" element={<AddItemPage token={token} />} />
