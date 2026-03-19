@@ -5,10 +5,9 @@ import { createItem, updateItem, getItem } from '../api';
 
 const emptyForm = {
   name: '',
-  sku: '',
-  description: '',
   stock: '',
   threshold: '',
+  costPrice: '',
   basePrice: ''
 };
 
@@ -27,10 +26,9 @@ export default function AddItemPage({ token }) {
       if (item) {
         setForm({
           name: item.name || '',
-          sku: item.sku || '',
-          description: item.description || '',
           stock: String(item.stock ?? ''),
           threshold: String(item.threshold ?? ''),
+          costPrice: String(item.costPrice ?? ''),
           basePrice: String(item.basePrice ?? '')
         });
       }
@@ -54,10 +52,9 @@ export default function AddItemPage({ token }) {
     event.preventDefault();
     const payload = {
       name: form.name,
-      sku: form.sku,
-      description: form.description,
       stock: Number(form.stock),
       threshold: Number(form.threshold),
+      costPrice: Number(form.costPrice),
       basePrice: Number(form.basePrice)
     };
 
@@ -92,8 +89,15 @@ export default function AddItemPage({ token }) {
         <form className="card stack-form" onSubmit={saveItem}>
           <h3 className="items-heading">{id ? 'Update Item Details' : 'New Item Details'}</h3>
           <input name="name" placeholder="Name" value={form.name} onChange={onFormChange} required />
-          <input name="sku" placeholder="SKU" value={form.sku} onChange={onFormChange} required />
-          <input name="description" placeholder="Description" value={form.description} onChange={onFormChange} />
+          <input
+            name="costPrice"
+            type="number"
+            step="0.01"
+            placeholder="Cost Price"
+            value={form.costPrice}
+            onChange={onFormChange}
+            required
+          />
           <div className="split-2">
             <input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={onFormChange} required />
             <input

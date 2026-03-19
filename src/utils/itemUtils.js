@@ -1,7 +1,6 @@
 export const getItemLabel = (item) =>
   item?.name ||
   item?.displayName ||
-  item?.sku ||
   item?.title ||
   item?.id ||
   'Item';

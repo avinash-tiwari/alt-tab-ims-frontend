@@ -271,7 +271,7 @@ export default function ItemsPage({ token }) {
                 <input
                   name="q"
                   type="text"
-                  placeholder="Search by name or SKU"
+                  placeholder="Search by name"
                   value={tempFilters.q}
                   onChange={onTempFilterChange}
                   style={{ width: '100%' }}
@@ -362,6 +362,10 @@ export default function ItemsPage({ token }) {
                 <div className="stat-item">
                   <span className="stat-label">Threshold</span>
                   <span className="stat-value">{item.threshold}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Cost Price</span>
+                  <span className="stat-value">Rs. {item.costPrice}</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">Base Price</span>

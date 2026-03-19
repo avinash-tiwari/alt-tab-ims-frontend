@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -37,6 +37,15 @@ export default function OrdersPage({ token }) {
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [itemSearch, setItemSearch] = useState('');
   const navigate = useNavigate();
+  const searchTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, []);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -96,16 +105,39 @@ export default function OrdersPage({ token }) {
   };
 
   const filteredItems = useMemo(() => {
-    const term = itemSearch.trim().toLowerCase();
+    const term = String(itemSearch ?? '').trim().toLowerCase();
     if (!term) {
       return items;
     }
     return items.filter((item) => {
-      const label = getItemLabel(item).toLowerCase();
-      const identifier = (item?.id ?? '').toLowerCase();
+      const label = String(getItemLabel(item) ?? '').toLowerCase();
+      const identifier = String(item?.id ?? '').toLowerCase();
       return label.includes(term) || identifier.includes(term);
     });
   }, [items, itemSearch]);
+
+  const handleSelectKeyDown = (event) => {
+    const { key } = event;
+    const isCharacterKey = key.length === 1 && !event.ctrlKey && !event.metaKey;
+    if (key === 'Backspace') {
+      setItemSearch((prev) => prev.slice(0, -1));
+    } else if (key === 'Escape') {
+      setItemSearch('');
+    } else if (isCharacterKey) {
+      setItemSearch((prev) => prev + key);
+    } else {
+      return;
+    }
+
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = setTimeout(() => {
+      setItemSearch('');
+    }, 1500);
+
+    event.preventDefault();
+  };
 
   const handleAddLineItem = () => {
     if (!selectedItemId) {
@@ -308,23 +340,15 @@ export default function OrdersPage({ token }) {
 
               <div className="stack-form">
                 <div className="form-group">
-                  <label htmlFor="item-search">Search items</label>
-                  <input
-                    id="item-search"
-                    type="search"
-                    placeholder="Type to filter the catalog"
-                    value={itemSearch}
-                    onChange={(event) => setItemSearch(event.target.value)}
-                    disabled={creatingOrder}
-                  />
-                </div>
-
-                <div className="form-group">
                   <label htmlFor="order-item-select">Select item</label>
+                  <p className="muted" style={{ marginTop: '0', marginBottom: '0.25rem' }}>
+                    Focus the dropdown and type to filter the catalog in place.
+                  </p>
                   <select
                     id="order-item-select"
                     value={selectedItemId}
                     onChange={(event) => setSelectedItemId(event.target.value)}
+                    onKeyDown={handleSelectKeyDown}
                     disabled={creatingOrder}
                   >
                     <option value="">Select an item</option>
@@ -334,6 +358,11 @@ export default function OrdersPage({ token }) {
                       </option>
                     ))}
                   </select>
+                  {itemSearch && (
+                    <p className="helper-text" style={{ marginTop: '0.25rem' }}>
+                      Filtering by &ldquo;{itemSearch}&rdquo;
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-group">
