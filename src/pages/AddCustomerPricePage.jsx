@@ -14,6 +14,7 @@ export default function AddCustomerPricePage({ token }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   
   const [itemId, setItemId] = useState('');
   const [customPrice, setCustomPrice] = useState('');
@@ -54,26 +55,54 @@ export default function AddCustomerPricePage({ token }) {
   }, [id]);
 
   const addPriceEntry = () => {
-    if (!itemId || !customPrice) return;
+    const trimmedPrice = customPrice.trim();
+    if (!itemId) {
+      setError('Select an item before adding a custom price.');
+      return;
+    }
+    if (!trimmedPrice) {
+      setError('Enter a custom price before adding.');
+      return;
+    }
+    const parsedPrice = Number(trimmedPrice);
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      setError('Provide a valid custom price (0 or higher).');
+      return;
+    }
+
+    setError('');
     setPriceEntries((prev) => {
       const filtered = prev.filter((entry) => entry.itemId !== itemId);
-      return [...filtered, { itemId, customPrice: Number(customPrice) }];
+      return [...filtered, { itemId, customPrice: parsedPrice }];
     });
-    setItemId('');
     setCustomPrice('');
   };
 
   const savePriceList = async () => {
-    if (!id || priceEntries.length === 0) return;
+    if (!id) return;
+    if (priceEntries.length === 0) {
+      setError('Add at least one custom price before saving.');
+      return;
+    }
     setError('');
+    setSaving(true);
     try {
-      await setCustomerPrices(token, id, priceEntries);
+      const formattedPayload = priceEntries.map((entry) => ({
+        itemId: entry.itemId,
+        customPrice: Number(entry.customPrice).toFixed(2)
+      }));
+      await setCustomerPrices(token, id, formattedPayload);
+      setSaving(false);
       setPriceEntries([]);
       navigate(`/customer/${id}`);
     } catch (err) {
-      setError(err.message);
+      setSaving(false);
+      setError(err.message || 'Unable to save custom prices.');
     }
   };
+
+  const isAddDisabled = saving || !itemId || !customPrice.trim();
+  const isSaveDisabled = saving || priceEntries.length === 0;
 
   if (loading && !customer) return <div className="page"><p className="muted">Loading...</p></div>;
 
@@ -93,12 +122,16 @@ export default function AddCustomerPricePage({ token }) {
         <article className="card stack-form">
           <h3 className="items-heading">For {customer?.name}</h3>
           
-          <select value={itemId} onChange={(event) => setItemId(event.target.value)}>
-            {items.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name} (Rs. {item.basePrice})
-              </option>
-            ))}
+          <select value={itemId} onChange={(event) => setItemId(event.target.value)} disabled={!items.length}>
+            {items.length === 0 ? (
+              <option value="">No items available</option>
+            ) : (
+              items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name} (Rs. {item.basePrice})
+                </option>
+              ))
+            )}
           </select>
           <input
             type="number"
@@ -109,8 +142,10 @@ export default function AddCustomerPricePage({ token }) {
           />
 
           <div className="split-2">
-            <button type="button" onClick={addPriceEntry}>Add Entry</button>
-            <button type="button" className="primary" onClick={savePriceList}>Save Price List</button>
+            <button type="button" onClick={addPriceEntry} disabled={isAddDisabled}>Add Entry</button>
+            <button type="button" className="primary" onClick={savePriceList} disabled={isSaveDisabled}>
+              {saving ? 'Saving...' : 'Save Price List'}
+            </button>
           </div>
 
           {priceEntries.length > 0 && (
@@ -119,7 +154,7 @@ export default function AddCustomerPricePage({ token }) {
                 const item = items.find((it) => it.id === entry.itemId);
                 return (
                   <p key={entry.itemId} className="list-line">
-                    {item?.name || entry.itemId}: Rs. {entry.customPrice}
+                    {item?.name || entry.itemId}: Rs. {Number(entry.customPrice).toFixed(2)}
                   </p>
                 );
               })}

@@ -306,6 +306,12 @@ button.danger:hover {
   border-bottom-right-radius: 4px;
 }
 
+.tab-btn .tab-icon {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: currentColor;
+}
+
 .muted {
   margin: 0;
   color: hsl(var(--muted-foreground));
@@ -449,6 +455,33 @@ button.danger:hover {
   margin-top: 1rem;
   border-top: 1px solid hsl(var(--border));
   padding-top: 1rem;
+}
+
+.public-link-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.public-link-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.public-link-url {
+  font-family: 'SFMono-Regular', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 0.85rem;
+  background: hsl(var(--muted) / 0.4);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  word-break: break-all;
+}
+
+.public-link-copy-btn {
+  gap: 0.35rem;
+  padding: 0.35rem 0.9rem;
 }
 
 .items-heading {
@@ -819,6 +852,12 @@ button.danger:hover {
   margin: 0;
   font-size: 0.85rem;
   color: hsl(var(--destructive));
+}
+
+.success-text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: hsl(var(--primary));
 }
 
 .orders-list-header {

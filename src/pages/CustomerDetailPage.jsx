@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Plus, ChevronLeft } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ChevronLeft, Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   getCustomer,
   listItems,
@@ -14,6 +14,8 @@ export default function CustomerDetailPage({ token }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copyStatus, setCopyStatus] = useState('');
+  const copyTimeoutRef = useRef(null);
   
   const loadData = async () => {
     setLoading(true);
@@ -36,10 +38,57 @@ export default function CustomerDetailPage({ token }) {
     loadData();
   }, [id]);
 
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (loading && !customer) return <div className="page"><p className="muted">Loading...</p></div>;
   if (!customer && !loading) return <div className="page"><p className="muted">Customer not found.</p></div>;
 
+  const rawIdentifier = customer ? (customer.identifier ?? customer.customerIdentifier ?? customer.id) : '';
+  const customerIdentifier = String(rawIdentifier || '').trim();
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const publicOrderLink = customerIdentifier
+    ? `${origin}/public/orders/${encodeURIComponent(customerIdentifier)}`
+    : '';
   const priceList = customer?.priceList || [];
+
+  const showCopyMessage = (message) => {
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current);
+    }
+    setCopyStatus(message);
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopyStatus('');
+      copyTimeoutRef.current = null;
+    }, 3000);
+  };
+
+  const handleCopyLink = async () => {
+    if (!publicOrderLink) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(publicOrderLink);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = publicOrderLink;
+        textarea.readOnly = true;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      showCopyMessage('Link copied successfully.');
+    } catch (copyError) {
+      showCopyMessage('Unable to copy the link. Try again.');
+    }
+  };
 
   return (
     <section className="page">
@@ -77,6 +126,35 @@ export default function CustomerDetailPage({ token }) {
             <span className="stat-label">Active Orders</span>
             <span className="stat-value">0</span>
           </div>
+        </div>
+
+        <div className="card public-link-card">
+          <div className="public-link-row">
+            <div>
+              <p className="stat-label" style={{ margin: 0 }}>Public order link</p>
+              <p className="helper-text" style={{ margin: 0 }}>
+                Share this URL with the customer so they can place orders directly.
+              </p>
+            </div>
+            {customerIdentifier ? (
+              <button
+                type="button"
+                className="ghost-btn icon-button public-link-copy-btn"
+                onClick={handleCopyLink}
+              >
+                <Copy size={16} />
+                <span>Copy link</span>
+              </button>
+            ) : null}
+          </div>
+          {customerIdentifier ? (
+            <div className="public-link-url">{publicOrderLink}</div>
+          ) : (
+            <p className="helper-text" style={{ marginBottom: 0 }}>
+              Assign an identifier to the customer record to generate a public order link.
+            </p>
+          )}
+          {copyStatus ? <p className="success-text">{copyStatus}</p> : null}
         </div>
 
         <div className="customer-items-section card">

@@ -18,6 +18,7 @@ import AddCustomerPricePage from './pages/AddCustomerPricePage';
 import OrdersPage from './pages/OrdersPage';
 import DashboardPage from './pages/DashboardPage';
 import OrderDetailsPage from './pages/OrderDetailsPage';
+import PublicOrderPage from './pages/PublicOrderPage';
 
 function AppContent({ token, tenant, logout }) {
   const initials = useMemo(() => {
@@ -89,13 +90,21 @@ export default function App() {
     setTenant(null);
   };
 
-  if (!token) {
-    return <LoginScreen onSubmit={handleLogin} loading={loading} error={loginError} />;
-  }
-
   return (
     <BrowserRouter>
-      <AppContent token={token} tenant={tenant} logout={logout} />
+      <Routes>
+        <Route path="/public/orders/:customerIdentifier" element={<PublicOrderPage />} />
+        <Route
+          path="/*"
+          element={
+            token ? (
+              <AppContent token={token} tenant={tenant} logout={logout} />
+            ) : (
+              <LoginScreen onSubmit={handleLogin} loading={loading} error={loginError} />
+            )
+          }
+        />
+      </Routes>
     </BrowserRouter>
   );
 }

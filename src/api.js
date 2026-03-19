@@ -167,6 +167,14 @@ export async function createOrder(token, payload) {
   });
 }
 
+export async function createPublicOrder(payload, token) {
+  return request('/public/orders', {
+    method: 'POST',
+    token,
+    body: payload
+  });
+}
+
 export async function getOrder(token, orderId) {
   return request(`/orders/${orderId}`, { token });
 }

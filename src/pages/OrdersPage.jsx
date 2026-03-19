@@ -8,6 +8,7 @@ import {
   listOrders
 } from '../api';
 import { formatCurrency, getDisplayCustomerName, getStatusLabel } from '../utils/orderUtils';
+import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
 
 const getCustomerLabel = (customer) =>
   customer?.name ||
@@ -19,19 +20,6 @@ const getCustomerLabel = (customer) =>
   customer?.id ||
   'Customer';
 
-const getItemLabel = (item) =>
-  item?.name ||
-  item?.displayName ||
-  item?.sku ||
-  item?.title ||
-  item?.id ||
-  'Item';
-
-const getItemUnitPrice = (item) => {
-  const value = item?.unitPrice ?? item?.price ?? item?.basePrice ?? 0;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
 
 export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([]);
