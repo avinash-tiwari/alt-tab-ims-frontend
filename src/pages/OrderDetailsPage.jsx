@@ -14,6 +14,7 @@ import {
   getDisplayCustomerName,
   getStatusLabel
 } from '../utils/orderUtils';
+import { getItemLabel } from '../utils/itemUtils';
 
 export default function OrderDetailsPage({ token }) {
   const { id: orderId } = useParams();
@@ -219,9 +220,23 @@ export default function OrderDetailsPage({ token }) {
                           : item.unitPrice && item.quantity
                           ? Number(item.unitPrice) * Number(item.quantity)
                           : undefined;
+                        const lineItemId = item.itemId ?? item.id;
+                        const itemLabel = getItemLabel({ ...item, id: lineItemId });
+                        const showItemId = Boolean(lineItemId && itemLabel !== lineItemId);
                         return (
-                          <tr key={`${item.itemId}-${item.quantity}`}>
-                            <td>{item.itemId}</td>
+                          <tr
+                            key={`${lineItemId}-${item.quantity}-${itemLabel}`}
+                          >
+                            <td>
+                              <div>
+                                {itemLabel}
+                                {showItemId && (
+                                  <p className="helper-text">
+                                    {lineItemId}
+                                  </p>
+                                )}
+                              </div>
+                            </td>
                             <td>{item.quantity}</td>
                             <td>{formatCurrency(item.unitPrice)}</td>
                             <td>{formatCurrency(lineTotal)}</td>

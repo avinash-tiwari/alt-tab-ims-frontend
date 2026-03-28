@@ -1,7 +1,8 @@
 export const STATUS_OPTIONS = [
-  { value: 'UNPAID', label: 'Unpaid' },
-  { value: 'PAID', label: 'Paid' },
-  { value: 'OVERDUE', label: 'Overdue' }
+  { value: 'NEW', label: 'New' },
+  { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'OVERDUE', label: 'Overdue' },
+  { value: 'PAID', label: 'Paid' }
 ];
 
 export const formatCurrency = (value) => {

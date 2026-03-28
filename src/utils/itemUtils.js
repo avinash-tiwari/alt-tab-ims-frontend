@@ -2,7 +2,7 @@ export const getItemLabel = (item) =>
   item?.name ||
   item?.displayName ||
   item?.title ||
-  item?.id ||
+  item?.item?.name ||
   'Item';
 
 export const getItemUnitPrice = (item) => {

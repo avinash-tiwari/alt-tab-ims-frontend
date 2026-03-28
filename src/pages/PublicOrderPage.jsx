@@ -92,7 +92,6 @@ export default function PublicOrderPage() {
       setSuccessMessage('');
       return;
     }
-    debugger;
     const item = items.find((entry) => entry.id === +selectedItemId);
     if (!item) {
       setSubmitError('Selected item is not available.');
