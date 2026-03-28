@@ -674,12 +674,14 @@ button.danger:hover {
 
 .orders-list-panel {
   width: 100%;
+  padding: 0;
 }
 
 .orders-list {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding: 0;
 }
 
 .order-card {
@@ -687,13 +689,97 @@ button.danger:hover {
   text-align: left;
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  padding: 0.75rem;
+  padding: 0;
   background: hsl(var(--card));
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.order-card-layout {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.75rem 0;
+}
+
+.order-card-left,
+.order-card-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.order-card-left {
+  min-width: 0;
+}
+
+.order-card-right {
+  align-items: flex-end;
+}
+
+.order-card-id {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.order-customer--card {
+  font-weight: 600;
+}
+
+.order-card-date {
+  margin: 0;
+  font-size: 0.85rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.order-card-total-label {
+  margin: 0;
+}
+
+.order-card-meta {
+  text-align: right;
+}
+
+.order-card-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.order-card-status-indicator {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  display: inline-block;
+  background: hsl(var(--muted));
+}
+
+.order-card-status-indicator--paid {
+  background: hsl(var(--primary));
+}
+
+.order-card-status-indicator--unpaid {
+  background: hsl(var(--muted));
+}
+
+.order-card-status-indicator--overdue {
+  background: hsl(var(--destructive));
+}
+
+.order-card-status-indicator--unknown {
+  background: hsl(var(--border));
+}
+
+.order-card-status-indicator--draft {
+  background: hsl(var(--muted-foreground));
 }
 
 .order-card--active {
@@ -861,6 +947,7 @@ button.danger:hover {
 }
 
 .orders-list-header {
+  padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;

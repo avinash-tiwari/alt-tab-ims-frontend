@@ -141,6 +141,7 @@ export default function OrderDetailsPage({ token }) {
   };
 
   const customerName = getDisplayCustomerName(orderDetail);
+  const orderIdLabel = String(orderDetail?.id ?? '');
 
   return (
     <section className="page">
@@ -149,7 +150,7 @@ export default function OrderDetailsPage({ token }) {
           <h2>Order details</h2>
           {orderDetail && (
             <p className="order-customer">
-              {customerName} • #{orderDetail.id?.slice(0, 8)}
+              {customerName} • #{orderIdLabel.slice(0, 8)}
             </p>
           )}
         </div>

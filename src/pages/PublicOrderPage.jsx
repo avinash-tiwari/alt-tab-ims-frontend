@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import { createPublicOrder, listItems } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
@@ -8,11 +8,12 @@ const DEFAULT_NOTES = 'Order from customer portal';
 
 export default function PublicOrderPage() {
   const { customerIdentifier } = useParams();
+  const location = useLocation();
   const identifierLabel = customerIdentifier?.trim();
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [itemsError, setItemsError] = useState('');
-  const [itemSearch, setItemSearch] = useState('');
+  const [itemQuery, setItemQuery] = useState('');
   const [selectedItemId, setSelectedItemId] = useState('');
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [lineItems, setLineItems] = useState([]);
@@ -20,35 +21,63 @@ export default function PublicOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const tenantToken = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return (params.get('tenantToken') || '').trim();
+  }, [location.search]);
+  const searchTimerRef = useRef(null);
 
   useEffect(() => {
-    const fetchItems = async () => {
-      setLoadingItems(true);
-      setItemsError('');
+    let isActive = true;
+    setItemsError('');
+
+    if (!tenantToken) {
+      setItems([]);
+      setLoadingItems(false);
+      setItemsError('Tenant token missing from the URL.');
+      return;
+    }
+
+    const trimmed = itemQuery.trim();
+    setLoadingItems(true);
+    const fetchTimeout = setTimeout(async () => {
+      if (!isActive) {
+        return;
+      }
+
       try {
-        const response = await listItems();
-        setItems(Array.isArray(response) ? response : []);
+        const query = {
+          ...(trimmed ? { q: trimmed } : {}),
+          ...(identifierLabel ? { customerIdentifier: identifierLabel } : {})
+        };
+        const response = await listItems(tenantToken, query);
+        if (isActive) {
+          setItems(Array.isArray(response) ? response : []);
+        }
       } catch (err) {
-        setItemsError(err.message);
+        if (isActive) {
+          setItemsError(err.message);
+        }
       } finally {
-        setLoadingItems(false);
+        if (isActive) {
+          setLoadingItems(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      isActive = false;
+      clearTimeout(fetchTimeout);
+    };
+  }, [tenantToken, itemQuery]);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
       }
     };
-
-    fetchItems();
   }, []);
-
-  const filteredItems = useMemo(() => {
-    const term = itemSearch.trim().toLowerCase();
-    if (!term) {
-      return items;
-    }
-    return items.filter((item) => {
-      const label = getItemLabel(item).toLowerCase();
-      const identifier = (item?.id ?? '').toLowerCase();
-      return label.includes(term) || identifier.includes(term);
-    });
-  }, [items, itemSearch]);
 
   const handleAddLineItem = () => {
     if (!selectedItemId) {
@@ -63,8 +92,8 @@ export default function PublicOrderPage() {
       setSuccessMessage('');
       return;
     }
-
-    const item = items.find((entry) => entry.id === selectedItemId);
+    debugger;
+    const item = items.find((entry) => entry.id === +selectedItemId);
     if (!item) {
       setSubmitError('Selected item is not available.');
       setSuccessMessage('');
@@ -84,9 +113,32 @@ export default function PublicOrderPage() {
 
     setSelectedItemId('');
     setSelectedQuantity(1);
-    setItemSearch('');
+    setItemQuery('');
     setSubmitError('');
     setSuccessMessage('');
+  };
+
+  const handleSelectKeyDown = (event) => {
+    const { key } = event;
+    const isCharacterKey = key.length === 1 && !event.ctrlKey && !event.metaKey;
+    if (key === 'Backspace') {
+      setItemQuery((prev) => prev.slice(0, -1));
+    } else if (key === 'Escape') {
+      setItemQuery('');
+    } else if (isCharacterKey) {
+      setItemQuery((prev) => prev + key);
+    } else {
+      return;
+    }
+
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = setTimeout(() => {
+      setItemQuery('');
+    }, 1500);
+
+    event.preventDefault();
   };
 
   const handleRemoveLineItem = (index) => {
@@ -106,6 +158,12 @@ export default function PublicOrderPage() {
       return;
     }
 
+    if (!tenantToken) {
+      setSubmitError('Tenant token missing from the URL.');
+      setSuccessMessage('');
+      return;
+    }
+
     if (!lineItems.length) {
       setSubmitError('Add at least one item to the order.');
       setSuccessMessage('');
@@ -121,7 +179,7 @@ export default function PublicOrderPage() {
         items: lineItems.map(({ itemId, quantity }) => ({ itemId, quantity }))
       };
 
-      const response = await createPublicOrder(payload);
+      const response = await createPublicOrder(payload, tenantToken);
       const orderId = response?.id;
       setSuccessMessage(
         orderId ? `Order placed successfully (ID ${orderId}).` : 'Order placed successfully.'
@@ -136,7 +194,7 @@ export default function PublicOrderPage() {
     }
   };
 
-  const isSubmitDisabled = submitting || !lineItems.length || !identifierLabel;
+  const isSubmitDisabled = submitting || !lineItems.length || !identifierLabel || !tenantToken;
 
   return (
     <main className="page" style={{ minHeight: '100vh', paddingTop: '1rem' }}>
@@ -144,11 +202,13 @@ export default function PublicOrderPage() {
         <div>
           <h2 style={{ marginBottom: '0.25rem' }}>Place an order</h2>
           <p className="helper-text">
-            Public ordering for{' '}
-            <strong>{identifierLabel || 'the provided customer identifier'}</strong>.
+            Use the secure customer portal to submit an order.
           </p>
         </div>
 
+        {!tenantToken && (
+          <p className="form-error">Tenant token missing from the URL.</p>
+        )}
         {!identifierLabel && (
           <p className="form-error">Customer identifier missing from the URL.</p>
         )}
@@ -159,50 +219,32 @@ export default function PublicOrderPage() {
         <form className="stack-form" onSubmit={handleSubmit}>
           <div className="orders-form-section">
             <div className="orders-form-row">
-              <label htmlFor="public-order-identifier">Customer identifier</label>
-              <input
-                id="public-order-identifier"
-                type="text"
-                value={identifierLabel || ''}
-                readOnly
-                placeholder="Set via URL"
-              />
-            </div>
-
-            <div className="orders-form-row">
-              <label htmlFor="public-order-search">Search items</label>
-              <input
-                id="public-order-search"
-                type="search"
-                value={itemSearch}
-                onChange={(event) => setItemSearch(event.target.value)}
-                placeholder="Search by name or identifier"
-                disabled={loadingItems || !items.length}
-              />
-              {loadingItems && <p className="helper-text">Loading items…</p>}
-              {!loadingItems && !items.length && !itemsError && (
-                <p className="helper-text">No items available right now.</p>
+              <label htmlFor="public-order-item-select">Select item</label>
+              <p className="muted" style={{ marginTop: '0', marginBottom: '0.25rem' }}>
+                Focus the dropdown and type to filter the catalog in place.
+              </p>
+              <select
+                id="public-order-item-select"
+                value={selectedItemId}
+                onChange={(event) => setSelectedItemId(event.target.value)}
+                onKeyDown={handleSelectKeyDown}
+                disabled={!tenantToken || loadingItems}
+              >
+                <option value="">Select an item</option>
+                {items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {getItemLabel(item)} — {formatCurrency(getItemUnitPrice(item))}
+                  </option>
+                ))}
+              </select>
+              {itemQuery && (
+                <p className="helper-text" style={{ marginTop: '0.25rem' }}>
+                  Filtering by &ldquo;{itemQuery}&rdquo;
+                </p>
               )}
             </div>
 
             <div className="orders-form-row split-2">
-              <div className="form-group">
-                <label htmlFor="public-order-item">Select item</label>
-                <select
-                  id="public-order-item"
-                  value={selectedItemId}
-                  onChange={(event) => setSelectedItemId(event.target.value)}
-                  disabled={loadingItems || !items.length}
-                >
-                  <option value="">Select an item</option>
-                  {filteredItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {getItemLabel(item)} — {formatCurrency(getItemUnitPrice(item))}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="form-group">
                 <label htmlFor="public-order-quantity">Quantity</label>
                 <input
@@ -220,7 +262,7 @@ export default function PublicOrderPage() {
               type="button"
               className="primary"
               onClick={handleAddLineItem}
-              disabled={loadingItems || submitting}
+              disabled={loadingItems || submitting || !selectedItemId}
             >
               Add item
             </button>

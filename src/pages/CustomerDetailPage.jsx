@@ -16,7 +16,7 @@ export default function CustomerDetailPage({ token }) {
   const [error, setError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const copyTimeoutRef = useRef(null);
-  
+
   const loadData = async () => {
     setLoading(true);
     setError('');
@@ -52,8 +52,9 @@ export default function CustomerDetailPage({ token }) {
   const rawIdentifier = customer ? (customer.identifier ?? customer.customerIdentifier ?? customer.id) : '';
   const customerIdentifier = String(rawIdentifier || '').trim();
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const querySuffix = token ? `?tenantToken=${encodeURIComponent(token)}` : '';
   const publicOrderLink = customerIdentifier
-    ? `${origin}/public/orders/${encodeURIComponent(customerIdentifier)}`
+    ? `${origin}/public/orders/${encodeURIComponent(customerIdentifier)}${querySuffix}`
     : '';
   const priceList = customer?.priceList || [];
 
@@ -101,9 +102,9 @@ export default function CustomerDetailPage({ token }) {
             <h2 style={{ margin: 0 }}>{customer?.name}</h2>
             <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>{customer?.phone} • {customer?.city}</p>
           </div>
-          <button 
-            type="button" 
-            className="ghost-btn" 
+          <button
+            type="button"
+            className="ghost-btn"
             onClick={() => navigate(`/customers/actions/${id}`)}
             style={{ padding: '0.5rem' }}
           >
@@ -147,13 +148,11 @@ export default function CustomerDetailPage({ token }) {
               </button>
             ) : null}
           </div>
-          {customerIdentifier ? (
-            <div className="public-link-url">{publicOrderLink}</div>
-          ) : (
+          {!customerIdentifier ? (
             <p className="helper-text" style={{ marginBottom: 0 }}>
               Assign an identifier to the customer record to generate a public order link.
             </p>
-          )}
+          ) : null}
           {copyStatus ? <p className="success-text">{copyStatus}</p> : null}
         </div>
 
@@ -171,17 +170,17 @@ export default function CustomerDetailPage({ token }) {
               </thead>
               <tbody>
                 {priceList.length > 0 ? (
-                   priceList.map((price) => {
-                     const item = price.item || items.find((it) => it.id === price.itemId);
-                     return (
-                       <tr key={price.itemId}>
-                         <td>{item?.name || price.itemId}</td>
-                         <td style={{ textAlign: 'right' }}>
-                           Rs. {item?.basePrice || 0} / <strong>Rs. {price.customPrice}</strong>
-                         </td>
-                       </tr>
-                     );
-                   })
+                  priceList.map((price) => {
+                    const item = price.item || items.find((it) => it.id === price.itemId);
+                    return (
+                      <tr key={price.itemId}>
+                        <td>{item?.name || price.itemId}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          Rs. {item?.basePrice || 0} / <strong>Rs. {price.customPrice}</strong>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan="2" style={{ textAlign: 'center', padding: '1rem', color: 'hsl(195 85% 30%)' }}>
@@ -195,8 +194,8 @@ export default function CustomerDetailPage({ token }) {
         </div>
       </div>
 
-      <button 
-        type="button" 
+      <button
+        type="button"
         className="floating-action-btn"
         onClick={() => navigate(`/customer/${id}/add`)}
         title="Add Custom Price"

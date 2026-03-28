@@ -20,6 +20,22 @@ const getCustomerLabel = (customer) =>
   customer?.id ||
   'Customer';
 
+const formatOrderDateTime = (value) => {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return date.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+};
+
 
 export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([]);
@@ -253,7 +269,12 @@ export default function OrdersPage({ token }) {
         <div className="orders-list">
           {orders.map((order) => {
             const customerName = getDisplayCustomerName(order);
-            const clickableLabel = `${customerName} (${order.id})`;
+            const orderIdLabel = String(order.id ?? '');
+            const clickableLabel = `${customerName} (${orderIdLabel})`;
+            const orderDateLabel = formatOrderDateTime(order.orderDate ?? order.createdAt);
+            const totalItems = Array.isArray(order.items) ? order.items.length : 0;
+            const statusClass = order.status?.toLowerCase() ?? 'unknown';
+            const shortOrderId = orderIdLabel.slice(0, 8);
             return (
               <button
                 key={order.id}
@@ -262,23 +283,30 @@ export default function OrdersPage({ token }) {
                 onClick={() => navigate(`/orders/${order.id}`)}
                 aria-label={`View ${clickableLabel}`}
               >
-                <div className="order-card-heading">
-                  <span className="order-id">{order.id?.slice(0, 8)}</span>
-                  <span
-                    className={`status-pill status-pill--${order.status?.toLowerCase()}`}
-                  >
-                    {getStatusLabel(order.status)}
-                  </span>
-                </div>
-                <p className="order-customer">{customerName}</p>
-                <div className="order-card-body">
-                  <div>
-                    <p className="small-label">Total</p>
-                    <strong>{formatCurrency(order.totalAmount)}</strong>
+                <div className="order-card-layout">
+                  <div className="order-card-left">
+                    <p className="order-customer order-customer--card">{customerName}</p>
+                    <p className="order-card-date">{orderDateLabel}</p>
+                    <p className="order-card-id">Order #{shortOrderId}</p>
+                    <p className="small-label order-card-total-label">Total</p>
                   </div>
-                  <div>
-                    <p className="small-label">Status</p>
-                    <strong>{order.status}</strong>
+                  <div className={`order-card-right order-card-right--${statusClass}`}>
+                    <div className={`order-card-status order-card-status--${statusClass}`}>
+                      <span
+                        className={`order-card-status-indicator order-card-status-indicator--${statusClass}`}
+                      />
+                      <span className={`status-pill status-pill--${statusClass}`}>
+                        {getStatusLabel(order.status)}
+                      </span>
+                    </div>
+                    <div className="order-card-meta">
+                      <p className="small-label">Items</p>
+                      <strong>{totalItems}</strong>
+                    </div>
+                    <div className="order-card-meta">
+                      <p className="small-label">Value</p>
+                      <strong>{formatCurrency(order.totalAmount)}</strong>
+                    </div>
                   </div>
                 </div>
               </button>
