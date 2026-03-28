@@ -202,6 +202,29 @@ export async function updateOrderStatus(token, orderId, status) {
   });
 }
 
+export async function updateOrderItemQuantity(token, orderId, orderItemId, payload) {
+  return request(`/orders/${orderId}/items/${orderItemId}`, {
+    method: 'PATCH',
+    token,
+    body: payload
+  });
+}
+
+export async function deleteOrderItem(token, orderId, orderItemId) {
+  return request(`/orders/${orderId}/items/${orderItemId}`, {
+    method: 'DELETE',
+    token
+  });
+}
+
+export async function addOrderItem(token, orderId, payload) {
+  return request(`/orders/${orderId}/items`, {
+    method: 'POST',
+    token,
+    body: payload
+  });
+}
+
 export async function downloadOrderPDF(token, orderId) {
   const headers = {};
   if (token) {
