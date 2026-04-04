@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Copy, Download, Pencil, Plus } from 'lucide-react';
+import { ChevronLeft, Copy, Download, Pencil, Plus, Share2 } from 'lucide-react';
 import {
   getCustomer,
   listItems,
-  downloadCustomerDeliveredOrdersPDF
+  downloadCustomerDeliveredOrdersPDF,
+  getCustomerPrices
 } from '../api';
+import { formatCurrency } from '../utils/orderUtils';
 
 export default function CustomerDetailPage({ token }) {
   const { id } = useParams();
@@ -16,18 +18,22 @@ export default function CustomerDetailPage({ token }) {
   const [error, setError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const [invoiceDownloading, setInvoiceDownloading] = useState(false);
+  const [priceList, setPriceList] = useState([]);
+  const [shareProcessing, setShareProcessing] = useState(false);
   const copyTimeoutRef = useRef(null);
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
-      const [customerData, itemsData] = await Promise.all([
+      const [customerData, itemsData, pricesData] = await Promise.all([
         getCustomer(token, id),
-        listItems(token)
+        listItems(token),
+        getCustomerPrices(token, id)
       ]);
       setCustomer(customerData);
       setItems(Array.isArray(itemsData) ? itemsData : []);
+      setPriceList(Array.isArray(pricesData) ? pricesData : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -57,7 +63,28 @@ export default function CustomerDetailPage({ token }) {
   const publicOrderLink = customerIdentifier
     ? `${origin}/public/orders/${encodeURIComponent(customerIdentifier)}${querySuffix}`
     : '';
-  const priceList = customer?.priceList || [];
+  const statsData = [
+    {
+      label: 'Total Spent',
+      value: `₹ ${formatCurrency(customer?.totalSpent ?? '0')}`
+    },
+    {
+      label: 'Credits',
+      value: `₹ ${formatCurrency(customer?.totalCredits ?? '0')}`
+    },
+    {
+      label: 'Total Due',
+      value: `₹ ${formatCurrency(customer?.totalDue ?? '0')}`
+    },
+    {
+      label: 'Total Orders',
+      value: String(customer?.totalOrders ?? 0)
+    },
+    {
+      label: 'Active Orders',
+      value: String(customer?.activeOrders ?? customer?.activeOrdersCount ?? 0)
+    }
+  ];
 
   const showCopyMessage = (message) => {
     if (copyTimeoutRef.current) {
@@ -92,6 +119,44 @@ export default function CustomerDetailPage({ token }) {
     }
   };
 
+  const shareSupported = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  const handleShareDeliveredOrdersInvoice = async () => {
+    const customerId = customer?.id ?? id;
+    if (!customerId) {
+      return;
+    }
+
+    if (!shareSupported) {
+      setError('Your device does not support sharing PDFs.');
+      return;
+    }
+
+    setShareProcessing(true);
+    setError('');
+    try {
+      const { blob, fileName } = await downloadCustomerDeliveredOrdersPDF(token, customerId);
+      const pdfBlob = blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' });
+      const pdfFile = typeof File === 'function'
+        ? new File([pdfBlob], fileName, { type: 'application/pdf' })
+        : pdfBlob;
+
+      if (navigator.canShare && typeof navigator.canShare === 'function' && !navigator.canShare({ files: [pdfFile] })) {
+        throw new Error('Sharing PDFs is not supported by your browser.');
+      }
+
+      await navigator.share({
+        title: `${customer?.name || 'Customer'} delivered orders`,
+        text: `Delivered orders invoice for ${customer?.name || 'your customer'}.`,
+        files: [pdfFile]
+      });
+    } catch (err) {
+      setError(err?.message || 'Unable to share the PDF.');
+    } finally {
+      setShareProcessing(false);
+    }
+  };
+
   const handleDownloadDeliveredOrdersInvoice = async () => {
     const customerId = customer?.id ?? id;
     if (!customerId) {
@@ -101,11 +166,11 @@ export default function CustomerDetailPage({ token }) {
     setInvoiceDownloading(true);
     setError('');
     try {
-      const blob = await downloadCustomerDeliveredOrdersPDF(token, customerId);
+      const { blob, fileName } = await downloadCustomerDeliveredOrdersPDF(token, customerId);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `customer-${customerId}-delivered-orders.pdf`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -120,57 +185,76 @@ export default function CustomerDetailPage({ token }) {
   return (
     <section className="page">
       <div className="sticky-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
-              <ChevronLeft size={24} />
-            </button>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ margin: 0 }}>{customer?.name}</h2>
-              <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>{customer?.phone} • {customer?.city}</p>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
+            <ChevronLeft size={24} />
+          </button>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ margin: 0 }}>{customer?.name}</h2>
+            <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>{customer?.phone} • {customer?.city}</p>
+          </div>
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={handleDownloadDeliveredOrdersInvoice}
+            disabled={invoiceDownloading}
+            style={{
+              padding: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem'
+            }}
+            title="Generate delivered orders invoice"
+          >
+            <Download size={16} />
+            <span style={{ fontSize: '0.85rem' }}>
+              {invoiceDownloading ? 'Generating…' : 'Invoice'}
+            </span>
+          </button>
+          {shareSupported ? (
             <button
               type="button"
               className="ghost-btn"
-              onClick={handleDownloadDeliveredOrdersInvoice}
-              disabled={invoiceDownloading}
+              onClick={handleShareDeliveredOrdersInvoice}
+              disabled={shareProcessing}
               style={{
                 padding: '0.5rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.25rem'
               }}
-              title="Generate delivered orders invoice"
+              title="Share delivered orders PDF"
             >
-              <Download size={16} />
+              <Share2 size={16} />
               <span style={{ fontSize: '0.85rem' }}>
-                {invoiceDownloading ? 'Generating…' : 'Invoice'}
+                {shareProcessing ? 'Sharing…' : 'Share'}
               </span>
             </button>
-            <button
-              type="button"
-              className="ghost-btn"
-              onClick={() => navigate(`/customers/actions/${id}`)}
-              style={{ padding: '0.5rem' }}
-            >
-              <Pencil size={20} />
-            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={() => navigate(`/customers/actions/${id}`)}
+            style={{ padding: '0.5rem' }}
+          >
+            <Pencil size={20} />
+          </button>
         </div>
       </div>
+      {error ? (
+        <p className="helper-text" style={{ color: '#d32f2f', marginTop: '0.25rem' }}>
+          {error}
+        </p>
+      ) : null}
 
       <div className="customer-detail-content" style={{ marginTop: '1rem' }}>
         <div className="customer-stats-grid card">
-          <div className="stat-item">
-            <span className="stat-label">Total Spent</span>
-            <span className="stat-value">₹ 0</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Credits</span>
-            <span className="stat-value">₹ 0</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Active Orders</span>
-            <span className="stat-value">0</span>
-          </div>
+          {statsData.map((stat) => (
+            <div key={stat.label} className="stat-item">
+              <span className="stat-label">{stat.label}</span>
+              <span className="stat-value">{stat.value}</span>
+            </div>
+          ))}
         </div>
 
         <div className="card public-link-card">

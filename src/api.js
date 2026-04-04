@@ -163,6 +163,10 @@ export async function setCustomerPrices(token, customerId, prices) {
   });
 }
 
+export async function getCustomerPrices(token, customerId) {
+  return request(`/customers/${customerId}/prices`, { token });
+}
+
 export async function listOrders(token) {
   return request('/orders', { token });
 }
@@ -269,6 +273,81 @@ export async function downloadCustomerDeliveredOrdersPDF(token, customerId) {
     const message = text || `Request failed: ${response.status}`;
     throw new Error(message);
   }
+  const disposition = getHeaderValue(response.headers, 'content-disposition') || '';
+  const blob = await response.blob();
+  const fallbackName = `customer-${customerId}-delivered-orders.pdf`;
+  const rawFileName = deriveFilenameFromDisposition(disposition) || fallbackName;
+  const fileName = appendDateToFilename(rawFileName);
 
-  return response.blob();
+  return { blob, fileName };
+}
+
+function deriveFilenameFromDisposition(disposition) {
+  if (!disposition) return null;
+
+  const parts = disposition.split(';');
+  for (const part of parts) {
+    const [rawName, ...rawValueParts] = part.split('=');
+    if (!rawName || rawValueParts.length === 0) {
+      continue;
+    }
+
+    const name = rawName.trim().toLowerCase();
+    let value = rawValueParts.join('=').trim();
+    if (!value) {
+      continue;
+    }
+
+    const isStar = name === 'filename*';
+
+    if (isStar) {
+      const starParts = value.split("'");
+      if (starParts.length >= 3) {
+        value = starParts.slice(2).join("'");
+      }
+    }
+
+    if (value.startsWith('"') && value.endsWith('"')) {
+      value = value.slice(1, -1);
+    }
+
+    try {
+      value = decodeURIComponent(value);
+    } catch {
+      // leave as-is on decode failure
+    }
+
+    if (name === 'filename*' || name === 'filename') {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function getHeaderValue(headers, headerName) {
+  const targetName = headerName.toLowerCase();
+  for (const [key, value] of headers.entries()) {
+    if (value && key.toLowerCase() === targetName) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function appendDateToFilename(filename, date = new Date()) {
+  if (!filename) {
+    return filename;
+  }
+
+  const suffix = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const lastDot = filename.lastIndexOf('.');
+
+  if (lastDot <= 0) {
+    return `${filename}-${suffix}`;
+  }
+
+  const base = filename.slice(0, lastDot);
+  const extension = filename.slice(lastDot);
+  return `${base}-${suffix}${extension}`;
 }
