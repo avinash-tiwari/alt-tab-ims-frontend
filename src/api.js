@@ -116,6 +116,14 @@ export async function deleteItem(token, itemId) {
   });
 }
 
+export async function updateBulkStock(token, payload) {
+  return request('/items/bulk-stock', {
+    method: 'PATCH',
+    token,
+    body: payload
+  });
+}
+
 export async function listCustomers(token) {
   return request('/customers', { token });
 }
