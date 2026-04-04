@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Copy, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Copy, Download, Pencil, Plus } from 'lucide-react';
 import {
   getCustomer,
   listItems,
-  setCustomerPrices
+  downloadCustomerDeliveredOrdersPDF
 } from '../api';
 
 export default function CustomerDetailPage({ token }) {
@@ -15,6 +15,7 @@ export default function CustomerDetailPage({ token }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
+  const [invoiceDownloading, setInvoiceDownloading] = useState(false);
   const copyTimeoutRef = useRef(null);
 
   const loadData = async () => {
@@ -91,25 +92,68 @@ export default function CustomerDetailPage({ token }) {
     }
   };
 
+  const handleDownloadDeliveredOrdersInvoice = async () => {
+    const customerId = customer?.id ?? id;
+    if (!customerId) {
+      return;
+    }
+
+    setInvoiceDownloading(true);
+    setError('');
+    try {
+      const blob = await downloadCustomerDeliveredOrdersPDF(token, customerId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `customer-${customerId}-delivered-orders.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setInvoiceDownloading(false);
+    }
+  };
+
   return (
     <section className="page">
       <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-          <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
-            <ChevronLeft size={24} />
-          </button>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0 }}>{customer?.name}</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>{customer?.phone} • {customer?.city}</p>
-          </div>
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={() => navigate(`/customers/actions/${id}`)}
-            style={{ padding: '0.5rem' }}
-          >
-            <Pencil size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
+              <ChevronLeft size={24} />
+            </button>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ margin: 0 }}>{customer?.name}</h2>
+              <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>{customer?.phone} • {customer?.city}</p>
+            </div>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleDownloadDeliveredOrdersInvoice}
+              disabled={invoiceDownloading}
+              style={{
+                padding: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
+              title="Generate delivered orders invoice"
+            >
+              <Download size={16} />
+              <span style={{ fontSize: '0.85rem' }}>
+                {invoiceDownloading ? 'Generating…' : 'Invoice'}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => navigate(`/customers/actions/${id}`)}
+              style={{ padding: '0.5rem' }}
+            >
+              <Pencil size={20} />
+            </button>
         </div>
       </div>
 

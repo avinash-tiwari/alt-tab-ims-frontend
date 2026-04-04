@@ -252,3 +252,23 @@ export async function downloadOrderPDF(token, orderId) {
 
   return response.blob();
 }
+
+export async function downloadCustomerDeliveredOrdersPDF(token, customerId) {
+  const headers = {};
+  if (token) {
+    headers['x-tenant-token'] = token;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/customers/${customerId}/delivered-orders/pdf`, {
+    method: 'GET',
+    headers
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    const message = text || `Request failed: ${response.status}`;
+    throw new Error(message);
+  }
+
+  return response.blob();
+}
