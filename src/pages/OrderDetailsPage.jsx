@@ -42,6 +42,12 @@ export default function OrderDetailsPage({ token }) {
   const [quantityInputs, setQuantityInputs] = useState({});
   const [updatingOrderItemId, setUpdatingOrderItemId] = useState('');
   const [deletingOrderItemId, setDeletingOrderItemId] = useState('');
+  const [showPaymentSplitModal, setShowPaymentSplitModal] = useState(false);
+  const [paymentOnline, setPaymentOnline] = useState('');
+  const [paymentCash, setPaymentCash] = useState('');
+  const [paymentSplitError, setPaymentSplitError] = useState('');
+  const [paymentSplitSubmitting, setPaymentSplitSubmitting] = useState(false);
+  const [previousStatusBeforeSplit, setPreviousStatusBeforeSplit] = useState('');
 
   const loadDetail = async () => {
     if (!orderId) {
@@ -118,8 +124,96 @@ export default function OrderDetailsPage({ token }) {
     }
   };
 
+  const openPaymentSplitModal = () => {
+    if (!orderDetail) {
+      return;
+    }
+
+    const totalAmount = orderDetail.totalAmount;
+    const defaultOnline =
+      totalAmount !== undefined && totalAmount !== null && !Number.isNaN(Number(totalAmount))
+        ? Number(totalAmount).toFixed(2)
+        : '';
+
+    setPaymentOnline(defaultOnline);
+    setPaymentCash('0.00');
+    setPaymentSplitError('');
+    setPreviousStatusBeforeSplit(orderDetail.status ?? '');
+    setShowPaymentSplitModal(true);
+  };
+
+  const closePaymentSplitModal = (revertStatus = true) => {
+    setShowPaymentSplitModal(false);
+    setPaymentSplitError('');
+    if (revertStatus) {
+      setStatusInput(
+        previousStatusBeforeSplit || orderDetail?.status || STATUS_OPTIONS[0].value
+      );
+    }
+  };
+
+  const handleConfirmPaymentSplit = async () => {
+    if (!orderDetail) {
+      return;
+    }
+
+    const parsedOnline = Number(paymentOnline);
+    const parsedCash = Number(paymentCash);
+
+    if (
+      paymentOnline === '' ||
+      paymentCash === '' ||
+      Number.isNaN(parsedOnline) ||
+      Number.isNaN(parsedCash) ||
+      parsedOnline < 0 ||
+      parsedCash < 0
+    ) {
+      setPaymentSplitError('Enter valid non-negative amounts for both online and cash.');
+      return;
+    }
+
+    const totalAmount = orderDetail.totalAmount;
+    if (
+      totalAmount !== undefined &&
+      totalAmount !== null &&
+      !Number.isNaN(Number(totalAmount))
+    ) {
+      const expected = Number(totalAmount);
+      if (Math.abs(expected - (parsedOnline + parsedCash)) > 0.009) {
+        setPaymentSplitError(`Split must add up to ${formatCurrency(expected)}.`);
+        return;
+      }
+    }
+
+    setPaymentSplitError('');
+    setUpdatingStatus(true);
+    setPaymentSplitSubmitting(true);
+
+    try {
+      const updated = await updateOrderStatus(token, orderDetail.id, statusInput, {
+        online: parsedOnline.toFixed(2),
+        cash: parsedCash.toFixed(2)
+      });
+      setOrderDetail((prev) =>
+        prev ? { ...prev, ...updated, items: prev.items } : prev
+      );
+      setStatusInput(updated.status ?? statusInput);
+      closePaymentSplitModal(false);
+    } catch (err) {
+      setPaymentSplitError(err.message);
+    } finally {
+      setPaymentSplitSubmitting(false);
+      setUpdatingStatus(false);
+    }
+  };
+
   const handleStatusSave = async () => {
     if (!orderDetail) {
+      return;
+    }
+
+    if (orderDetail.status !== 'PAID' && statusInput === 'PAID') {
+      openPaymentSplitModal();
       return;
     }
 
@@ -464,7 +558,7 @@ export default function OrderDetailsPage({ token }) {
                     type="button"
                     className="primary icon-button"
                     onClick={handleStatusSave}
-                    disabled={!statusChanged || updatingStatus}
+                    disabled={!statusChanged || updatingStatus || showPaymentSplitModal}
                   >
                     <FileText size={16} />
                     <span>{updatingStatus ? 'Saving…' : 'Update status'}</span>
@@ -573,6 +667,65 @@ export default function OrderDetailsPage({ token }) {
                 disabled={addingItem}
               >
                 {addingItem ? 'Adding…' : 'Add to order'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {showPaymentSplitModal && (
+        <div className="orders-payment-split-modal-overlay">
+          <div className="orders-payment-split-modal" role="dialog" aria-modal="true">
+            <header className="orders-payment-split-modal-header">
+              <h3>Payment received</h3>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => closePaymentSplitModal()}
+                aria-label="Close payment split dialog"
+              >
+                Close
+              </button>
+            </header>
+            <div className="orders-payment-split-modal-body">
+              <p className="helper-text">
+                Confirm how the total amount was split between online and cash before marking the order as paid.
+              </p>
+              <label htmlFor="payment-online">Online amount</label>
+              <input
+                id="payment-online"
+                type="number"
+                min="0"
+                step="0.01"
+                value={paymentOnline}
+                onChange={(event) => setPaymentOnline(event.target.value)}
+              />
+              <label htmlFor="payment-cash">Cash amount</label>
+              <input
+                id="payment-cash"
+                type="number"
+                min="0"
+                step="0.01"
+                value={paymentCash}
+                onChange={(event) => setPaymentCash(event.target.value)}
+              />
+              {paymentSplitError && <p className="form-error">{paymentSplitError}</p>}
+            </div>
+            <footer className="orders-payment-split-modal-actions">
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => closePaymentSplitModal()}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleConfirmPaymentSplit}
+                disabled={paymentSplitSubmitting}
+              >
+                {paymentSplitSubmitting ? 'Saving…' : 'Confirm split'}
               </button>
             </footer>
           </div>

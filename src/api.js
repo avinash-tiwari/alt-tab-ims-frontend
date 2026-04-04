@@ -206,11 +206,15 @@ export async function deleteOrder(token, orderId) {
   });
 }
 
-export async function updateOrderStatus(token, orderId, status) {
+export async function updateOrderStatus(token, orderId, status, paymentDetails = {}) {
+  const body = Object.keys(paymentDetails).length
+    ? { status, ...paymentDetails }
+    : { status };
+
   return request(`/orders/${orderId}/status`, {
     method: 'PATCH',
     token,
-    body: { status }
+    body
   });
 }
 

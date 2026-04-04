@@ -5,6 +5,7 @@ import {
   deleteCustomer,
   listCustomers
 } from '../api';
+import { formatCurrency } from '../utils/orderUtils';
 
 export default function CustomersPage({ token }) {
   const navigate = useNavigate();
@@ -86,18 +87,33 @@ export default function CustomersPage({ token }) {
             </div>
 
             <div className="customer-stats-grid">
-              <div className="stat-item">
-                <span className="stat-label">Total Spent</span>
-                <span className="stat-value">₹ 0</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Credits</span>
-                <span className="stat-value">₹ 0</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Active Orders</span>
-                <span className="stat-value">0</span>
-              </div>
+              {[
+                {
+                  label: 'Total Spent',
+                  value: `₹ ${formatCurrency(customer?.totalSpent ?? '0')}`
+                },
+                {
+                  label: 'Credits',
+                  value: `₹ ${formatCurrency(customer?.totalCredits ?? '0')}`
+                },
+                {
+                  label: 'Total Due',
+                  value: `₹ ${formatCurrency(customer?.totalDue ?? '0')}`
+                },
+                {
+                  label: 'Total Orders',
+                  value: String(customer?.totalOrders ?? 0)
+                },
+                {
+                  label: 'Active Orders',
+                  value: String(customer?.activeOrders ?? customer?.activeOrdersCount ?? 0)
+                }
+              ].map((stat) => (
+                <div className="stat-item" key={stat.label}>
+                  <span className="stat-label">{stat.label}</span>
+                  <span className="stat-value">{stat.value}</span>
+                </div>
+              ))}
             </div>
           </article>
         ))}
