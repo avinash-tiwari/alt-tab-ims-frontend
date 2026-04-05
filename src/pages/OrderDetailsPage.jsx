@@ -172,19 +172,6 @@ export default function OrderDetailsPage({ token }) {
       return;
     }
 
-    const totalAmount = orderDetail.totalAmount;
-    if (
-      totalAmount !== undefined &&
-      totalAmount !== null &&
-      !Number.isNaN(Number(totalAmount))
-    ) {
-      const expected = Number(totalAmount);
-      if (Math.abs(expected - (parsedOnline + parsedCash)) > 0.009) {
-        setPaymentSplitError(`Split must add up to ${formatCurrency(expected)}.`);
-        return;
-      }
-    }
-
     setPaymentSplitError('');
     setUpdatingStatus(true);
     setPaymentSplitSubmitting(true);
