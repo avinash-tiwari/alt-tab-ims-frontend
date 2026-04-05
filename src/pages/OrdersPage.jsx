@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, ShoppingBag, X, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import EmptyState from '../components/EmptyState';
 import {
   createOrder,
   listCustomers,
@@ -20,7 +21,7 @@ const getCustomerLabel = (customer) =>
   customer?.id ||
   'Customer';
 
-const formatOrderDateTime = (value) => {
+const formatOrderDate = (value) => {
   if (!value) {
     return '—';
   }
@@ -30,15 +31,17 @@ const formatOrderDateTime = (value) => {
     return '—';
   }
 
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString('en-IN', {
     dateStyle: 'medium',
-    timeStyle: 'short'
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata'
   });
 };
 
 
 export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('NEW');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -48,20 +51,8 @@ export default function OrdersPage({ token }) {
   const [items, setItems] = useState([]);
   const [customerId, setCustomerId] = useState('');
   const [notes, setNotes] = useState('');
-  const [lineItems, setLineItems] = useState([]);
-  const [selectedItemId, setSelectedItemId] = useState('');
-  const [selectedQuantity, setSelectedQuantity] = useState(1);
-  const [itemSearch, setItemSearch] = useState('');
+  const [lineItems, setLineItems] = useState([{ itemId: '', quantity: 1 }]);
   const navigate = useNavigate();
-  const searchTimerRef = useRef(null);
-
-  useEffect(() => {
-    return () => {
-      if (searchTimerRef.current) {
-        clearTimeout(searchTimerRef.current);
-      }
-    };
-  }, []);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -104,10 +95,7 @@ export default function OrdersPage({ token }) {
     setCreateOrderError('');
     setCustomerId('');
     setNotes('');
-    setLineItems([]);
-    setSelectedItemId('');
-    setSelectedQuantity(1);
-    setItemSearch('');
+    setLineItems([{ itemId: '', quantity: 1 }]);
   };
 
   const openCreateModal = () => {
@@ -120,84 +108,32 @@ export default function OrdersPage({ token }) {
     resetCreateOrderForm();
   };
 
-  const filteredItems = useMemo(() => {
-    const term = String(itemSearch ?? '').trim().toLowerCase();
-    if (!term) {
-      return items;
-    }
-    return items.filter((item) => {
-      const label = String(getItemLabel(item) ?? '').toLowerCase();
-      const identifier = String(item?.id ?? '').toLowerCase();
-      return label.includes(term) || identifier.includes(term);
-    });
-  }, [items, itemSearch]);
-
-  const handleSelectKeyDown = (event) => {
-    const { key } = event;
-    const isCharacterKey = key.length === 1 && !event.ctrlKey && !event.metaKey;
-    if (key === 'Backspace') {
-      setItemSearch((prev) => prev.slice(0, -1));
-    } else if (key === 'Escape') {
-      setItemSearch('');
-    } else if (isCharacterKey) {
-      setItemSearch((prev) => prev + key);
-    } else {
-      return;
-    }
-
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-    }
-    searchTimerRef.current = setTimeout(() => {
-      setItemSearch('');
-    }, 1500);
-
-    event.preventDefault();
-  };
-
   const handleAddLineItem = () => {
-    if (!selectedItemId) {
-      setCreateOrderError('Select an item before adding.');
-      return;
-    }
-
-    const quantity = Number(selectedQuantity);
-    if (!quantity || quantity < 1) {
-      setCreateOrderError('Quantity must be at least 1.');
-      return;
-    }
-
-    const item = items.find((entry) => entry.id === selectedItemId);
-    if (!item) {
-      setCreateOrderError('Selected item is not available.');
-      return;
-    }
-
-    const unitPrice = getItemUnitPrice(item);
-    setLineItems((prev) => [
-      ...prev,
-      {
-        itemId: item.id,
-        name: getItemLabel(item),
-        unitPrice,
-        quantity
-      }
-    ]);
-    setSelectedItemId('');
-    setSelectedQuantity(1);
-    setItemSearch('');
-    setCreateOrderError('');
+    setLineItems([...lineItems, { itemId: '', quantity: 1 }]);
   };
 
   const handleRemoveLineItem = (index) => {
-    setLineItems((prev) => prev.filter((_, idx) => idx !== index));
+    setLineItems(lineItems.filter((_, idx) => idx !== index));
+  };
+
+  const handleLineItemChange = (index, field, value) => {
+    const next = [...lineItems];
+    next[index] = { ...next[index], [field]: value };
+    setLineItems(next);
+  };
+
+  const getLineTotal = (line) => {
+    if (!line.itemId) return 0;
+    const item = items.find((it) => String(it.id) === String(line.itemId));
+    if (!item) return 0;
+    return getItemUnitPrice(item) * (Number(line.quantity) || 0);
   };
 
   const orderTotal = useMemo(() => {
-    return lineItems.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-  }, [lineItems]);
+    return lineItems.reduce((sum, line) => sum + getLineTotal(line), 0);
+  }, [lineItems, items]);
 
-  const selectedCustomer = customers.find((customer) => customer.id === customerId);
+  const selectedCustomer = customers.find((customer) => String(customer.id) === String(customerId));
   const customerLabel = getCustomerLabel(selectedCustomer);
 
   const handleCreateOrderSubmit = async (event) => {
@@ -211,8 +147,10 @@ export default function OrdersPage({ token }) {
       return;
     }
 
-    if (!lineItems.length) {
-      setCreateOrderError('Add at least one item to the order.');
+    const validItems = lineItems.filter(line => line.itemId && Number(line.quantity) > 0);
+
+    if (!validItems.length) {
+      setCreateOrderError('Add at least one valid item to the order.');
       setCreatingOrder(false);
       return;
     }
@@ -221,11 +159,14 @@ export default function OrdersPage({ token }) {
       customerId,
       customerName: customerLabel,
       totalAmount: orderTotal,
-      items: lineItems.map(({ itemId, quantity, unitPrice }) => ({
-        itemId,
-        quantity,
-        unitPrice
-      })),
+      items: validItems.map(({ itemId, quantity }) => {
+        const item = items.find(it => String(it.id) === String(itemId));
+        return {
+          itemId,
+          quantity: Number(quantity),
+          unitPrice: getItemUnitPrice(item)
+        };
+      }),
       notes: notes.trim() || undefined
     };
 
@@ -240,120 +181,193 @@ export default function OrdersPage({ token }) {
     }
   };
 
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const status = order.status?.toUpperCase();
+      if (activeTab === 'NEW') return status === 'NEW' || !status;
+      return status === activeTab;
+    });
+  }, [orders, activeTab]);
+
   return (
     <section className="page">
-      <div className="sticky-header">
-        <h2>Orders</h2>
+      <div className="page-tabs" style={{ marginBottom: '1rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+        {['NEW', 'DELIVERED', 'OVERDUE', 'PAID'].map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            className={`page-tab-btn ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
-      <article className="card orders-list-panel">
-        <div className="orders-list-header">
-          <span className="small-label">Recent orders</span>
-          <button
-            type="button"
-            className="ghost-btn icon-button"
-            onClick={loadOrders}
-            aria-label="Refresh orders"
-          >
-            <RefreshCw size={16} />
-            <span>Refresh</span>
-          </button>
-        </div>
+      {orders.length > 0 && (
+        <div className="orders-list-panel">
+          <header style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '1rem',
+            padding: '0 0.5rem' 
+          }}>
+            <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>
+              {filteredOrders.length} {activeTab.toLowerCase()} orders
+            </h3>
+            <button
+              type="button"
+              className="ghost-btn icon-button"
+              onClick={loadOrders}
+              disabled={loading}
+              style={{ padding: '0.25rem 0.5rem', border: 'none' }}
+            >
+              <RefreshCw size={14} style={{ marginRight: '0.35rem', animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+              <span style={{ fontSize: '0.75rem' }}>Refresh</span>
+            </button>
+          </header>
 
-        {error && <p className="form-error">{error}</p>}
-        {loading && <p className="helper-text">Loading orders…</p>}
-        {!loading && !orders.length && (
-          <p className="helper-text">No orders available yet.</p>
-        )}
+          {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
+          {loading && !orders.length && <p className="helper-text">Loading orders…</p>}
 
-        <div className="orders-list">
-          {orders.map((order) => {
-            const customerName = getDisplayCustomerName(order);
-            const orderIdLabel = String(order.id ?? '');
-            const clickableLabel = `${customerName} (${orderIdLabel})`;
-            const orderDateLabel = formatOrderDateTime(order.orderDate ?? order.createdAt);
-            const totalItems = Array.isArray(order.items) ? order.items.length : 0;
-            const statusClass = order.status?.toLowerCase() ?? 'unknown';
-            const shortOrderId = orderIdLabel.slice(0, 8);
-            return (
-              <button
-                key={order.id}
-                type="button"
-                className="order-card"
-                onClick={() => navigate(`/orders/${order.id}`)}
-                aria-label={`View ${clickableLabel}`}
-              >
-                <div className="order-card-layout">
-                  <div className="order-card-left">
-                    <p className="order-customer order-customer--card">{customerName}</p>
-                    <p className="order-card-date">{orderDateLabel}</p>
-                    <p className="order-card-id">Order #{shortOrderId}</p>
-                    <p className="small-label order-card-total-label">Total</p>
-                  </div>
-                  <div className={`order-card-right order-card-right--${statusClass}`}>
-                    <div className={`order-card-status order-card-status--${statusClass}`}>
-                      <span
-                        className={`order-card-status-indicator order-card-status-indicator--${statusClass}`}
-                      />
-                      <span className={`status-pill status-pill--${statusClass}`}>
-                        {getStatusLabel(order.status)}
-                      </span>
+          <div className="orders-list">
+            {filteredOrders.length > 0 ? (
+              filteredOrders.map((order) => {
+                const customerName = getDisplayCustomerName(order);
+                const orderIdLabel = String(order.id ?? '');
+                const clickableLabel = `${customerName} (${orderIdLabel})`;
+                const orderDateLabel = formatOrderDate(order.orderDate ?? order.createdAt);
+                const totalItems = Array.isArray(order.items) ? order.items.length : 0;
+                const statusClass = order.status?.toLowerCase() ?? 'unknown';
+                const shortOrderId = orderIdLabel.slice(0, 8);
+                return (
+                  <button
+                    key={order.id}
+                    type="button"
+                    className={`order-card order-card--${statusClass}`}
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                    aria-label={`View ${clickableLabel}`}
+                    style={{ marginBottom: '0.75rem', width: '100%', textAlign: 'left' }}
+                  >
+                    <div className="order-card-layout" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="order-card-left" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <p className="order-customer--card" style={{ fontWeight: 700, fontSize: '1.05rem', margin: 0 }}>{customerName}</p>
+                        <p className="order-card-date" style={{ margin: 0, fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>
+                          #{shortOrderId} • {orderDateLabel}
+                        </p>
+                      </div>
+                      <div className="order-card-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                        <span className={`status-pill status-pill--${statusClass}`}>
+                          {getStatusLabel(order.status)}
+                        </span>
+                        <div style={{ textAlign: 'right' }}>
+                          <p className="small-label" style={{ fontSize: '0.65rem', margin: 0 }}>{totalItems} items</p>
+                          <strong style={{ fontSize: '1.1rem' }}>{formatCurrency(order.totalAmount)}</strong>
+                        </div>
+                      </div>
                     </div>
-                    <div className="order-card-meta">
-                      <p className="small-label">Items</p>
-                      <strong>{totalItems}</strong>
-                    </div>
-                    <div className="order-card-meta">
-                      <p className="small-label">Value</p>
-                      <strong>{formatCurrency(order.totalAmount)}</strong>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </article>
-
-      <button
-        type="button"
-        className="floating-action-btn"
-        onClick={openCreateModal}
-        aria-label="Create a new order"
-      >
-        <Plus size={20} />
-      </button>
-
-      {isCreateModalOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <form className="create-order-modal" onSubmit={handleCreateOrderSubmit}>
-            <header className="modal-header">
-              <div>
-                <h2>Create order</h2>
-                <p className="muted" style={{ marginTop: '0.25rem' }}>
-                  Pick a customer and add items below.
-                </p>
+                  </button>
+                );
+              })
+            ) : (
+              <div style={{ 
+                padding: '4rem 1rem', 
+                textAlign: 'center', 
+                background: 'hsl(var(--card))', 
+                borderRadius: 'var(--radius)', 
+                border: '1px dashed hsl(var(--border))',
+                opacity: 0.8 
+              }}>
+                <ShoppingBag size={32} style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '1rem', opacity: 0.5 }} />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>No {activeTab.toLowerCase()} orders</h3>
+                <p className="muted" style={{ marginTop: '0.25rem' }}>Try switching tabs or creating a new order.</p>
               </div>
-              <button
-                type="button"
-                className="ghost-btn"
-                onClick={closeCreateModal}
-                aria-label="Close create order form"
-                disabled={creatingOrder}
-              >
-                X
-              </button>
-            </header>
+            )}
+          </div>
+        </div>
+      )}
 
-            {createOrderError && <p className="form-error">{createOrderError}</p>}
+      {!loading && !orders.length && (
+        <EmptyState
+          icon={ShoppingBag}
+          title="No orders yet"
+          description="When you start creating orders, they will appear here. Manage your sales and fulfillment in one place."
+          actionLabel="Create First Order"
+          onAction={openCreateModal}
+        />
+      )}
 
-            <div className="stack-form">
+      {orders.length > 0 && (
+        <button
+          type="button"
+          className="floating-action-btn"
+          onClick={openCreateModal}
+          aria-label="Create a new order"
+        >
+          <Plus size={20} />
+        </button>
+      )}
+
+      {/* CREATE ORDER MODAL  */}
+      {isCreateModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'hsl(var(--background))',
+          zIndex: 1000,
+          padding: '1rem',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <header style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            paddingBottom: '1rem',
+            borderBottom: '1px solid hsl(var(--border))',
+            marginBottom: '1rem' 
+          }}>
+            <h2 style={{ margin: 0 }}>Add Order Items</h2>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={closeCreateModal}
+              aria-label="Close"
+              disabled={creatingOrder}
+            >
+              <X size={24} />
+            </button>
+          </header>
+
+          <form 
+            onSubmit={handleCreateOrderSubmit}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              flex: 1, 
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              paddingRight: '4px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem',
+              paddingBottom: '1rem'
+            }}>
+              {createOrderError && <p className="form-error">{createOrderError}</p>}
+
               <div className="form-group">
-                <label htmlFor="order-customer">Customer</label>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Select Customer</label>
                 <select
-                  id="order-customer"
                   value={customerId}
-                  onChange={(event) => setCustomerId(event.target.value)}
+                  onChange={(e) => setCustomerId(e.target.value)}
                   disabled={creatingOrder}
                   required
                 >
@@ -366,127 +380,123 @@ export default function OrdersPage({ token }) {
                 </select>
               </div>
 
-              <div className="stack-form">
-                <div className="form-group">
-                  <label htmlFor="order-item-select">Select item</label>
-                  <p className="muted" style={{ marginTop: '0', marginBottom: '0.25rem' }}>
-                    Focus the dropdown and type to filter the catalog in place.
-                  </p>
-                  <select
-                    id="order-item-select"
-                    value={selectedItemId}
-                    onChange={(event) => setSelectedItemId(event.target.value)}
-                    onKeyDown={handleSelectKeyDown}
-                    disabled={creatingOrder}
-                  >
-                    <option value="">Select an item</option>
-                    {filteredItems.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {getItemLabel(item)} — {formatCurrency(getItemUnitPrice(item))}
-                      </option>
-                    ))}
-                  </select>
-                  {itemSearch && (
-                    <p className="helper-text" style={{ marginTop: '0.25rem' }}>
-                      Filtering by &ldquo;{itemSearch}&rdquo;
-                    </p>
-                  )}
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {lineItems.map((line, index) => (
+                  <div key={index} className="card" style={{ padding: '1rem', margin: 0, position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Item {index + 1}</span>
+                      {lineItems.length > 1 && (
+                        <button 
+                          type="button" 
+                          className="ghost-btn" 
+                          onClick={() => handleRemoveLineItem(index)}
+                          style={{ padding: '4px', color: 'hsl(var(--muted-foreground))' }}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </div>
 
-                <div className="form-group">
-                  <label htmlFor="order-item-quantity">Quantity</label>
-                  <input
-                    id="order-item-quantity"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={selectedQuantity}
-                    onChange={(event) => setSelectedQuantity(event.target.value)}
-                    disabled={creatingOrder}
-                  />
-                </div>
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Select Item</label>
+                      <select
+                        value={line.itemId}
+                        onChange={(e) => handleLineItemChange(index, 'itemId', e.target.value)}
+                        disabled={creatingOrder}
+                      >
+                        <option value="">Search item...</option>
+                        {items.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {getItemLabel(item)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={handleAddLineItem}
-                  disabled={creatingOrder}
-                >
-                  Add item
-                </button>
-              </div>
-
-              {lineItems.length ? (
-                <>
-                  <table className="orders-items-table">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Quantity</th>
-                        <th>Unit price</th>
-                        <th>Line total</th>
-                        <th aria-label="Actions" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lineItems.map((line, index) => (
-                        <tr key={`${line.itemId}-${index}`}>
-                          <td>{line.name}</td>
-                          <td>{line.quantity}</td>
-                          <td>{formatCurrency(line.unitPrice)}</td>
-                          <td>{formatCurrency(line.unitPrice * line.quantity)}</td>
-                          <td>
-                            <button
-                              type="button"
-                              className="ghost-btn"
-                              onClick={() => handleRemoveLineItem(index)}
-                              disabled={creatingOrder}
-                              style={{
-                                padding: '0.25rem 0.5rem',
-                                fontSize: '0.75rem'
-                              }}
-                            >
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                    <strong>Total: {formatCurrency(orderTotal)}</strong>
+                    <div className="split-2">
+                      <div className="form-group">
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Quantity</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={line.quantity}
+                          onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)}
+                          disabled={creatingOrder}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Line Total</label>
+                        <div style={{ 
+                          padding: '0.6rem 0.75rem', 
+                          background: 'hsl(var(--muted) / 0.3)', 
+                          borderRadius: 'var(--radius)',
+                          fontSize: '0.875rem',
+                          fontWeight: 700,
+                          border: '1px solid hsl(var(--border))'
+                        }}>
+                          ₹{getLineTotal(line)}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </>
-              ) : (
-                <p className="helper-text">Add at least one item to calculate the total.</p>
-              )}
-
-              <div className="form-group">
-                <label htmlFor="order-notes">Notes</label>
-                <textarea
-                  id="order-notes"
-                  name="notes"
-                  rows="3"
-                  placeholder="Optional notes"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  disabled={creatingOrder}
-                />
+                ))}
               </div>
-            </div>
 
-            <div className="modal-actions">
               <button
                 type="button"
+                onClick={handleAddLineItem}
                 className="ghost-btn"
-                onClick={closeCreateModal}
-                disabled={creatingOrder}
+                style={{ 
+                  width: '100%', 
+                  border: '1px solid hsl(var(--border))', 
+                  background: 'hsl(var(--card))',
+                  padding: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 600
+                }}
               >
-                Cancel
+                <Plus size={18} /> Add Another Item
               </button>
-              <button type="submit" className="primary" disabled={creatingOrder}>
-                {creatingOrder ? 'Creating…' : 'Create order'}
-              </button>
+            </div>
+
+            <div style={{ 
+              marginTop: 'auto',
+              borderTop: '2px solid hsl(var(--border))',
+              background: 'hsl(var(--background))',
+              paddingTop: '1rem',
+              zIndex: 10
+            }}>
+              <div style={{ 
+                padding: '0 0 1rem', 
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '1.125rem', fontWeight: 700 }}>Total Amount</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>₹{orderTotal}</span>
+              </div>
+
+              <footer className="split-2" style={{ gap: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  disabled={creatingOrder}
+                  style={{ width: '100%', height: '3rem' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="primary" 
+                  disabled={creatingOrder} 
+                  style={{ width: '100%', height: '3rem', fontSize: '1rem' }}
+                >
+                  {creatingOrder ? 'Saving...' : 'Save Order'}
+                </button>
+              </footer>
             </div>
           </form>
         </div>

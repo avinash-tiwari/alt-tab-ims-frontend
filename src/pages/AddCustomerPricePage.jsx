@@ -109,7 +109,7 @@ export default function AddCustomerPricePage({ token }) {
   return (
     <section className="page">
       <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
             <ChevronLeft size={24} />
           </button>
@@ -117,7 +117,7 @@ export default function AddCustomerPricePage({ token }) {
         </div>
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
+      <div>
         {error && <p className="error-text">{error}</p>}
         <article className="card stack-form">
           <h3 className="items-heading">For {customer?.name}</h3>

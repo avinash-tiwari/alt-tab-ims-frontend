@@ -136,6 +136,8 @@ button.danger:hover {
   min-height: 100dvh;
   position: relative;
   padding-bottom: 4.5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Header style from POS */
@@ -150,6 +152,7 @@ button.danger:hover {
   top: 0;
   z-index: 40;
   height: 3.5rem;
+  flex-shrink: 0;
 }
 
 .app-header h1 {
@@ -168,6 +171,16 @@ button.danger:hover {
 
 .app-content {
   padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+}
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .page h2 {
@@ -182,7 +195,7 @@ button.danger:hover {
   top: 3.5rem; /* Matches .app-header height exactly */
   background: hsl(var(--background));
   padding-top: 1rem;
-  padding-bottom: 0.5rem;
+  padding-bottom: 1rem;
   z-index: 30;
   margin-left: -1rem;
   margin-right: -1rem;
@@ -382,37 +395,59 @@ button.danger:hover {
 .customer-card {
   margin-bottom: 1rem;
   cursor: pointer;
-  transition: box-shadow 0.2s;
+  padding: 1rem;
+  transition: all 0.2s ease;
+  border-radius: calc(var(--radius) * 1.5);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .customer-card:hover {
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.08);
+  transform: translateY(-2px);
+}
+
+.customer-card-main {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.customer-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .customer-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
+  align-items: flex-start;
+  margin-bottom: 0.35rem;
 }
 
 .customer-name-heading {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: hsl(var(--foreground));
-  line-height: 1;
-  text-transform: capitalize;
+  line-height: 1.2;
+  text-transform: uppercase;
+  margin-bottom: 0 !important;
 }
 
-.customer-address-box {
-  margin-bottom: 1rem;
+.customer-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.customer-address-box p {
-  margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.4;
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.825rem;
   color: hsl(var(--muted-foreground));
 }
 
@@ -431,24 +466,166 @@ button.danger:hover {
   min-width: 0;
 }
 
-.customer-stats-grid .stat-label {
-  color: hsl(195 85% 30%);
+.detail-link {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.2s;
 }
 
-.stat-item {
+.detail-link:hover {
+  opacity: 0.8;
+  text-decoration: none;
+}
+
+.detail-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.delete-action:hover {
+  color: hsl(var(--destructive)) !important;
+  background: hsl(var(--destructive) / 0.1) !important;
+}
+
+.customer-stats-bar {
+  display: flex;
+  justify-content: space-between;
+  background: hsl(var(--muted) / 0.3);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  gap: 0.5rem;
+}
+
+.stat-pill {
   display: flex;
   flex-direction: column;
+  gap: 0.15rem;
 }
 
-.stat-label {
-  font-size: 0.7rem;
+.stat-pill .stat-label {
+  font-size: 0.65rem;
   text-transform: uppercase;
-  margin-bottom: 0.25rem;
+  letter-spacing: 0.025em;
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
 }
 
-.stat-value {
-  font-size: 1rem;
-  font-weight: 600;
+.stat-pill .stat-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+.stat-pill .stat-value.warning {
+  color: hsl(30, 100%, 40%);
+}
+
+.stat-pill .stat-value.destructive {
+  color: hsl(var(--destructive));
+}
+
+/* Shimmer / Skeleton Loading */
+.skeleton {
+  background: hsl(var(--muted));
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted) / 0.6) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+  height: 1rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-title {
+  height: 1.25rem;
+  width: 60%;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+}
+
+.skeleton-inline {
+  display: inline-block;
+}
+
+/* Empty State Styles */
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  flex: 1;
+  width: 100%;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.empty-state-content {
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-state-icon-wrapper {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  padding: 1.5rem;
+  border-radius: 50%;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed hsl(var(--primary) / 0.3);
+}
+
+.empty-state-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: hsl(var(--foreground));
+}
+
+.empty-state-description {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0 0 1.5rem;
+  line-height: 1.5;
+}
+
+.empty-state-action {
+  width: auto;
+  min-width: 140px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .customer-items-section {
@@ -461,12 +638,13 @@ button.danger:hover {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  background-color: hsl(195 85% 95%);
 }
 
 .public-link-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
 }
 
@@ -488,7 +666,7 @@ button.danger:hover {
   font-size: 1rem;
   font-weight: 700;
   color: hsl(var(--foreground));
-  margin-bottom: 0.75rem;
+  margin-bottom: 0 !important;
 }
 
 .items-data-container {
@@ -507,7 +685,7 @@ button.danger:hover {
 .price-table th {
   text-align: left;
   color: hsl(var(--muted-foreground));
-  font-weight: 500;
+  font-weight: bolder;
   padding-bottom: 0.5rem;
 }
 
@@ -669,7 +847,7 @@ button.danger:hover {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  min-height: 18rem;
+  min-height: 0;
 }
 
 .orders-list-panel {
@@ -1101,4 +1279,9 @@ button.danger:hover {
   .orders-detail-panel {
     order: 1;
   }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

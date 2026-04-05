@@ -14,9 +14,8 @@ const emptyCustomer = {
   addressLine1: '',
   addressLine2: '',
   city: '',
-  state: '',
-  country: '',
-  postalCode: ''
+  postalCode: '',
+  locationLink: ''
 };
 
 export default function CustomerActionsPage({ token }) {
@@ -39,9 +38,8 @@ export default function CustomerActionsPage({ token }) {
             addressLine1: data.addressLine1 || '',
             addressLine2: data.addressLine2 || '',
             city: data.city || '',
-            state: data.state || '',
-            country: data.country || '',
-            postalCode: data.postalCode || ''
+            postalCode: data.postalCode || '',
+            locationLink: data.locationLink || ''
           });
         } catch (err) {
           setError(err.message);
@@ -79,7 +77,7 @@ export default function CustomerActionsPage({ token }) {
   return (
     <section className="page">
       <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
             <ChevronLeft size={24} />
           </button>
@@ -87,33 +85,50 @@ export default function CustomerActionsPage({ token }) {
         </div>
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
+      <div>
         {error && <p className="error-text">{error}</p>}
         <form className="card stack-form" onSubmit={saveCustomer}>
-          <h3 className="items-heading">{id ? 'Update Customer Details' : 'New Customer Details'}</h3>
-          <input name="name" placeholder="Name" required value={customerForm.name} onChange={onCustomerChange} />
-          <input name="phone" placeholder="Phone" value={customerForm.phone} onChange={onCustomerChange} />
-          <input name="email" placeholder="Email" type="email" value={customerForm.email} onChange={onCustomerChange} />
-          <input
-            name="addressLine1"
-            placeholder="Address Line 1"
-            value={customerForm.addressLine1}
-            onChange={onCustomerChange}
-          />
-          <div className="split-2">
-            <input name="city" placeholder="City" value={customerForm.city} onChange={onCustomerChange} />
-            <input name="state" placeholder="State" value={customerForm.state} onChange={onCustomerChange} />
+          <div className="form-group">
+            <input name="name" placeholder="Name *" required value={customerForm.name} onChange={onCustomerChange} />
           </div>
-          <div className="split-2">
-            <input name="country" placeholder="Country" value={customerForm.country} onChange={onCustomerChange} />
+          <div className="form-group">
+            <input name="phone" placeholder="Phone *" required value={customerForm.phone} onChange={onCustomerChange} />
+          </div>
+          <div className="form-group">
+            <input name="email" placeholder="Email (Optional)" type="email" value={customerForm.email} onChange={onCustomerChange} />
+          </div>
+          <div className="form-group">
             <input
-              name="postalCode"
-              placeholder="Postal Code"
-              value={customerForm.postalCode}
+              name="addressLine1"
+              placeholder="Address Line 1 *"
+              required
+              value={customerForm.addressLine1}
               onChange={onCustomerChange}
             />
           </div>
-          <button type="submit" className="primary">{id ? 'Update Customer' : 'Create Customer'}</button>
+          <div className="split-2">
+            <div className="form-group">
+              <input name="city" placeholder="City *" required value={customerForm.city} onChange={onCustomerChange} />
+            </div>
+            <div className="form-group">
+              <input
+                name="postalCode"
+                placeholder="Postal Code *"
+                required
+                value={customerForm.postalCode}
+                onChange={onCustomerChange}
+              />
+            </div>
+          </div>
+          <div className="form-group">
+            <input
+              name="locationLink"
+              placeholder="Google Maps Link (Optional)"
+              value={customerForm.locationLink}
+              onChange={onCustomerChange}
+            />
+          </div>
+          <button type="submit" className="primary" style={{ marginTop: '0.5rem' }}>{id ? 'Update Customer' : 'Create Customer'}</button>
         </form>
       </div>
     </section>
