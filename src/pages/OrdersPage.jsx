@@ -206,28 +206,6 @@ export default function OrdersPage({ token }) {
 
       {orders.length > 0 && (
         <div className="orders-list-panel">
-          <header style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            marginBottom: '1rem',
-            padding: '0 0.5rem' 
-          }}>
-            <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>
-              {filteredOrders.length} {activeTab.toLowerCase()} orders
-            </h3>
-            <button
-              type="button"
-              className="ghost-btn icon-button"
-              onClick={loadOrders}
-              disabled={loading}
-              style={{ padding: '0.25rem 0.5rem', border: 'none' }}
-            >
-              <RefreshCw size={14} style={{ marginRight: '0.35rem', animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-              <span style={{ fontSize: '0.75rem' }}>Refresh</span>
-            </button>
-          </header>
-
           {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
           {loading && !orders.length && <p className="helper-text">Loading orders…</p>}
 
@@ -248,23 +226,18 @@ export default function OrdersPage({ token }) {
                     className={`order-card order-card--${statusClass}`}
                     onClick={() => navigate(`/orders/${order.id}`)}
                     aria-label={`View ${clickableLabel}`}
-                    style={{ marginBottom: '0.75rem', width: '100%', textAlign: 'left' }}
+                    style={{ marginBottom: '0.75rem' }}
                   >
-                    <div className="order-card-layout" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div className="order-card-left" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <p className="order-customer--card" style={{ fontWeight: 700, fontSize: '1.05rem', margin: 0 }}>{customerName}</p>
-                        <p className="order-card-date" style={{ margin: 0, fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>
-                          #{shortOrderId} • {orderDateLabel}
+                    <div className="order-card-layout">
+                      <div className="order-card-left">
+                        <p className="order-customer--card">{customerName}</p>
+                        <p className="order-card-date">
+                          {orderDateLabel}
                         </p>
                       </div>
-                      <div className="order-card-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                        <span className={`status-pill status-pill--${statusClass}`}>
-                          {getStatusLabel(order.status)}
-                        </span>
-                        <div style={{ textAlign: 'right' }}>
-                          <p className="small-label" style={{ fontSize: '0.65rem', margin: 0 }}>{totalItems} items</p>
-                          <strong style={{ fontSize: '1.1rem' }}>{formatCurrency(order.totalAmount)}</strong>
-                        </div>
+                      <div className="order-card-right">
+                        <p className="order-card-amount">{formatCurrency(order.totalAmount)}</p>
+                        <p className="small-label" style={{ fontSize: '0.65rem', opacity: 0.8 }}>{totalItems} items</p>
                       </div>
                     </div>
                   </button>

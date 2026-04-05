@@ -866,39 +866,82 @@ button.danger:hover {
   width: 100%;
   text-align: left;
   border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) * 1.5);
   padding: 0;
   background: hsl(var(--card));
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.order-card:hover {
+  border-color: hsl(var(--primary) / 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.order-card:active {
+  transform: translateY(0);
 }
 
 .order-card-layout {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  align-items: flex-start;
-  padding: 0.75rem 0;
-}
-
-.order-card-left,
-.order-card-right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  padding: 1.25rem;
+  align-self: start; 
 }
 
 .order-card-left {
+  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .order-card-right {
+  display: flex;
+  flex-direction: column;
   align-items: flex-end;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }
+
+.order-customer--card {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
+}
+
+.order-card-date {
+  margin: 0;
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.order-card-amount {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+/* Status-based accents */
+.order-card--new { border-left: 4px solid hsl(var(--primary)); }
+.order-card--delivered { border-left: 4px solid #10b981; }
+.order-card--overdue { border-left: 4px solid hsl(var(--destructive)); }
+.order-card--paid { border-left: 4px solid hsl(var(--primary)); }
 
 .order-card-id {
   margin: 0;
