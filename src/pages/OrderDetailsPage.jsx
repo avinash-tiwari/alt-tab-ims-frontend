@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Edit3, FileText, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Edit3, FileText, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   addOrderItem,
@@ -385,38 +385,66 @@ export default function OrderDetailsPage({ token }) {
   const orderIdLabel = String(orderDetail?.id ?? '');
 
   return (
-    <section className="page">
-      <div className="sticky-header">
-        <div>
-          <h2>Order details</h2>
-          {orderDetail && (
-            <p className="order-customer">
-              {customerName} • #{orderIdLabel.slice(0, 8)}
-            </p>
-          )}
-        </div>
-        <div className="orders-detail-header-bar">
+    <section className="page" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+      <div style={{ 
+        paddingTop: '1rem', 
+        background: 'hsl(var(--background))',
+        zIndex: 30
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
           <button
             type="button"
             className="ghost-btn"
             onClick={() => navigate('/orders')}
+            style={{ padding: '0.5rem', marginLeft: '-0.5rem' }}
           >
-            Back to orders
+            <ArrowLeft size={20} />
           </button>
-          <button
-            type="button"
-            className="ghost-btn icon-button"
-            onClick={loadDetail}
-            disabled={loading}
-          >
-            <RefreshCw size={16} />
-            <span>{loading ? 'Refreshing…' : 'Refresh'}</span>
-          </button>
+          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Order details{orderDetail ? ` - ${customerName}` : ''}</h2>
         </div>
+
+        {!loading && orderDetail && (
+          <div style={{ 
+            background: 'hsl(var(--card))', 
+            padding: '1rem', 
+            borderRadius: 'var(--radius)', 
+            border: '1px solid hsl(var(--border))'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <span className="small-label" style={{ fontWeight: 600 }}>Status</span>
+              <span className={`status-pill status-pill--${orderDetail.status?.toLowerCase()}`}>
+                {getStatusLabel(orderDetail.status)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <select
+                id="order-status"
+                value={statusInput}
+                onChange={(event) => setStatusInput(event.target.value)}
+                style={{ width: '100%' }}
+              >
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleStatusSave}
+                disabled={!statusChanged || updatingStatus || showPaymentSplitModal}
+                style={{ width: '100%', padding: '0.6rem', fontSize: '0.875rem' }}
+              >
+                {updatingStatus ? 'Saving…' : 'Update Status'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <article className="card orders-detail-panel">
-        {error && <p className="form-error">{error}</p>}
+      <div style={{ flex: 1, overflowY: 'auto', paddingTop: '1rem' }}>
+        {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
         {loading && !orderDetail && <p className="helper-text">Loading order…</p>}
 
         {!loading && !orderDetail && (
@@ -425,237 +453,231 @@ export default function OrderDetailsPage({ token }) {
 
         {!loading && orderDetail && (
           <>
-            <div className="orders-detail-header">
-              <div>
-                <p className="small-label">Status</p>
-                <span
-                  className={`status-pill status-pill--${orderDetail.status?.toLowerCase()}`}
-                >
-                  {getStatusLabel(orderDetail.status)}
-                </span>
-              </div>
-              <div>
-                <p className="small-label">Total</p>
-                <strong>{formatCurrency(orderDetail.totalAmount)}</strong>
-              </div>
-            </div>
-
-            <section className="orders-items-section">
-              <h3>Line items</h3>
+            <section className="orders-items-section" style={{ 
+              background: 'hsl(var(--card))', 
+              padding: '1rem', 
+              borderRadius: 'var(--radius)', 
+              border: '1px solid hsl(var(--border))' 
+            }}>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 700 }}>Line items</h3>
               {orderItems.length ? (
-                <div className="orders-items-table-wrap">
-                  <table className="orders-items-table">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Quantity</th>
-                        <th>Unit price</th>
-                        <th>Line total</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orderItems.map((item, index) => {
-                        const lineTotal = item.lineTotal
-                          ? item.lineTotal
-                          : item.unitPrice && item.quantity
-                          ? Number(item.unitPrice) * Number(item.quantity)
-                          : undefined;
-                        const orderItemId = item.id ?? item.itemId ?? `order-item-${index}`;
-                        const displayId = item.itemId ?? orderItemId;
-                        const itemLabel = getItemLabel({ ...item, id: displayId });
-                        const showProductId = Boolean(item.itemId && itemLabel !== item.itemId);
-                        const quantityValue = quantityInputs[orderItemId] ?? '';
-                        const currentQuantity = String(item.quantity ?? '');
-                        const quantityChanged = Boolean(quantityValue && quantityValue !== currentQuantity);
-                        const isUpdatingItem = updatingOrderItemId === orderItemId;
-                        const isDeletingItem = deletingOrderItemId === orderItemId;
-                        return (
-                          <tr key={`${orderItemId}-${itemLabel}-${index}`}>
-                            <td>
-                              <div>
-                                {itemLabel}
-                                {showProductId && (
-                                  <p className="helper-text">
-                                    {item.itemId}
-                                  </p>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                min={1}
-                                className="orders-item-quantity-input"
-                                value={quantityValue}
-                                onChange={(event) =>
-                                  handleLineItemQuantityChange(orderItemId, event.target.value)
-                                }
-                              />
-                            </td>
-                            <td>{formatCurrency(item.unitPrice)}</td>
-                            <td>{formatCurrency(lineTotal)}</td>
-                            <td className="orders-item-actions-cell">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {orderItems.map((item, index) => {
+                    const lineTotal = item.lineTotal
+                      ? item.lineTotal
+                      : item.unitPrice && item.quantity
+                      ? Number(item.unitPrice) * Number(item.quantity)
+                      : undefined;
+                    const orderItemId = item.id ?? item.itemId ?? `order-item-${index}`;
+                    const displayId = item.itemId ?? orderItemId;
+                    const itemLabel = getItemLabel({ ...item, id: displayId });
+                    const showProductId = Boolean(item.itemId && itemLabel !== item.itemId);
+                    const quantityValue = quantityInputs[orderItemId] ?? '';
+                    const currentQuantity = String(item.quantity ?? '');
+                    const quantityChanged = Boolean(quantityValue && quantityValue !== currentQuantity);
+                    const isUpdatingItem = updatingOrderItemId === orderItemId;
+                    const isDeletingItem = deletingOrderItemId === orderItemId;
+                    
+                    return (
+                      <div key={`${orderItemId}-${itemLabel}-${index}`} className="card" style={{ padding: '1rem', margin: 0, position: 'relative', background: 'hsl(var(--background) / 0.3)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: '1rem', fontWeight: 700, display: 'block', marginBottom: '0.15rem' }}>{itemLabel}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            {quantityChanged && (
                               <button
                                 type="button"
-                                className="icon-button"
+                                className="ghost-btn"
                                 onClick={() => handleUpdateOrderItemQuantity(orderItemId)}
-                                disabled={!quantityChanged || isUpdatingItem}
-                                aria-label={`Update quantity for ${itemLabel}`}
+                                disabled={isUpdatingItem}
+                                style={{ padding: '4px', color: 'hsl(var(--primary))' }}
                               >
-                                <Edit3 size={16} />
+                                <Edit3 size={18} />
                               </button>
-                              <button
-                                type="button"
-                                className="icon-button danger"
-                                onClick={() => handleDeleteOrderItem(orderItemId)}
-                                disabled={isDeletingItem}
-                                aria-label={`Delete ${itemLabel}`}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            )}
+                            <button
+                              type="button"
+                              className="ghost-btn"
+                              onClick={() => handleDeleteOrderItem(orderItemId)}
+                              disabled={isDeletingItem}
+                              style={{ padding: '4px', color: 'hsl(var(--destructive))' }}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="split-2">
+                          <div className="form-group">
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>QTY</label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={quantityValue}
+                              onChange={(event) =>
+                                handleLineItemQuantityChange(orderItemId, event.target.value)
+                              }
+                              style={{ padding: '0.4rem 0.5rem' }}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>TOTAL</label>
+                            <div style={{ 
+                              padding: '0.4rem 0.5rem', 
+                              background: 'hsl(var(--muted) / 0.2)', 
+                              borderRadius: 'var(--radius)',
+                              fontSize: '0.875rem',
+                              fontWeight: 700,
+                              border: '1px solid hsl(var(--border))',
+                              height: '2.25rem',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}>
+                              {formatCurrency(lineTotal)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="helper-text">This order does not list any line items yet.</p>
+                <p className="helper-text">No items in this order.</p>
+              )}
+
+              {addItemModalOpen ? (
+                <div className="card" style={{ padding: '1rem', border: '1px solid hsl(var(--primary))', background: 'hsl(var(--primary) / 0.03)', marginTop: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>Select Item</label>
+                    <select
+                      value={selectedItemId}
+                      onChange={(event) => setSelectedItemId(event.target.value)}
+                      disabled={addingItem}
+                      style={{ width: '100%', height: '2.5rem' }}
+                    >
+                      <option value="">Search item...</option>
+                      {availableItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {getItemLabel(item)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="split-2" style={{ marginBottom: '1rem', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>Quantity</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={newItemQuantity}
+                        onChange={(event) => setNewItemQuantity(event.target.value)}
+                        disabled={addingItem}
+                        style={{ height: '2.5rem' }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>TOTAL</label>
+                      <div style={{ 
+                        padding: '0.4rem 0.5rem', 
+                        background: 'hsl(var(--muted) / 0.2)', 
+                        borderRadius: 'var(--radius)',
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
+                        border: '1px solid hsl(var(--border))',
+                        height: '2.5rem',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}>
+                        {selectedItemId && availableItems.find(i => i.id === selectedItemId) 
+                          ? formatCurrency(Number(availableItems.find(i => i.id === selectedItemId).price || 0) * Number(newItemQuantity))
+                          : formatCurrency(0)}
+                      </div>
+                    </div>
+                  </div>
+                  {modalError && <p className="form-error" style={{ marginBottom: '1rem' }}>{modalError}</p>}
+                  <div className="split-2" style={{ gap: '0.75rem' }}>
+                    <button 
+                      type="button" 
+                      className="ghost-btn" 
+                      onClick={closeAddItemModal} 
+                      style={{ width: '100%', height: '2.5rem', border: '1px solid hsl(var(--border))' }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      className="primary" 
+                      onClick={handleAddItemToOrder} 
+                      disabled={addingItem || !selectedItemId} 
+                      style={{ width: '100%', height: '2.5rem' }}
+                    >
+                      {addingItem ? 'Adding...' : 'Add Item'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button 
+                  type="button" 
+                  className="ghost-btn" 
+                  onClick={openAddItemModal}
+                  style={{ 
+                    width: '100%', 
+                    border: '1px dashed hsl(var(--border))', 
+                    background: 'hsl(var(--card))',
+                    padding: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    fontWeight: 600,
+                    marginTop: '1rem'
+                  }}
+                >
+                  <Plus size={18} /> Add Another Item
+                </button>
               )}
             </section>
-
-            <section className="orders-form-section">
-              <div className="orders-form-row">
-                <label htmlFor="order-status">Status</label>
-                <div className="orders-status-actions">
-                  <select
-                    id="order-status"
-                    value={statusInput}
-                    onChange={(event) => setStatusInput(event.target.value)}
-                  >
-                    {STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="primary icon-button"
-                    onClick={handleStatusSave}
-                    disabled={!statusChanged || updatingStatus || showPaymentSplitModal}
-                  >
-                    <FileText size={16} />
-                    <span>{updatingStatus ? 'Saving…' : 'Update status'}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="orders-form-row">
-                <label htmlFor="order-notes">Delivery notes</label>
-                <textarea
-                  id="order-notes"
-                  rows={3}
-                  value={notesInput}
-                  onChange={(event) => setNotesInput(event.target.value)}
-                  placeholder="Add any delivery or follow-up instructions..."
-                />
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={handleSaveNotes}
-                  disabled={!hasNotesChanges || savingNotes}
-                >
-                  {savingNotes ? 'Saving…' : 'Save notes'}
-                </button>
-              </div>
-            </section>
-
-            <div className="orders-detail-actions">
-              <button
-                type="button"
-                className="icon-button"
-                onClick={handleDownloadPDF}
-                disabled={downloading}
-              >
-                <Download size={16} />
-                <span>{downloading ? 'Downloading…' : 'Download PDF'}</span>
-              </button>
-              <button
-                type="button"
-                className="danger icon-button"
-                onClick={handleDeleteOrder}
-                disabled={deleting}
-              >
-                <Trash2 size={16} />
-                <span>{deleting ? 'Deleting…' : 'Delete order'}</span>
-              </button>
-            </div>
           </>
         )}
-      </article>
+      </div>
 
-      {addItemModalOpen && (
-        <div className="orders-item-modal-overlay">
-          <div className="orders-item-modal" role="dialog" aria-modal="true">
-            <header className="orders-item-modal-header">
-              <h3>Add order item</h3>
-              <button
-                type="button"
-                className="ghost-btn"
-                onClick={closeAddItemModal}
-                aria-label="Close add item dialog"
-              >
-                Close
-              </button>
-            </header>
-            <div className="orders-item-modal-body">
-              <label htmlFor="add-order-item-select">Item</label>
-              {loadingAvailableItems ? (
-                <p className="helper-text">Loading items…</p>
-              ) : (
-                <select
-                  id="add-order-item-select"
-                  value={selectedItemId}
-                  onChange={(event) => setSelectedItemId(event.target.value)}
-                >
-                  <option value="">Select an item</option>
-                  {availableItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {getItemLabel(item)}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <label htmlFor="add-order-item-quantity">Quantity</label>
-              <input
-                id="add-order-item-quantity"
-                type="number"
-                min={1}
-                value={newItemQuantity}
-                onChange={(event) => setNewItemQuantity(event.target.value)}
-              />
-              {modalError && <p className="form-error">{modalError}</p>}
-            </div>
-            <footer className="orders-item-modal-actions">
-              <button
-                type="button"
-                className="ghost-btn"
-                onClick={closeAddItemModal}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="primary"
-                onClick={handleAddItemToOrder}
-                disabled={addingItem}
-              >
-                {addingItem ? 'Adding…' : 'Add to order'}
-              </button>
-            </footer>
+      {!loading && orderDetail && (
+        <div style={{ 
+          padding: '1rem',
+        }}>
+          <div style={{ 
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1rem',
+            padding: '0 0.25rem'
+          }}>
+            <span style={{ fontSize: '1.125rem', fontWeight: 700 }}>Total Amount</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>₹{orderDetail.totalAmount}</span>
+          </div>
+
+          <div className="split-2" style={{ gap: '0.75rem' }}>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+              style={{ width: '100%', height: '3rem', gap: '0.5rem', fontSize: '0.875rem' }}
+            >
+              <Download size={18} />
+              <span>Download PDF</span>
+            </button>
+            <button
+              type="button"
+              className="danger icon-button"
+              onClick={handleDeleteOrder}
+              disabled={deleting}
+              style={{ width: '100%', height: '3rem', gap: '0.5rem', fontSize: '0.875rem' }}
+            >
+              <Trash2 size={18} />
+              <span>Delete order</span>
+            </button>
           </div>
         </div>
       )}
@@ -718,15 +740,6 @@ export default function OrderDetailsPage({ token }) {
           </div>
         </div>
       )}
-
-      <button
-        type="button"
-        className="floating-action-btn"
-        onClick={openAddItemModal}
-        aria-label="Add order item"
-      >
-        <Plus size={20} />
-      </button>
     </section>
   );
 }

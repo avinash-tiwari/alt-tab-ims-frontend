@@ -191,7 +191,7 @@ export default function OrdersPage({ token }) {
 
   return (
     <section className="page">
-      <div className="page-tabs" style={{ marginBottom: '1rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+      <div className="page-tabs" style={{ marginBottom: '1rem', whiteSpace: 'nowrap', marginTop: '0.5rem' }}>
         {['NEW', 'DELIVERED', 'OVERDUE', 'PAID'].map((tab) => (
           <button
             key={tab}
@@ -353,6 +353,7 @@ export default function OrdersPage({ token }) {
                 </select>
               </div>
 
+              {/* ITEM LIST  */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {lineItems.map((line, index) => (
                   <div key={index} className="card" style={{ padding: '1rem', margin: 0, position: 'relative' }}>
