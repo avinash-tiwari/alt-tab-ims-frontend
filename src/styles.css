@@ -195,7 +195,7 @@ button.danger:hover {
   top: 3.5rem; /* Matches .app-header height exactly */
   background: hsl(var(--background));
   padding-top: 1rem;
-  padding-bottom: 1rem;
+  padding-bottom: 0.5rem;
   z-index: 30;
   margin-left: -1rem;
   margin-right: -1rem;
