@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Copy, Download, Pencil, Plus, Share2 } from 'lucide-react';
+import { ChevronLeft, Copy, Download, Pencil, Plus, Share2, Phone, MapPin, ExternalLink } from 'lucide-react';
 import {
   getCustomer,
   listItems,
@@ -8,6 +8,31 @@ import {
   getCustomerPrices
 } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
+
+const CustomerDetailSkeleton = () => (
+  <div className="page">
+    <div className="sticky-header">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="skeleton" style={{ width: '24px', height: '24px', borderRadius: '4px' }}></div>
+        <div style={{ flex: 1 }}>
+          <div className="skeleton skeleton-title" style={{ width: '50%', marginBottom: '4px' }}></div>
+          <div className="skeleton skeleton-text" style={{ width: '30%', height: '12px' }}></div>
+        </div>
+      </div>
+    </div>
+    <div className="customers-list-container" style={{ paddingTop: '1rem' }}>
+      <div className="card" style={{ padding: '1rem' }}>
+        <div className="customer-stats-bar">
+          <div className="stat-pill" style={{ flex: 1 }}><div className="skeleton" style={{ width: '40%', height: '8px', marginBottom: '4px' }}></div><div className="skeleton" style={{ width: '60%', height: '16px' }}></div></div>
+          <div className="stat-pill" style={{ flex: 1 }}><div className="skeleton" style={{ width: '40%', height: '8px', marginBottom: '4px' }}></div><div className="skeleton" style={{ width: '60%', height: '16px' }}></div></div>
+          <div className="stat-pill" style={{ flex: 1 }}><div className="skeleton" style={{ width: '40%', height: '8px', marginBottom: '4px' }}></div><div className="skeleton" style={{ width: '60%', height: '16px' }}></div></div>
+        </div>
+      </div>
+      <div className="skeleton" style={{ height: '100px', width: '100%', borderRadius: 'var(--radius)', marginTop: '1rem' }}></div>
+      <div className="skeleton" style={{ height: '200px', width: '100%', borderRadius: 'var(--radius)', marginTop: '1rem' }}></div>
+    </div>
+  </div>
+);
 
 export default function CustomerDetailPage({ token }) {
   const { id } = useParams();
@@ -53,7 +78,7 @@ export default function CustomerDetailPage({ token }) {
     };
   }, []);
 
-  if (loading && !customer) return <div className="page"><p className="muted">Loading...</p></div>;
+  if (loading && !customer) return <CustomerDetailSkeleton />;
   if (!customer && !loading) return <div className="page"><p className="muted">Customer not found.</p></div>;
 
   const rawIdentifier = customer ? (customer.identifier ?? customer.customerIdentifier ?? customer.id) : '';
@@ -65,7 +90,7 @@ export default function CustomerDetailPage({ token }) {
     : '';
   const statsData = [
     {
-      label: 'Total Spent',
+      label: 'Spent',
       value: `₹ ${formatCurrency(customer?.totalSpent ?? '0')}`
     },
     {
@@ -185,115 +210,137 @@ export default function CustomerDetailPage({ token }) {
   return (
     <section className="page">
       <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
             <ChevronLeft size={24} />
           </button>
           <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0 }}>{customer?.name}</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>{customer?.phone} • {customer?.city}</p>
+            <h3 className="customer-name-heading" style={{ fontSize: '1.25rem' }}>{customer?.name}</h3>
+            <div className="customer-details" style={{ marginTop: '0.25rem' }}>
+               {customer?.phone && (
+                 <div className="detail-item">
+                   <Phone size={12} className="detail-icon" />
+                   <a href={`tel:${customer.phone}`} className="detail-link" onClick={(e) => e.stopPropagation()}>{customer.phone}</a>
+                 </div>
+               )}
+               <div className="detail-item">
+                 <MapPin size={12} className="detail-icon" />
+                 <a 
+                   href={customer?.locationLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([customer?.addressLine1, customer?.city, customer?.postalCode].filter(Boolean).join(', '))}`}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="detail-link"
+                   onClick={(e) => e.stopPropagation()}
+                 >
+                   {[customer?.city, customer?.postalCode].filter(Boolean).join(', ') || 'No location'}
+                 </a>
+               </div>
+            </div>
           </div>
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={handleDownloadDeliveredOrdersInvoice}
-            disabled={invoiceDownloading}
-            style={{
-              padding: '0.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem'
-            }}
-            title="Generate delivered orders invoice"
-          >
-            <Download size={16} />
-            <span style={{ fontSize: '0.85rem' }}>
-              {invoiceDownloading ? 'Generating…' : 'Invoice'}
-            </span>
-          </button>
-          {shareSupported ? (
+          <div className="col-actions">
             <button
               type="button"
               className="ghost-btn"
-              onClick={handleShareDeliveredOrdersInvoice}
-              disabled={shareProcessing}
-              style={{
-                padding: '0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem'
-              }}
-              title="Share delivered orders PDF"
+              onClick={handleDownloadDeliveredOrdersInvoice}
+              disabled={invoiceDownloading}
+              title="Download Invoice"
             >
-              <Share2 size={16} />
-              <span style={{ fontSize: '0.85rem' }}>
-                {shareProcessing ? 'Sharing…' : 'Share'}
-              </span>
+              <Download size={18} />
             </button>
-          ) : null}
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={() => navigate(`/customers/actions/${id}`)}
-            style={{ padding: '0.5rem' }}
-          >
-            <Pencil size={20} />
-          </button>
+            {shareSupported && (
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={handleShareDeliveredOrdersInvoice}
+                disabled={shareProcessing}
+                title="Share Invoice"
+              >
+                <Share2 size={18} />
+              </button>
+            )}
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => navigate(`/customers/actions/${id}`)}
+              title="Edit Customer"
+            >
+              <Pencil size={18} />
+            </button>
+          </div>
         </div>
       </div>
       {error ? (
-        <p className="helper-text" style={{ color: '#d32f2f', marginTop: '0.25rem' }}>
+        <p className="error-text" style={{ margin: '1rem 0 0' }}>
           {error}
         </p>
       ) : null}
 
-      <div className="customer-detail-content" style={{ marginTop: '1rem' }}>
-        <div className="customer-stats-grid card">
-          {statsData.map((stat) => (
-            <div key={stat.label} className="stat-item">
-              <span className="stat-label">{stat.label}</span>
-              <span className="stat-value">{stat.value}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="card public-link-card">
+        <div className="card public-link-card" style={{ marginTop: '1rem' }}>
           <div className="public-link-row">
-            <div>
-              <p className="stat-label" style={{ margin: 0 }}>Public order link</p>
-              <p className="helper-text" style={{ margin: 0 }}>
-                Share this URL with the customer so they can place orders directly.
-              </p>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 700, textTransform: 'capitalize', placeItems: 'center' }}>{customer?.name} - Link</h4>
             </div>
-            {customerIdentifier ? (
-              <button
-                type="button"
-                className="ghost-btn icon-button public-link-copy-btn"
-                onClick={handleCopyLink}
-              >
-                <Copy size={16} />
-                <span>Copy link</span>
-              </button>
-            ) : null}
+            {customerIdentifier && (
+              <div className="col-actions">
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => window.open(publicOrderLink, '_blank')}
+                  title="Open Link"
+                >
+                  <ExternalLink size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={handleCopyLink}
+                  title="Copy Link"
+                >
+                  <Copy size={16} />
+                </button>
+              </div>
+            )}
           </div>
-          {!customerIdentifier ? (
-            <p className="helper-text" style={{ marginBottom: 0 }}>
-              Assign an identifier to the customer record to generate a public order link.
+          {!customerIdentifier && (
+            <p className="error-text" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>
+              Assign an identifier to generate a link.
             </p>
-          ) : null}
-          {copyStatus ? <p className="success-text">{copyStatus}</p> : null}
+          )}
+          {copyStatus && <p className="success-text" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>{copyStatus}</p>}
+        </div>
+        
+      <div className="customer-detail-content">
+        <div className="card" style={{ padding: '1rem' }}>
+          <div className="customer-stats-bar">
+            <div className="stat-pill">
+              <span className="stat-label">Spent</span>
+              <span className="stat-value">₹{formatCurrency(customer?.totalSpent ?? '0')}</span>
+            </div>
+            <div className="stat-pill">
+              <span className="stat-label">Credits</span>
+              <span className="stat-value warning">₹{formatCurrency(customer?.totalCredits ?? '0')}</span>
+            </div>
+            <div className="stat-pill">
+              <span className="stat-label">Due</span>
+              <span className="stat-value destructive">₹{formatCurrency(customer?.totalDue ?? '0')}</span>
+            </div>
+            <div className="stat-pill">
+              <span className="stat-label">Orders</span>
+              <span className="stat-value">{customer?.totalOrders ?? 0}</span>
+            </div>
+          </div>
         </div>
 
-        <div className="customer-items-section card">
+        <div className="card" style={{ padding: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 className="items-heading" style={{ margin: 0 }}>CUSTOM PRICES</h3>
+            <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>CUSTOM PRICES</h4>
           </div>
           <div className="items-data-container">
             <table className="price-table">
               <thead>
                 <tr>
                   <th>Item Name</th>
-                  <th style={{ textAlign: 'right' }}>Prices (Base / Custom)</th>
+                  <th style={{ textAlign: 'right' }}>Base / Custom</th>
                 </tr>
               </thead>
               <tbody>
@@ -302,16 +349,18 @@ export default function CustomerDetailPage({ token }) {
                     const item = price.item || items.find((it) => it.id === price.itemId);
                     return (
                       <tr key={price.itemId}>
-                        <td>{item?.name || price.itemId}</td>
+                        <td style={{ fontWeight: 500 }}>{item?.name || price.itemId}</td>
                         <td style={{ textAlign: 'right' }}>
-                          Rs. {item?.basePrice || 0} / <strong>Rs. {price.customPrice}</strong>
+                          <span className="muted" style={{ fontSize: '0.8rem' }}>₹{item?.basePrice || 0}</span>
+                          <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>/</span>
+                          <strong style={{ color: 'hsl(var(--primary))' }}>₹{price.customPrice}</strong>
                         </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan="2" style={{ textAlign: 'center', padding: '1rem', color: 'hsl(195 85% 30%)' }}>
+                    <td colSpan="2" style={{ textAlign: 'center', padding: '2rem', color: 'hsl(var(--muted-foreground))' }}>
                       No custom prices defined yet.
                     </td>
                   </tr>

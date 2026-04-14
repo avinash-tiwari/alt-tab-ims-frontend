@@ -1,14 +1,15 @@
+import React from 'react';
+import { LayoutDashboard } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
+
 export default function DashboardPage() {
   return (
     <section className="page">
-      <div className="sticky-header">
-      <h2>Dashboard</h2>
-      </div>
-      <article className="card">
-        <p>
-          Daily, monthly, and yearly analytics widgets should be connected to a reporting endpoint.
-        </p>
-      </article>
+      <EmptyState
+        icon={LayoutDashboard}
+        title="Dashboard is coming soon"
+        description="We're building powerful analytics to help you track your business performance. Stay tuned for updates!"
+      />
     </section>
   );
 }

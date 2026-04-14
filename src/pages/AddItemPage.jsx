@@ -76,7 +76,7 @@ export default function AddItemPage({ token }) {
   return (
     <section className="page">
       <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem'}}>
           <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
             <ChevronLeft size={24} />
           </button>
@@ -84,10 +84,9 @@ export default function AddItemPage({ token }) {
         </div>
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
+      <div>
         {error && <p className="error-text">{error}</p>}
         <form className="card stack-form" onSubmit={saveItem}>
-          <h3 className="items-heading">{id ? 'Update Item Details' : 'New Item Details'}</h3>
           <input name="name" placeholder="Name" value={form.name} onChange={onFormChange} required />
           <input
             name="costPrice"
