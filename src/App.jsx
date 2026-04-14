@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginScreen from './components/LoginScreen';
 import BottomTabs from './components/BottomTabs';
 import {
   clearSession,
+  changePassword,
   getStoredTenant,
   getStoredToken,
   login,
@@ -30,6 +31,57 @@ function AppContent({ token, tenant, logout }) {
       .toUpperCase()
       .slice(0, 3);
   }, [tenant?.name]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const profileMenuRef = useRef(null);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const resetPasswordForm = () => {
+    setPasswordError('');
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: ''
+    });
+  };
+
+  const openPasswordModal = () => {
+    resetPasswordForm();
+    setPasswordModalOpen(true);
+  };
+
+  const closePasswordModal = () => {
+    resetPasswordForm();
+    setPasswordModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const handleKeyDown = event => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = event => {
+      if (menuOpen && profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
 
   return (
     <div className="mobile-app">
@@ -38,8 +90,135 @@ function AppContent({ token, tenant, logout }) {
           <div className="tenant-logo">{initials}</div>
           <h1 className="tenant-name-header">{tenant?.name || 'IMS Admin'}</h1>
         </div>
-        <button type="button" onClick={logout} className="ghost-btn">Logout</button>
+        <div className="profile-menu" ref={profileMenuRef}>
+          <button
+            type="button"
+            className="profile-menu-button"
+            aria-haspopup="true"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(prev => !prev)}
+          >
+            <span className="profile-icon">{initials}</span>
+            <span className="sr-only">Open profile menu</span>
+          </button>
+          {menuOpen && (
+            <div className="profile-menu-popup" role="menu">
+              <button
+                type="button"
+                className="profile-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  openPasswordModal();
+                }}
+              >
+                Change password
+              </button>
+              <button
+                type="button"
+                className="profile-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  logout();
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </header>
+      {passwordModalOpen && (
+        <div
+          className="modal-overlay change-password-overlay"
+          role="dialog"
+          aria-modal="true"
+          onClick={closePasswordModal}
+        >
+          <form
+            className="change-password-modal"
+            onClick={event => event.stopPropagation()}
+            onSubmit={async event => {
+              event.preventDefault();
+              if (!token) {
+                setPasswordError('You must be logged in to change your password.');
+                return;
+              }
+              if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+                setPasswordError('Please fill in every field.');
+                return;
+              }
+              setPasswordLoading(true);
+              try {
+                await changePassword(token, {
+                  currentPassword: passwordForm.currentPassword,
+                  newPassword: passwordForm.newPassword
+                });
+                window.alert('Password updated successfully.');
+                closePasswordModal();
+              } catch (error) {
+                setPasswordError(error.message);
+              } finally {
+                setPasswordLoading(false);
+              }
+            }}
+          >
+            <header className="modal-header">
+              <h2>Change password</h2>
+              <button
+                type="button"
+                className="modal-close-button"
+                onClick={closePasswordModal}
+                aria-label="Close dialog"
+              >
+                ×
+              </button>
+            </header>
+            <label className="form-group">
+              <span>Current password</span>
+              <input
+                type="password"
+                name="currentPassword"
+                value={passwordForm.currentPassword}
+                onChange={event => {
+                  setPasswordForm(prev => ({ ...prev, currentPassword: event.target.value }));
+                  setPasswordError('');
+                }}
+                autoComplete="current-password"
+                required
+              />
+            </label>
+            <label className="form-group">
+              <span>New password</span>
+              <input
+                type="password"
+                name="newPassword"
+                value={passwordForm.newPassword}
+                onChange={event => {
+                  setPasswordForm(prev => ({ ...prev, newPassword: event.target.value }));
+                  setPasswordError('');
+                }}
+                autoComplete="new-password"
+                required
+              />
+            </label>
+            {passwordError && (
+              <p className="form-error" role="alert">
+                {passwordError}
+              </p>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="ghost-btn" onClick={closePasswordModal}>
+                Cancel
+              </button>
+              <button type="submit" className="primary" disabled={passwordLoading}>
+                {passwordLoading ? 'Updating…' : 'Update password'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <main className="app-content">
         <Routes>
@@ -98,7 +277,11 @@ export default function App() {
           path="/*"
           element={
             token ? (
-              <AppContent token={token} tenant={tenant} logout={logout} />
+              <AppContent
+                token={token}
+                tenant={tenant}
+                logout={logout}
+              />
             ) : (
               <LoginScreen onSubmit={handleLogin} loading={loading} error={loginError} />
             )

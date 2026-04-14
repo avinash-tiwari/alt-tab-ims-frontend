@@ -81,6 +81,14 @@ export async function login({ loginId, password }) {
   });
 }
 
+export async function changePassword(token, payload) {
+  return request('/auth/password', {
+    method: 'PATCH',
+    token,
+    body: payload
+  });
+}
+
 export async function listItems(token, query) {
   return request('/items', { token, query });
 }
