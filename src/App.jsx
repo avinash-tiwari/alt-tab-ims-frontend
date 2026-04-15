@@ -232,7 +232,7 @@ function AppContent({ token, tenant, logout }) {
           <Route path="/customers/actions/:id" element={<CustomerActionsPage token={token} />} />
           <Route path="/customer/:id" element={<CustomerDetailPage token={token} />} />
           <Route path="/customer/:id/add" element={<AddCustomerPricePage token={token} />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage token={token} />} />
           <Route path="/" element={<Navigate to="/orders" replace />} />
         </Routes>
       </main>

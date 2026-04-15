@@ -294,6 +294,20 @@ export async function downloadCustomerDeliveredOrdersPDF(token, customerId) {
   return { blob, fileName };
 }
 
+export async function getDashboardAnalyticsMonthly(token, month) {
+  return request('/dashboard/analytics/monthly', {
+    token,
+    query: { month }
+  });
+}
+
+export async function getDashboardAnalyticsLifetime(token) {
+  return request('/dashboard/analytics/monthly', {
+    token,
+    query: { scope: 'lifetime' }
+  });
+}
+
 function deriveFilenameFromDisposition(disposition) {
   if (!disposition) return null;
 
