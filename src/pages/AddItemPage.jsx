@@ -28,8 +28,8 @@ export default function AddItemPage({ token }) {
           name: item.name || '',
           stock: String(item.stock ?? ''),
           threshold: String(item.threshold ?? ''),
-          costPrice: String(item.costPrice ?? ''),
-          basePrice: String(item.basePrice ?? '')
+          costPrice: String(item.costPrice ? Math.trunc(item.costPrice) : ''),
+          basePrice: String(item.basePrice ? Math.trunc(item.basePrice) : '')
         });
       }
     } catch (err) {
@@ -91,7 +91,7 @@ export default function AddItemPage({ token }) {
           <input
             name="costPrice"
             type="number"
-            step="0.01"
+            step="1"
             placeholder="Cost Price"
             value={form.costPrice}
             onChange={onFormChange}
@@ -111,7 +111,7 @@ export default function AddItemPage({ token }) {
           <input
             name="basePrice"
             type="number"
-            step="0.01"
+            step="1"
             placeholder="Base Price"
             value={form.basePrice}
             onChange={onFormChange}

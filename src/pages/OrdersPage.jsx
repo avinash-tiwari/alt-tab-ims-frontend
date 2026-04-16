@@ -6,7 +6,8 @@ import {
   createOrder,
   listCustomers,
   listItems,
-  listOrders
+  listOrders,
+  getCustomerPrices
 } from '../api';
 import { formatCurrency, getDisplayCustomerName, getStatusLabel } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
@@ -50,6 +51,7 @@ export default function OrdersPage({ token }) {
   const [customers, setCustomers] = useState([]);
   const [items, setItems] = useState([]);
   const [customerId, setCustomerId] = useState('');
+  const [customerPrices, setCustomerPrices] = useState([]);
   const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState([{ itemId: '', quantity: 1 }]);
   const navigate = useNavigate();
@@ -91,9 +93,26 @@ export default function OrdersPage({ token }) {
     loadItems();
   }, [token]);
 
+  useEffect(() => {
+    const fetchPrices = async () => {
+      if (token && customerId) {
+        try {
+          const prices = await getCustomerPrices(token, customerId);
+          setCustomerPrices(Array.isArray(prices) ? prices : []);
+        } catch (err) {
+          console.error('Failed to load customer prices', err);
+        }
+      } else {
+        setCustomerPrices([]);
+      }
+    };
+    fetchPrices();
+  }, [token, customerId]);
+
   const resetCreateOrderForm = () => {
     setCreateOrderError('');
     setCustomerId('');
+    setCustomerPrices([]);
     setNotes('');
     setLineItems([{ itemId: '', quantity: 1 }]);
   };
@@ -122,16 +141,22 @@ export default function OrdersPage({ token }) {
     setLineItems(next);
   };
 
+  const getEffectivePrice = (itemId) => {
+    const custom = customerPrices.find(p => String(p.itemId) === String(itemId));
+    if (custom) return custom.customPrice;
+    
+    const item = items.find(it => String(it.id) === String(itemId));
+    return item ? getItemUnitPrice(item) : 0;
+  };
+
   const getLineTotal = (line) => {
     if (!line.itemId) return 0;
-    const item = items.find((it) => String(it.id) === String(line.itemId));
-    if (!item) return 0;
-    return getItemUnitPrice(item) * (Number(line.quantity) || 0);
+    return getEffectivePrice(line.itemId) * (Number(line.quantity) || 0);
   };
 
   const orderTotal = useMemo(() => {
     return lineItems.reduce((sum, line) => sum + getLineTotal(line), 0);
-  }, [lineItems, items]);
+  }, [lineItems, items, customerPrices]);
 
   const selectedCustomer = customers.find((customer) => String(customer.id) === String(customerId));
   const customerLabel = getCustomerLabel(selectedCustomer);
@@ -160,11 +185,10 @@ export default function OrdersPage({ token }) {
       customerName: customerLabel,
       totalAmount: orderTotal,
       items: validItems.map(({ itemId, quantity }) => {
-        const item = items.find(it => String(it.id) === String(itemId));
         return {
           itemId,
           quantity: Number(quantity),
-          unitPrice: getItemUnitPrice(item)
+          unitPrice: getEffectivePrice(itemId)
         };
       }),
       notes: notes.trim() || undefined
@@ -406,9 +430,12 @@ export default function OrdersPage({ token }) {
                           borderRadius: 'var(--radius)',
                           fontSize: '0.875rem',
                           fontWeight: 700,
-                          border: '1px solid hsl(var(--border))'
+                          border: '1px solid hsl(var(--border))',
+                          height: '2.5rem',
+                          display: 'flex',
+                          alignItems: 'center'
                         }}>
-                          ₹{getLineTotal(line)}
+                          {formatCurrency(getLineTotal(line))}
                         </div>
                       </div>
                     </div>
@@ -450,7 +477,7 @@ export default function OrdersPage({ token }) {
                 alignItems: 'center'
               }}>
                 <span style={{ fontSize: '1.125rem', fontWeight: 700 }}>Total Amount</span>
-                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>₹{orderTotal}</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>{formatCurrency(orderTotal)}</span>
               </div>
 
               <footer className="split-2" style={{ gap: '1rem' }}>

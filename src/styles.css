@@ -286,6 +286,21 @@ button.danger:hover {
   -webkit-backface-visibility: hidden;
 }
 
+.add-customer-sticky-header {
+  position: sticky;
+  top: 56px;
+  background: hsl(var(--background));
+  z-index: 40;
+}
+
+.add-customer-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  background: hsl(var(--background));
+  padding-top: 1rem;
+  z-index: 40;
+}
+
 /* Card style from POS */
 .card {
   background: hsl(var(--card));

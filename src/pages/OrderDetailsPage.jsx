@@ -6,6 +6,7 @@ import {
   deleteOrder,
   deleteOrderItem,
   downloadOrderPDF,
+  getCustomerPrices,
   getOrder,
   listItems,
   updateOrder,
@@ -48,6 +49,13 @@ export default function OrderDetailsPage({ token }) {
   const [paymentSplitError, setPaymentSplitError] = useState('');
   const [paymentSplitSubmitting, setPaymentSplitSubmitting] = useState(false);
   const [previousStatusBeforeSplit, setPreviousStatusBeforeSplit] = useState('');
+  const [snackbar, setSnackbar] = useState({ show: false, message: '' });
+  const [customerPrices, setCustomerPrices] = useState([]);
+
+  const showSnackbar = (message) => {
+    setSnackbar({ show: true, message });
+    setTimeout(() => setSnackbar({ show: false, message: '' }), 3000);
+  };
 
   const loadDetail = async () => {
     if (!orderId) {
@@ -92,6 +100,21 @@ export default function OrderDetailsPage({ token }) {
     loadAvailableItems();
   }, [token]);
 
+  useEffect(() => {
+    const fetchPrices = async () => {
+      const cId = orderDetail?.customerId || orderDetail?.customer?.id;
+      if (token && cId) {
+        try {
+          const prices = await getCustomerPrices(token, cId);
+          setCustomerPrices(Array.isArray(prices) ? prices : []);
+        } catch (err) {
+          console.error('Failed to load customer prices', err);
+        }
+      }
+    };
+    fetchPrices();
+  }, [token, orderDetail?.customerId, orderDetail?.customer?.id]);
+
   const orderItems = useMemo(() => orderDetail?.items ?? [], [orderDetail]);
   const calculatedTotal = useMemo(() => {
     return orderItems.reduce((sum, item, index) => {
@@ -126,6 +149,7 @@ export default function OrderDetailsPage({ token }) {
         prev ? { ...prev, ...updated, items: prev.items } : prev
       );
       setNotesInput(updated.notes ?? notesInput);
+      showSnackbar('Notes saved');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -141,11 +165,11 @@ export default function OrderDetailsPage({ token }) {
     const totalAmount = orderDetail.totalAmount;
     const defaultOnline =
       totalAmount !== undefined && totalAmount !== null && !Number.isNaN(Number(totalAmount))
-        ? Number(totalAmount).toFixed(2)
+        ? String(Math.trunc(Number(totalAmount)))
         : '';
 
     setPaymentOnline(defaultOnline);
-    setPaymentCash('0.00');
+    setPaymentCash('0');
     setPaymentSplitError('');
     setPreviousStatusBeforeSplit(orderDetail.status ?? '');
     setShowPaymentSplitModal(true);
@@ -187,14 +211,15 @@ export default function OrderDetailsPage({ token }) {
 
     try {
       const updated = await updateOrderStatus(token, orderDetail.id, statusInput, {
-        online: parsedOnline.toFixed(2),
-        cash: parsedCash.toFixed(2)
+        online: parsedOnline,
+        cash: parsedCash
       });
       setOrderDetail((prev) =>
         prev ? { ...prev, ...updated, items: prev.items } : prev
       );
       setStatusInput(updated.status ?? statusInput);
       closePaymentSplitModal(false);
+      showSnackbar('Status & payment updated');
     } catch (err) {
       setPaymentSplitError(err.message);
     } finally {
@@ -221,6 +246,7 @@ export default function OrderDetailsPage({ token }) {
         prev ? { ...prev, ...updated, items: prev.items } : prev
       );
       setStatusInput(updated.status ?? statusInput);
+      showSnackbar(`Status updated to ${getStatusLabel(statusInput)}`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -304,7 +330,8 @@ export default function OrderDetailsPage({ token }) {
     setAddingItem(true);
     
     // Find the item being added to get its details (like price/label)
-    const selectedItem = availableItems.find(i => i.id === selectedItemId);
+    const selectedItem = availableItems.find(i => String(i.id) === String(selectedItemId));
+    const effectiveUnitPrice = getEffectivePrice(selectedItem);
     
     try {
       // Optimistic update: we add the item locally first so the header updates "suddenly"
@@ -313,9 +340,9 @@ export default function OrderDetailsPage({ token }) {
         id: tempId,
         itemId: selectedItemId,
         quantity: parsedQuantity,
-        unitPrice: selectedItem?.price || 0,
-        label: selectedItem?.label || selectedItem?.name || '',
-        lineTotal: (selectedItem?.price || 0) * parsedQuantity
+        unitPrice: effectiveUnitPrice,
+        label: getItemLabel(selectedItem),
+        lineTotal: effectiveUnitPrice * parsedQuantity
       };
 
       setOrderDetail((prev) => {
@@ -350,6 +377,7 @@ export default function OrderDetailsPage({ token }) {
           return next;
         });
       }
+      showSnackbar('Item added to order');
     } catch (err) {
       // Revert if API fails
       setError(err.message);
@@ -405,6 +433,7 @@ export default function OrderDetailsPage({ token }) {
         ...prev,
         [orderItem.id]: String(orderItem.quantity)
       }));
+      showSnackbar('Quantity updated');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -432,6 +461,7 @@ export default function OrderDetailsPage({ token }) {
           items: prev.items.filter((item) => (item.id ?? item.itemId) !== orderItemId)
         };
       });
+      showSnackbar('Item removed');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -441,6 +471,18 @@ export default function OrderDetailsPage({ token }) {
 
   const customerName = getDisplayCustomerName(orderDetail);
   const orderIdLabel = String(orderDetail?.id ?? '');
+
+  const getEffectivePrice = (item) => {
+    if (!item) return 0;
+    const custom = customerPrices.find(cp => String(cp.itemId) === String(item.id));
+    if (custom) {
+      const val = custom.customPrice ?? custom.price;
+      if (val !== undefined && val !== null) {
+        return Number(val);
+      }
+    }
+    return getItemUnitPrice(item);
+  };
 
   return (
     <section className="page" style={{ padding: 0 }}>
@@ -627,7 +669,7 @@ export default function OrderDetailsPage({ token }) {
                 <div className="card" style={{ padding: '1rem', border: '1px solid hsl(var(--primary))', background: 'hsl(var(--primary) / 0.03)', marginTop: '1rem' }}>
                   {(() => {
                     const selectedItem = availableItems.find(i => String(i.id) === String(selectedItemId));
-                    const unitPrice = selectedItem ? getItemUnitPrice(selectedItem) : 0;
+                    const unitPrice = getEffectivePrice(selectedItem);
                     const totalForNewItem = unitPrice * Number(newItemQuantity || 0);
 
                     return (
@@ -751,7 +793,7 @@ export default function OrderDetailsPage({ token }) {
                 id="payment-online"
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
                 value={paymentOnline}
                 onChange={(event) => setPaymentOnline(event.target.value)}
               />
@@ -760,7 +802,7 @@ export default function OrderDetailsPage({ token }) {
                 id="payment-cash"
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
                 value={paymentCash}
                 onChange={(event) => setPaymentCash(event.target.value)}
               />
@@ -784,6 +826,26 @@ export default function OrderDetailsPage({ token }) {
               </button>
             </footer>
           </div>
+        </div>
+      )}
+
+      {snackbar.show && (
+        <div style={{
+          position: 'fixed',
+          bottom: '5.5rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'hsl(var(--foreground))',
+          color: 'hsl(var(--background))',
+          padding: '0.75rem 1.25rem',
+          borderRadius: 'var(--radius)',
+          fontSize: '0.875rem',
+          fontWeight: 600,
+          zIndex: 100,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          animation: 'slideUp 0.3s ease-out'
+        }}>
+          {snackbar.message}
         </div>
       )}
     </section>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pencil, Trash2, Plus, Filter, X, Package } from 'lucide-react';
 import { deleteItem, listItems, listLowStockItems, updateBulkStock } from '../api';
 import EmptyState from '../components/EmptyState';
+import { formatCurrency } from '../utils/orderUtils';
 
 const ItemSkeleton = () => (
   <div className="card customer-card" style={{ cursor: 'default' }}>
@@ -414,11 +415,11 @@ export default function ItemsPage({ token }) {
                         <div className="customer-stats-bar">
                           <div className="stat-pill">
                             <span className="stat-label">Cost</span>
-                            <span className="stat-value">₹{item.costPrice}</span>
+                            <span className="stat-value">{formatCurrency(item.costPrice)}</span>
                           </div>
                           <div className="stat-pill">
                             <span className="stat-label">Base</span>
-                            <span className="stat-value">₹{item.basePrice}</span>
+                            <span className="stat-value">{formatCurrency(item.basePrice)}</span>
                           </div>
                           <div className="stat-pill">
                             <span className="stat-label">Stock</span>
@@ -564,7 +565,7 @@ export default function ItemsPage({ token }) {
         </div>
       )}
 
-      {items.length > 0 && (
+      {items.length > 0 && activeTab === 'listing' && (
         <button 
           type="button" 
           className="floating-action-btn"

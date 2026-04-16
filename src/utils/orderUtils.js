@@ -15,7 +15,7 @@ export const formatCurrency = (value) => {
     return value;
   }
 
-  return amount.toFixed(2);
+  return `₹${Math.trunc(amount).toString()}`;
 };
 
 export const getStatusLabel = (status) => {
