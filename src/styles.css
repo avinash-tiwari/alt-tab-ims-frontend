@@ -732,7 +732,6 @@ button.danger:hover {
 .public-link-card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
   background-color: hsl(195 85% 95%);
 }
 
@@ -1021,6 +1020,7 @@ button.danger:hover {
   align-items: center;
   padding: 1.25rem;
   align-self: start; 
+  width: 100%;
 }
 
 .order-card-left {

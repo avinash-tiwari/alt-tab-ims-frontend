@@ -275,10 +275,13 @@ export default function CustomerDetailPage({ token }) {
         </p>
       ) : null}
 
-        <div className="card public-link-card" style={{ marginTop: '1rem' }}>
+        <div className="card public-link-card" style={{ marginTop: '1rem', padding: '1rem', borderTop: '4px solid hsl(var(--primary))' }}>
+          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+            ORDER LINK
+          </div>
           <div className="public-link-row">
             <div style={{ flex: 1 }}>
-              <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 700, textTransform: 'capitalize', placeItems: 'center' }}>{customer?.name} - Link</h4>
+              <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 700, textTransform: 'capitalize' }}>{customer?.name}</h4>
             </div>
             {customerIdentifier && (
               <div className="col-actions">

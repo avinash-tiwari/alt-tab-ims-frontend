@@ -215,17 +215,19 @@ export default function OrdersPage({ token }) {
 
   return (
     <section className="page">
-      <div className="page-tabs" style={{ marginBottom: '1rem', whiteSpace: 'nowrap', marginTop: '0.5rem' }}>
-        {['NEW', 'DELIVERED', 'OVERDUE', 'PAID'].map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={`page-tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="sticky-header" style={{ paddingTop: '0.5rem' }}>
+        <div className="page-tabs" style={{ marginBottom: '0.5rem', whiteSpace: 'nowrap', marginTop: '0' }}>
+          {['NEW', 'DELIVERED', 'OVERDUE', 'PAID'].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={`page-tab-btn ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       {orders.length > 0 && (
@@ -324,7 +326,7 @@ export default function OrdersPage({ token }) {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between', 
-            paddingBottom: '1rem',
+            paddingBottom: '0.5rem',
             borderBottom: '1px solid hsl(var(--border))',
             marginBottom: '1rem' 
           }}>
@@ -349,17 +351,8 @@ export default function OrdersPage({ token }) {
               overflow: 'hidden'
             }}
           >
-            <div style={{ 
-              flex: 1, 
-              overflowY: 'auto', 
-              paddingRight: '4px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.5rem',
-              paddingBottom: '1rem'
-            }}>
-              {createOrderError && <p className="form-error">{createOrderError}</p>}
-
+            <div style={{ paddingBottom: '1rem', background: 'hsl(var(--background))', zIndex: 10 }}>
+              {createOrderError && <p className="form-error" style={{ marginBottom: '1rem' }}>{createOrderError}</p>}
               <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Select Customer</label>
                 <select
@@ -376,6 +369,17 @@ export default function OrdersPage({ token }) {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              paddingRight: '4px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem',
+              paddingBottom: '1rem'
+            }}>
 
               {/* ITEM LIST  */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -465,7 +469,6 @@ export default function OrdersPage({ token }) {
 
             <div style={{ 
               marginTop: 'auto',
-              borderTop: '2px solid hsl(var(--border))',
               background: 'hsl(var(--background))',
               paddingTop: '1rem',
               zIndex: 10
@@ -485,7 +488,7 @@ export default function OrdersPage({ token }) {
                   type="button"
                   onClick={closeCreateModal}
                   disabled={creatingOrder}
-                  style={{ width: '100%', height: '3rem' }}
+                  style={{ width: '100%', height: '2.5rem' }}
                 >
                   Cancel
                 </button>
@@ -493,7 +496,7 @@ export default function OrdersPage({ token }) {
                   type="submit" 
                   className="primary" 
                   disabled={creatingOrder} 
-                  style={{ width: '100%', height: '3rem', fontSize: '1rem' }}
+                  style={{ width: '100%', height: '2.5rem', fontSize: '1rem' }}
                 >
                   {creatingOrder ? 'Saving...' : 'Save Order'}
                 </button>

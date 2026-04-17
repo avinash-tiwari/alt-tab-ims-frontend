@@ -187,15 +187,16 @@ export default function ItemsPage({ token }) {
           onAction={() => navigate('/items/add')}
         />
       ) : (
-        <div className="items-page-content" style={{ marginTop: '1rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              gap: '0.5rem',
-              flexWrap: 'wrap',
-              marginBottom: '1rem'
-            }}
-          >
+        <div className="items-page-content">
+          <div className="sticky-header" style={{ paddingTop: '0.5rem', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.5rem',
+                flexWrap: 'wrap',
+                marginBottom: activeTab === 'listing' ? '0.75rem' : '0'
+              }}
+            >
               {['listing', 'stock'].map((tab) => (
                 <button
                   key={tab}
@@ -206,6 +207,7 @@ export default function ItemsPage({ token }) {
                     flex: 1,
                     padding: '0.75rem 1rem',
                     cursor: 'pointer',
+                    margin: 0,
                     border: tab === activeTab ? '1px solid hsl(var(--primary))' : '1px solid transparent',
                     background: tab === activeTab ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--card))'
                   }}
@@ -218,158 +220,158 @@ export default function ItemsPage({ token }) {
             </div>
 
             {activeTab === 'listing' && (
-              <>
-                <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <button 
-                    type="button" 
-                    className="card" 
-                    onClick={openFilterModal}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.75rem', 
-                      padding: '1rem', 
-                      width: '100%',
-                      border: '1px dashed hsl(var(--border))',
-                      background: 'hsl(var(--card))',
-                      cursor: 'pointer',
-                      color: 'hsl(var(--foreground))',
-                      textAlign: 'left',
-                      marginBottom: 0
+              <button 
+                type="button" 
+                className="card" 
+                onClick={openFilterModal}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem', 
+                  padding: '1rem', 
+                  width: '100%',
+                  border: '1px dashed hsl(var(--border))',
+                  background: 'hsl(var(--card))',
+                  cursor: 'pointer',
+                  color: 'hsl(var(--foreground))',
+                  textAlign: 'left',
+                  margin: 0
+                }}
+              >
+                <Filter size={20} style={{ color: 'hsl(var(--primary))' }} />
+                <span style={{ fontWeight: 500, flex: 1 }}>ADD FILTER</span>
+                {activeFiltersCount > 0 && (
+                  <div
+                    role="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      resetFilters();
+                    }}
+                    style={{
+                      background: 'hsl(var(--destructive) / 0.1)',
+                      color: 'hsl(var(--destructive))',
+                      borderRadius: '50%',
+                      width: '24px',
+                      height: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer'
+                    }}
+                    title="Clear all filters"
+                  >
+                    <X size={16} />
+                  </div>
+                )}
+              </button>
+            )}
+          </div>
+
+          <div style={{ padding: '0' }}>
+            {activeTab === 'listing' && activeFiltersCount > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                {filters.q && (
+                  <div 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: '2rem',
+                      background: 'hsl(var(--primary) / 0.1)',
+                      border: '1px dashed black',
+                      fontSize: '0.875rem',
+                      color: 'hsl(var(--primary))'
                     }}
                   >
-                    <Filter size={20} style={{ color: 'hsl(var(--primary))' }} />
-                    <span style={{ fontWeight: 500, flex: 1 }}>ADD FILTER</span>
-                    {activeFiltersCount > 0 && (
-                      <div
-                        role="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          resetFilters();
-                        }}
-                        style={{
-                          background: 'hsl(var(--destructive) / 0.1)',
-                          color: 'hsl(var(--destructive))',
-                          borderRadius: '50%',
-                          width: '24px',
-                          height: '24px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer'
-                        }}
-                        title="Clear all filters"
-                      >
-                        <X size={16} />
-                      </div>
-                    )}
-                  </button>
+                    <span>Search: <strong>{filters.q}</strong></span>
+                    <button 
+                      type="button" 
+                      onClick={() => clearFilter('q')}
+                      style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {filters.minStock && (
+                  <div 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: '2rem',
+                      background: 'hsl(var(--primary) / 0.1)',
+                      border: '1px dashed black',
+                      fontSize: '0.875rem',
+                      color: 'hsl(var(--primary))'
+                    }}
+                  >
+                    <span>Min Stock: <strong>{filters.minStock}</strong></span>
+                    <button 
+                      type="button" 
+                      onClick={() => clearFilter('minStock')}
+                      style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {filters.maxStock && (
+                  <div 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: '2rem',
+                      background: 'hsl(var(--primary) / 0.1)',
+                      border: '1px dashed black',
+                      fontSize: '0.875rem',
+                      color: 'hsl(var(--primary))'
+                    }}
+                  >
+                    <span>Max Stock: <strong>{filters.maxStock}</strong></span>
+                    <button 
+                      type="button" 
+                      onClick={() => clearFilter('maxStock')}
+                      style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {filters.lowStock && (
+                  <div 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: '2rem',
+                      background: 'hsl(var(--destructive) / 0.1)',
+                      border: '1px dashed black',
+                      fontSize: '0.875rem',
+                      color: 'hsl(var(--destructive))'
+                    }}
+                  >
+                    <span>Low Stock Only</span>
+                    <button 
+                      type="button" 
+                      onClick={() => clearFilter('lowStock')}
+                      style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
-                  {activeFiltersCount > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {filters.q && (
-                        <div 
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.4rem 0.75rem',
-                            borderRadius: '2rem',
-                            background: 'hsl(var(--primary) / 0.1)',
-                            border: '1px dashed black',
-                            fontSize: '0.875rem',
-                            color: 'hsl(var(--primary))'
-                          }}
-                        >
-                          <span>Search: <strong>{filters.q}</strong></span>
-                          <button 
-                            type="button" 
-                            onClick={() => clearFilter('q')}
-                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
-                      {filters.minStock && (
-                        <div 
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.4rem 0.75rem',
-                            borderRadius: '2rem',
-                            background: 'hsl(var(--primary) / 0.1)',
-                            border: '1px dashed black',
-                            fontSize: '0.875rem',
-                            color: 'hsl(var(--primary))'
-                          }}
-                        >
-                          <span>Min Stock: <strong>{filters.minStock}</strong></span>
-                          <button 
-                            type="button" 
-                            onClick={() => clearFilter('minStock')}
-                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
-                      {filters.maxStock && (
-                        <div 
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.4rem 0.75rem',
-                            borderRadius: '2rem',
-                            background: 'hsl(var(--primary) / 0.1)',
-                            border: '1px dashed black',
-                            fontSize: '0.875rem',
-                            color: 'hsl(var(--primary))'
-                          }}
-                        >
-                          <span>Max Stock: <strong>{filters.maxStock}</strong></span>
-                          <button 
-                            type="button" 
-                            onClick={() => clearFilter('maxStock')}
-                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
-                      {filters.lowStock && (
-                        <div 
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.4rem 0.75rem',
-                            borderRadius: '2rem',
-                            background: 'hsl(var(--destructive) / 0.1)',
-                            border: '1px dashed black',
-                            fontSize: '0.875rem',
-                            color: 'hsl(var(--destructive))'
-                          }}
-                        >
-                          <span>Low Stock Only</span>
-                          <button 
-                            type="button" 
-                            onClick={() => clearFilter('lowStock')}
-                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'inherit' }}
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="items-list-container">
-                  {error ? <p className="error-text" style={{ marginBottom: '1rem' }}>{error}</p> : null}
-                  
+            {activeTab === 'listing' && (
+              <div className="items-list-container">
+                {error ? <p className="error-text" style={{ marginBottom: '1rem' }}>{error}</p> : null}                  
                   {loading ? (
                     <>
                       <ItemSkeleton />
@@ -437,7 +439,6 @@ export default function ItemsPage({ token }) {
                     </>
                   )}
                 </div>
-              </>
             )}
 
             {activeTab === 'stock' && (
@@ -481,6 +482,7 @@ export default function ItemsPage({ token }) {
                 </div>
               </div>
             )}
+          </div>
         </div>
       )}
 
