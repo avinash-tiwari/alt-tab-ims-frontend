@@ -286,6 +286,21 @@ button.danger:hover {
   -webkit-backface-visibility: hidden;
 }
 
+.add-customer-sticky-header {
+  position: sticky;
+  top: 56px;
+  background: hsl(var(--background));
+  z-index: 40;
+}
+
+.add-customer-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  background: hsl(var(--background));
+  padding-top: 1rem;
+  z-index: 40;
+}
+
 /* Card style from POS */
 .card {
   background: hsl(var(--card));
@@ -717,7 +732,6 @@ button.danger:hover {
 .public-link-card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
   background-color: hsl(195 85% 95%);
 }
 
@@ -1006,6 +1020,7 @@ button.danger:hover {
   align-items: center;
   padding: 1.25rem;
   align-self: start; 
+  width: 100%;
 }
 
 .order-card-left {

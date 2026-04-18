@@ -91,15 +91,15 @@ export default function CustomerDetailPage({ token }) {
   const statsData = [
     {
       label: 'Spent',
-      value: `₹ ${formatCurrency(customer?.totalSpent ?? '0')}`
+      value: `${formatCurrency(customer?.totalSpent ?? '0')}`
     },
     {
       label: 'Credits',
-      value: `₹ ${formatCurrency(customer?.totalCredits ?? '0')}`
+      value: `${formatCurrency(customer?.totalCredits ?? '0')}`
     },
     {
       label: 'Total Due',
-      value: `₹ ${formatCurrency(customer?.totalDue ?? '0')}`
+      value: `${formatCurrency(customer?.totalDue ?? '0')}`
     },
     {
       label: 'Total Orders',
@@ -275,10 +275,13 @@ export default function CustomerDetailPage({ token }) {
         </p>
       ) : null}
 
-        <div className="card public-link-card" style={{ marginTop: '1rem' }}>
+        <div className="card public-link-card" style={{ marginTop: '1rem', padding: '1rem', borderTop: '4px solid hsl(var(--primary))' }}>
+          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+            ORDER LINK
+          </div>
           <div className="public-link-row">
             <div style={{ flex: 1 }}>
-              <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 700, textTransform: 'capitalize', placeItems: 'center' }}>{customer?.name} - Link</h4>
+              <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 700, textTransform: 'capitalize' }}>{customer?.name}</h4>
             </div>
             {customerIdentifier && (
               <div className="col-actions">
@@ -314,15 +317,15 @@ export default function CustomerDetailPage({ token }) {
           <div className="customer-stats-bar">
             <div className="stat-pill">
               <span className="stat-label">Spent</span>
-              <span className="stat-value">₹{formatCurrency(customer?.totalSpent ?? '0')}</span>
+              <span className="stat-value">{formatCurrency(customer?.totalSpent ?? '0')}</span>
             </div>
             <div className="stat-pill">
               <span className="stat-label">Credits</span>
-              <span className="stat-value warning">₹{formatCurrency(customer?.totalCredits ?? '0')}</span>
+              <span className="stat-value warning">{formatCurrency(customer?.totalCredits ?? '0')}</span>
             </div>
             <div className="stat-pill">
               <span className="stat-label">Due</span>
-              <span className="stat-value destructive">₹{formatCurrency(customer?.totalDue ?? '0')}</span>
+              <span className="stat-value destructive">{formatCurrency(customer?.totalDue ?? '0')}</span>
             </div>
             <div className="stat-pill">
               <span className="stat-label">Orders</span>
@@ -334,51 +337,58 @@ export default function CustomerDetailPage({ token }) {
         <div className="card" style={{ padding: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>CUSTOM PRICES</h4>
+            {priceList.length > 0 && (
+              <button 
+                type="button" 
+                className="primary" 
+                onClick={() => navigate(`/customer/${id}/add`)}
+                style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.4rem 0.75rem', height: 'auto', width: 'auto' }}
+              >
+                ADD/EDIT ITEM
+              </button>
+            )}
           </div>
           <div className="items-data-container">
-            <table className="price-table">
-              <thead>
-                <tr>
-                  <th>Item Name</th>
-                  <th style={{ textAlign: 'right' }}>Base / Custom</th>
-                </tr>
-              </thead>
-              <tbody>
-                {priceList.length > 0 ? (
-                  priceList.map((price) => {
+            {priceList.length > 0 ? (
+              <table className="price-table">
+                <thead>
+                  <tr>
+                    <th>Item Name</th>
+                    <th style={{ textAlign: 'right' }}>Base / Custom</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {priceList.map((price) => {
                     const item = price.item || items.find((it) => it.id === price.itemId);
                     return (
                       <tr key={price.itemId}>
                         <td style={{ fontWeight: 500 }}>{item?.name || price.itemId}</td>
                         <td style={{ textAlign: 'right' }}>
-                          <span className="muted" style={{ fontSize: '0.8rem' }}>₹{item?.basePrice || 0}</span>
+                          <span className="muted" style={{ fontSize: '0.8rem' }}>{formatCurrency(item?.basePrice || 0)}</span>
                           <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>/</span>
-                          <strong style={{ color: 'hsl(var(--primary))' }}>₹{price.customPrice}</strong>
+                          <strong style={{ color: 'hsl(var(--primary))' }}>{formatCurrency(price.customPrice)}</strong>
                         </td>
                       </tr>
                     );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="2" style={{ textAlign: 'center', padding: '2rem', color: 'hsl(var(--muted-foreground))' }}>
-                      No custom prices defined yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '2rem 1rem', textAlign: 'center' }}>
+                <p className="muted" style={{ marginBottom: '1.25rem', fontSize: '0.875rem' }}>No custom prices defined for this customer yet.</p>
+                <button 
+                  type="button" 
+                  className="primary" 
+                  onClick={() => navigate(`/customer/${id}/add`)}
+                  style={{ width: '100%', maxWidth: '250px' }}
+                >
+                  CREATE CUSTOM PRICE LIST
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      <button
-        type="button"
-        className="floating-action-btn"
-        onClick={() => navigate(`/customer/${id}/add`)}
-        title="Add Custom Price"
-      >
-        <Plus size={24} />
-      </button>
     </section>
   );
 }

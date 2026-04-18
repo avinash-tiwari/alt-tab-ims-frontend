@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import {
   getCustomer,
   listItems,
-  setCustomerPrices
+  setCustomerPrices,
+  getCustomerPrices
 } from '../api';
+import { formatCurrency } from '../utils/orderUtils';
 
 export default function AddCustomerPricePage({ token }) {
   const { id } = useParams();
@@ -15,33 +17,29 @@ export default function AddCustomerPricePage({ token }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showIncompleteError, setShowIncompleteError] = useState(false);
   
-  const [itemId, setItemId] = useState('');
-  const [customPrice, setCustomPrice] = useState('');
-  const [priceEntries, setPriceEntries] = useState([]);
+  const [priceEntries, setPriceEntries] = useState([{ itemId: '', customPrice: '' }]);
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
-      const [customerData, itemsData] = await Promise.all([
+      const [customerData, itemsData, pricesData] = await Promise.all([
         getCustomer(token, id),
-        listItems(token)
+        listItems(token),
+        getCustomerPrices(token, id)
       ]);
       setCustomer(customerData);
       const itemsList = Array.isArray(itemsData) ? itemsData : [];
       setItems(itemsList);
       
-      // Initialize priceEntries with existing custom prices
-      if (customerData?.priceList) {
-        setPriceEntries(customerData.priceList.map(p => ({
-          itemId: p.itemId,
-          customPrice: Number(p.customPrice)
+      const priceList = Array.isArray(pricesData) ? pricesData : [];
+      if (priceList.length > 0) {
+        setPriceEntries(priceList.map(p => ({
+          itemId: String(p.itemId),
+          customPrice: String(Math.trunc(Number(p.customPrice)))
         })));
-      }
-
-      if (itemsList.length > 0) {
-        setItemId(itemsList[0].id);
       }
     } catch (err) {
       setError(err.message);
@@ -52,48 +50,60 @@ export default function AddCustomerPricePage({ token }) {
 
   useEffect(() => {
     loadData();
-  }, [id]);
+  }, [id, token]);
 
-  const addPriceEntry = () => {
-    const trimmedPrice = customPrice.trim();
-    if (!itemId) {
-      setError('Select an item before adding a custom price.');
+  const handleAddEntry = () => {
+    const incompleteEntry = priceEntries.find(entry => !entry.itemId || entry.customPrice === '');
+    if (incompleteEntry) {
+      setShowIncompleteError(true);
       return;
     }
-    if (!trimmedPrice) {
-      setError('Enter a custom price before adding.');
-      return;
-    }
-    const parsedPrice = Number(trimmedPrice);
-    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      setError('Provide a valid custom price (0 or higher).');
-      return;
-    }
-
+    setShowIncompleteError(false);
     setError('');
-    setPriceEntries((prev) => {
-      const filtered = prev.filter((entry) => entry.itemId !== itemId);
-      return [...filtered, { itemId, customPrice: parsedPrice }];
-    });
-    setCustomPrice('');
+    setPriceEntries([...priceEntries, { itemId: '', customPrice: '' }]);
   };
 
-  const savePriceList = async () => {
+  const handleRemoveEntry = (index) => {
+    setError('');
+    setShowIncompleteError(false);
+    setPriceEntries(priceEntries.filter((_, idx) => idx !== index));
+  };
+
+  const handleEntryChange = (index, field, value) => {
+    setError('');
+    if ((field === 'itemId' || field === 'customPrice') && value) {
+      // Check if the other required field in this entry is also filled
+      const entry = priceEntries[index];
+      const otherField = field === 'itemId' ? 'customPrice' : 'itemId';
+      if (entry[otherField]) {
+        setShowIncompleteError(false);
+      }
+    }
+    const next = [...priceEntries];
+    next[index] = { ...next[index], [field]: value };
+    setPriceEntries(next);
+  };
+
+  const savePriceList = async (e) => {
+    e.preventDefault();
     if (!id) return;
-    if (priceEntries.length === 0) {
-      setError('Add at least one custom price before saving.');
+    
+    const validEntries = priceEntries.filter(entry => entry.itemId && entry.customPrice !== '');
+    
+    if (validEntries.length === 0) {
+      setError('Add at least one valid custom price before saving.');
       return;
     }
+
     setError('');
     setSaving(true);
     try {
-      const formattedPayload = priceEntries.map((entry) => ({
+      const formattedPayload = validEntries.map((entry) => ({
         itemId: entry.itemId,
-        customPrice: Number(entry.customPrice).toFixed(2)
+        customPrice: Number(entry.customPrice)
       }));
       await setCustomerPrices(token, id, formattedPayload);
       setSaving(false);
-      setPriceEntries([]);
       navigate(`/customer/${id}`);
     } catch (err) {
       setSaving(false);
@@ -101,67 +111,184 @@ export default function AddCustomerPricePage({ token }) {
     }
   };
 
-  const isAddDisabled = saving || !itemId || !customPrice.trim();
-  const isSaveDisabled = saving || priceEntries.length === 0;
-
   if (loading && !customer) return <div className="page"><p className="muted">Loading...</p></div>;
 
+  const allItemsSelected = priceEntries.length >= items.length && priceEntries.every(e => e.itemId);
+
   return (
-    <section className="page">
-      <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+    <section 
+      className="page" 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'hsl(var(--background))',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '1rem'
+      }}
+    >
+      <div className="add-customer-sticky-header" style={{ paddingBottom: '1rem', flexShrink: 0, position: 'relative', top: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0' }}>
           <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
             <ChevronLeft size={24} />
           </button>
-          <h3 style={{ margin: 0 }}>ADD CUSTOM PRICE</h3>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>ADD CUSTOM PRICE</h3>
+            <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>For {customer?.name}</p>
+          </div>
         </div>
       </div>
 
-      <div>
-        {error && <p className="error-text">{error}</p>}
-        <article className="card stack-form">
-          <h3 className="items-heading">For {customer?.name}</h3>
+      <form onSubmit={savePriceList} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+        <div style={{ 
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+          flex: 1,
+          overflowY: 'auto',
+          paddingRight: '4px',
+        }}>
+          {error && <p className="error-text" style={{ margin: 0 }}>{error}</p>}
           
-          <select value={itemId} onChange={(event) => setItemId(event.target.value)} disabled={!items.length}>
-            {items.length === 0 ? (
-              <option value="">No items available</option>
-            ) : (
-              items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} (Rs. {item.basePrice})
-                </option>
-              ))
-            )}
-          </select>
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Custom price"
-            value={customPrice}
-            onChange={(event) => setCustomPrice(event.target.value)}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {priceEntries.map((entry, index) => {
+              // Filter items: exclude items already selected in OTHER entries
+              const otherSelectedIds = priceEntries
+                .filter((_, idx) => idx !== index)
+                .map(e => e.itemId);
+              
+              const availableItems = items.filter(it => !otherSelectedIds.includes(String(it.id)));
+              const selectedItem = items.find(it => String(it.id) === String(entry.itemId));
 
-          <div className="split-2">
-            <button type="button" onClick={addPriceEntry} disabled={isAddDisabled}>Add Entry</button>
-            <button type="button" className="primary" onClick={savePriceList} disabled={isSaveDisabled}>
-              {saving ? 'Saving...' : 'Save Price List'}
-            </button>
+              return (
+                <div key={index} className="card" style={{ padding: '1rem', margin: 0, position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Entry {index + 1}</span>
+                    {priceEntries.length > 1 && (
+                      <button 
+                        type="button" 
+                        className="ghost-btn" 
+                        onClick={() => handleRemoveEntry(index)}
+                        style={{ padding: '4px', color: 'hsl(var(--destructive))' }}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Select Item</label>
+                    <select
+                      value={entry.itemId}
+                      onChange={(e) => handleEntryChange(index, 'itemId', e.target.value)}
+                      disabled={saving}
+                      required
+                    >
+                      <option value="">Search item...</option>
+                      {availableItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} ({formatCurrency(item.basePrice)})
+                        </option>
+                      ))}
+                    </select>
+                    {showIncompleteError && !entry.itemId && (
+                      <p className="error-text" style={{ 
+                        fontSize: '0.75rem', 
+                        padding: '0.25rem 0.5rem', 
+                        marginTop: '0.25rem',
+                        background: 'transparent',
+                        border: 'none'
+                      }}>
+                        Please select an item to continue.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="split-2">
+                    <div className="form-group">
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Base Price</label>
+                      <div style={{ 
+                        padding: '0.6rem 0.75rem', 
+                        background: 'hsl(var(--muted) / 0.5)', 
+                        borderRadius: 'var(--radius)',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        border: '1px solid hsl(var(--border))',
+                        height: '2.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: 'hsl(var(--muted-foreground))',
+                        cursor: 'not-allowed'
+                      }}>
+                        {selectedItem ? formatCurrency(selectedItem.basePrice) : '—'}
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Custom Price</label>
+                      <input
+                        type="number"
+                        step="1"
+                        placeholder="Price"
+                        value={entry.customPrice}
+                        onChange={(e) => handleEntryChange(index, 'customPrice', e.target.value)}
+                        disabled={saving}
+                        required
+                      />
+                      {showIncompleteError && entry.customPrice === '' && (
+                        <p className="error-text" style={{ 
+                          fontSize: '0.75rem', 
+                          padding: '0.25rem 0.5rem', 
+                          marginTop: '0.25rem',
+                          background: 'transparent',
+                          border: 'none'
+                        }}>
+                          Enter price.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {priceEntries.length > 0 && (
-            <div className="items-data-container" style={{ marginTop: '1rem' }}>
-              {priceEntries.map((entry) => {
-                const item = items.find((it) => it.id === entry.itemId);
-                return (
-                  <p key={entry.itemId} className="list-line">
-                    {item?.name || entry.itemId}: Rs. {Number(entry.customPrice).toFixed(2)}
-                  </p>
-                );
-              })}
-            </div>
+          {!allItemsSelected && (
+            <button
+              type="button"
+              onClick={handleAddEntry}
+              className="ghost-btn"
+              style={{ 
+                width: '100%', 
+                border: '1px dashed hsl(var(--border))', 
+                background: 'hsl(var(--card))',
+                padding: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                fontWeight: 600
+              }}
+            >
+              <Plus size={18} /> Add Another Item
+            </button>
           )}
-        </article>
-      </div>
+        </div>
+
+        <div className="add-customer-sticky-footer" style={{ position: 'relative', bottom: 0, paddingTop: '1rem' }}>
+          <button 
+            type="submit" 
+            className="primary" 
+            disabled={saving || priceEntries.length === 0} 
+            style={{ width: '100%', height: '2.5rem', fontSize: '0.9rem', fontWeight: 700 }}
+          >
+            {saving ? 'Saving...' : 'SAVE PRICE LIST'}
+          </button>
+        </div>
+      </form>
     </section>
   );
 }

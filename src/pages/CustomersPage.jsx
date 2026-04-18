@@ -161,15 +161,15 @@ export default function CustomersPage({ token }) {
                 <div className="customer-stats-bar">
                   <div className="stat-pill">
                     <span className="stat-label">Spent</span>
-                    <span className="stat-value">₹{formatCurrency(customer?.totalSpent ?? '0')}</span>
+                    <span className="stat-value">{formatCurrency(customer?.totalSpent ?? '0')}</span>
                   </div>
                   <div className="stat-pill">
                     <span className="stat-label">Credits</span>
-                    <span className="stat-value warning">₹{formatCurrency(customer?.totalCredits ?? '0')}</span>
+                    <span className="stat-value warning">{formatCurrency(customer?.totalCredits ?? '0')}</span>
                   </div>
                   <div className="stat-pill">
                     <span className="stat-label">Due</span>
-                    <span className="stat-value destructive">₹{formatCurrency(customer?.totalDue ?? '0')}</span>
+                    <span className="stat-value destructive">{formatCurrency(customer?.totalDue ?? '0')}</span>
                   </div>
                   <div className="stat-pill">
                     <span className="stat-label">Orders</span>
