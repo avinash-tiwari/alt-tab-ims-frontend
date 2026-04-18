@@ -5,9 +5,9 @@ import {
   addOrderItem,
   deleteOrder,
   deleteOrderItem,
-  downloadOrderPDF,
   getCustomerPrices,
   getOrder,
+  getOrderInvoiceData,
   listItems,
   updateOrder,
   updateOrderItemQuantity,
@@ -20,6 +20,7 @@ import {
   getStatusLabel
 } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
+import { generateInvoicePDF } from '../utils/pdfGenerator';
 
 export default function OrderDetailsPage({ token }) {
   const { id: orderId } = useParams();
@@ -283,11 +284,13 @@ export default function OrderDetailsPage({ token }) {
     setDownloading(true);
     setError('');
     try {
-      const blob = await downloadOrderPDF(token, orderDetail.id);
+      const data = await getOrderInvoiceData(token, orderDetail.id);
+      const fileName = `order-${orderDetail.id}.pdf`;
+      const blob = await generateInvoicePDF(data, fileName);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `order-${orderDetail.id}.pdf`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       link.remove();

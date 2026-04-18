@@ -4,10 +4,11 @@ import { ChevronLeft, Copy, Download, Pencil, Plus, Share2, Phone, MapPin, Exter
 import {
   getCustomer,
   listItems,
-  downloadCustomerDeliveredOrdersPDF,
-  getCustomerPrices
+  getCustomerPrices,
+  getCustomerDeliveredOrdersInvoiceData
 } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
+import { generateInvoicePDF } from '../utils/pdfGenerator';
 
 const CustomerDetailSkeleton = () => (
   <div className="page">
@@ -160,11 +161,12 @@ export default function CustomerDetailPage({ token }) {
     setShareProcessing(true);
     setError('');
     try {
-      const { blob, fileName } = await downloadCustomerDeliveredOrdersPDF(token, customerId);
-      const pdfBlob = blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' });
-      const pdfFile = typeof File === 'function'
-        ? new File([pdfBlob], fileName, { type: 'application/pdf' })
-        : pdfBlob;
+      const data = await getCustomerDeliveredOrdersInvoiceData(token, customerId);
+      const today = new Date().toISOString().split('T')[0];
+      const fileName = `${data.customer.id}-${(data.customer.name || 'customer').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}-delivered-orders-${today}.pdf`;
+      
+      const blob = await generateInvoicePDF(data, fileName);
+      const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
 
       if (navigator.canShare && typeof navigator.canShare === 'function' && !navigator.canShare({ files: [pdfFile] })) {
         throw new Error('Sharing PDFs is not supported by your browser.');
@@ -191,7 +193,11 @@ export default function CustomerDetailPage({ token }) {
     setInvoiceDownloading(true);
     setError('');
     try {
-      const { blob, fileName } = await downloadCustomerDeliveredOrdersPDF(token, customerId);
+      const data = await getCustomerDeliveredOrdersInvoiceData(token, customerId);
+      const today = new Date().toISOString().split('T')[0];
+      const fileName = `${data.customer.id}-${(data.customer.name || 'customer').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}-delivered-orders-${today}.pdf`;
+      
+      const blob = await generateInvoicePDF(data, fileName);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

@@ -281,6 +281,10 @@ export async function downloadOrderPDF(token, orderId) {
   return response.blob();
 }
 
+export async function getOrderInvoiceData(token, orderId) {
+  return request(`/orders/${orderId}/data`, { token });
+}
+
 export async function downloadCustomerDeliveredOrdersPDF(token, customerId) {
   const headers = {};
   if (token) {
@@ -304,6 +308,10 @@ export async function downloadCustomerDeliveredOrdersPDF(token, customerId) {
   const fileName = appendDateToFilename(rawFileName);
 
   return { blob, fileName };
+}
+
+export async function getCustomerDeliveredOrdersInvoiceData(token, customerId) {
+  return request(`/customers/${customerId}/delivered-orders/data`, { token });
 }
 
 export async function getDashboardAnalyticsMonthly(token, month) {
