@@ -132,6 +132,18 @@ export async function updateBulkStock(token, payload) {
   });
 }
 
+export async function listSpends(token, query) {
+  return request('/spends', { token, query });
+}
+
+export async function bulkMarkSpendsStatusTrue(token, payload) {
+  return request('/spends/bulk-status-true', {
+    method: 'PATCH',
+    token,
+    body: payload
+  });
+}
+
 export async function listCustomers(token) {
   return request('/customers', { token });
 }

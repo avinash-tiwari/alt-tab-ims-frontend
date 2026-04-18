@@ -53,6 +53,7 @@ function AnalyticsTotals({ totals }) {
   const totalOrderAmount = formatCurrency(totals?.totalOrderAmount);
   const amountReceived = formatCurrency(totals?.amountReceived);
   const totalCredits = formatCurrency(totals?.totalCredits);
+  const totalSpends = formatCurrency(totals?.totalSpends);
 
   return (
     <div className="customer-stats-grid" style={{ marginBottom: '1rem' }}>
@@ -80,12 +81,19 @@ function AnalyticsTotals({ totals }) {
           <div className="stat-value">{totalCredits}</div>
         </div>
       </div>
+      <div className="stat-item">
+        <div className="stat-pill">
+          <div className="stat-label">Total Spends</div>
+          <div className="stat-value">{totalSpends}</div>
+        </div>
+      </div>
     </div>
   );
 }
 
 function AnalyticsLists({ analytics }) {
   const topSellingItems = Array.isArray(analytics?.topSellingItems) ? analytics.topSellingItems : [];
+  const topSpentItems = Array.isArray(analytics?.topSpentItems) ? analytics.topSpentItems : [];
   const lowStockItems = Array.isArray(analytics?.lowStockItems) ? analytics.lowStockItems : [];
   const topPaidCustomers = Array.isArray(analytics?.topPaidCustomers) ? analytics.topPaidCustomers : [];
 
@@ -101,6 +109,20 @@ function AnalyticsLists({ analytics }) {
           ))
         ) : (
           <p className="muted">No top selling items found.</p>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Top spent items</h3>
+        {topSpentItems.length ? (
+          topSpentItems.map((item, index) => (
+            <p className="list-line" key={`${item.itemName ?? 'item'}-${index}`}>
+              <strong>{item.itemName || 'Item'}</strong> — Qty {item.quantity ?? '—'} @ {formatCurrency(item.unitPrice)} (
+              Total {formatCurrency(item.totalSpent)})
+            </p>
+          ))
+        ) : (
+          <p className="muted">No spent items found.</p>
         )}
       </div>
 

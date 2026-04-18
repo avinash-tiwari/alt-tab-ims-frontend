@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Trash2, Plus, Filter, X, Package } from 'lucide-react';
-import { deleteItem, listItems, listLowStockItems, updateBulkStock } from '../api';
+import {
+  bulkMarkSpendsStatusTrue,
+  deleteItem,
+  listItems,
+  listLowStockItems,
+  listSpends,
+  updateBulkStock
+} from '../api';
 import EmptyState from '../components/EmptyState';
 
 const ItemSkeleton = () => (
@@ -47,6 +54,12 @@ export default function ItemsPage({ token }) {
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [bulkUpdateError, setBulkUpdateError] = useState('');
   const [bulkUpdateSuccess, setBulkUpdateSuccess] = useState('');
+  const [spendsModalOpen, setSpendsModalOpen] = useState(false);
+  const [spendsLoading, setSpendsLoading] = useState(false);
+  const [spendsVerifying, setSpendsVerifying] = useState(false);
+  const [spendsError, setSpendsError] = useState('');
+  const [spendsSuccess, setSpendsSuccess] = useState('');
+  const [spends, setSpends] = useState([]);
   const [filters, setFilters] = useState({ q: '', minStock: '', maxStock: '', lowStock: false });
   const [tempFilters, setTempFilters] = useState({ q: '', minStock: '', maxStock: '', lowStock: false });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -148,11 +161,71 @@ export default function ItemsPage({ token }) {
       const rawValue = stockInputs[item.id];
       const candidate = rawValue === undefined || rawValue === '' ? item.stock : rawValue;
       const parsed = Number(candidate);
+      const currentStockRaw = Number(item.stock ?? 0);
+      const currentStock = Number.isFinite(currentStockRaw) ? currentStockRaw : 0;
+      const nextStock = Number.isFinite(parsed) ? parsed : currentStock;
       return {
         id: item.id,
-        stock: Number.isFinite(parsed) ? parsed : Number(item.stock ?? 0)
+        diff: nextStock - currentStock
       };
-    });
+    }).filter((update) => update.diff !== 0);
+  };
+
+  const fetchPendingSpends = async () => {
+    setSpendsLoading(true);
+    setSpendsError('');
+    setSpendsSuccess('');
+    try {
+      const data = await listSpends(token, { status: false });
+      setSpends(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setSpendsError(err.message);
+      setSpends([]);
+    } finally {
+      setSpendsLoading(false);
+    }
+  };
+
+  const formatSpendTitle = (spend) => {
+    if (!spend || typeof spend !== 'object') return 'Spend';
+    if (spend.title) return String(spend.title);
+    if (spend.name) return String(spend.name);
+    if (spend.description) return String(spend.description);
+    if (spend.vendor) return String(spend.vendor);
+    if (spend.category) return String(spend.category);
+    if (spend.id !== undefined && spend.id !== null) return `Spend #${spend.id}`;
+    return 'Spend';
+  };
+
+  const formatSpendMeta = (spend) => {
+    if (!spend || typeof spend !== 'object') return '';
+    const amountRaw = spend.amount ?? spend.total ?? spend.value ?? spend.cost;
+    const amount = amountRaw === undefined || amountRaw === null || amountRaw === '' ? null : Number(amountRaw);
+    const date = spend.date ?? spend.createdAt ?? spend.created_at;
+    const parts = [];
+    if (Number.isFinite(amount)) parts.push(`Amount: ${amount}`);
+    if (date) parts.push(`Date: ${String(date)}`);
+    return parts.join(' • ');
+  };
+
+  const handleVerifyAllSpends = async () => {
+    setSpendsVerifying(true);
+    setSpendsError('');
+    setSpendsSuccess('');
+    try {
+      const ids = spends.map((spend) => spend?.id).filter((id) => id !== undefined && id !== null);
+      if (ids.length === 0) {
+        setSpendsSuccess('No pending spends to verify.');
+        return;
+      }
+      await bulkMarkSpendsStatusTrue(token, { ids });
+      setSpendsSuccess('All spends verified.');
+      await fetchPendingSpends();
+    } catch (err) {
+      setSpendsError(err.message);
+    } finally {
+      setSpendsVerifying(false);
+    }
   };
 
   const handleBulkUpdate = async () => {
@@ -160,9 +233,16 @@ export default function ItemsPage({ token }) {
     setBulkUpdateError('');
     setBulkUpdateSuccess('');
     try {
-      await updateBulkStock(token, { updates: prepareBulkUpdates() });
+      const updates = prepareBulkUpdates();
+      if (updates.length === 0) {
+        setBulkUpdateSuccess('No stock changes to apply.');
+        return;
+      }
+      await updateBulkStock(token, { updates });
       setBulkUpdateSuccess('Stocks updated successfully.');
       await loadItems(filters);
+      setSpendsModalOpen(true);
+      await fetchPendingSpends();
     } catch (err) {
       setBulkUpdateError(err.message);
     } finally {
@@ -560,6 +640,108 @@ export default function ItemsPage({ token }) {
           <footer className="split-2" style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
             <button type="button" onClick={resetFilters} style={{ width: '100%' }}>Reset All</button>
             <button type="button" className="primary" onClick={applyFilters} style={{ width: '100%' }}>Apply Filters</button>
+          </footer>
+        </div>
+      )}
+
+      {spendsModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'hsl(var(--background))',
+            zIndex: 1100,
+            padding: '1rem',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <header
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingBottom: '1rem',
+              borderBottom: '1px solid hsl(var(--border))',
+              marginBottom: '1rem'
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0 }}>Pending Spends</h2>
+              <p style={{ margin: '0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                status=false
+              </p>
+            </div>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => setSpendsModalOpen(false)}
+              disabled={spendsLoading || spendsVerifying}
+              title="Close"
+            >
+              <X size={24} />
+            </button>
+          </header>
+
+          {spendsError && <p className="error-text">{spendsError}</p>}
+          {spendsSuccess && <p className="success-text">{spendsSuccess}</p>}
+
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {spendsLoading ? (
+              <p className="muted">Loading spends...</p>
+            ) : spends.length === 0 ? (
+              <p className="muted">No pending spends.</p>
+            ) : (
+              spends.map((spend, index) => (
+                <div key={`spend-${spend?.id ?? index}`} className="card" style={{ padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3
+                        style={{
+                          margin: 0,
+                          fontSize: '1rem',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {formatSpendTitle(spend)}
+                      </h3>
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
+                        {formatSpendMeta(spend)}
+                      </p>
+                    </div>
+                    {spend?.id !== undefined && spend?.id !== null && (
+                      <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>#{spend.id}</div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <footer style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={fetchPendingSpends}
+                disabled={spendsLoading || spendsVerifying}
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleVerifyAllSpends}
+                disabled={spendsLoading || spendsVerifying || spends.length === 0}
+              >
+                {spendsVerifying ? 'Verifying...' : 'Verified'}
+              </button>
+            </div>
           </footer>
         </div>
       )}
