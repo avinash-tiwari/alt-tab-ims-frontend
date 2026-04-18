@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, RefreshCw, ShoppingBag, X, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
 import {
@@ -7,7 +7,8 @@ import {
   listCustomers,
   listItems,
   listOrders,
-  getCustomerPrices
+  getCustomerPrices,
+  updateOrderStatus
 } from '../api';
 import { formatCurrency, getDisplayCustomerName, getStatusLabel } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
@@ -54,6 +55,11 @@ export default function OrdersPage({ token }) {
   const [customerPrices, setCustomerPrices] = useState([]);
   const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState([{ itemId: '', quantity: 1 }]);
+  const [isBulkActionActive, setIsBulkActionActive] = useState(false);
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+  const [moveToTab, setMoveToTab] = useState('');
+  const [snackbar, setSnackbar] = useState({ show: false, message: '' });
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const navigate = useNavigate();
 
   const loadOrders = async () => {
@@ -205,6 +211,45 @@ export default function OrdersPage({ token }) {
     }
   };
 
+  const handleToggleBulkAction = () => {
+    setIsBulkActionActive(!isBulkActionActive);
+    setSelectedOrderIds([]);
+    setMoveToTab('');
+  };
+
+  const handleToggleOrderSelection = (orderId) => {
+    setSelectedOrderIds(prev => 
+      prev.includes(orderId) 
+        ? prev.filter(id => id !== orderId) 
+        : [...prev, orderId]
+    );
+  };
+
+  const showSnackbar = (message) => {
+    setSnackbar({ show: true, message });
+    setTimeout(() => setSnackbar({ show: false, message: '' }), 3000);
+  };
+
+  const handleBulkMove = async () => {
+    if (!moveToTab || selectedOrderIds.length === 0) return;
+    
+    setIsProcessingBulk(true);
+    try {
+      await Promise.all(selectedOrderIds.map(id => updateOrderStatus(token, id, moveToTab)));
+      await loadOrders();
+      const count = selectedOrderIds.length;
+      setIsBulkActionActive(false);
+      setSelectedOrderIds([]);
+      setActiveTab(moveToTab);
+      setMoveToTab('');
+      showSnackbar(`${count} order${count > 1 ? 's' : ''} moved to ${moveToTab}`);
+    } catch (err) {
+      setError(`Failed to move orders: ${err.message}`);
+    } finally {
+      setIsProcessingBulk(false);
+    }
+  };
+
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const status = order.status?.toUpperCase();
@@ -214,7 +259,7 @@ export default function OrdersPage({ token }) {
   }, [orders, activeTab]);
 
   return (
-    <section className="page">
+    <section className="page" style={{ paddingBottom: orders.length > 0 ? '12rem' : '8rem' }}>
       <div className="sticky-header" style={{ paddingTop: '0.5rem' }}>
         <div className="page-tabs" style={{ marginBottom: '0.5rem', whiteSpace: 'nowrap', marginTop: '0' }}>
           {['NEW', 'DELIVERED', 'OVERDUE', 'PAID'].map((tab) => (
@@ -245,16 +290,36 @@ export default function OrdersPage({ token }) {
                 const totalItems = Array.isArray(order.items) ? order.items.length : 0;
                 const statusClass = order.status?.toLowerCase() ?? 'unknown';
                 const shortOrderId = orderIdLabel.slice(0, 8);
+                const isSelected = selectedOrderIds.includes(order.id);
                 return (
                   <button
                     key={order.id}
                     type="button"
-                    className={`order-card order-card--${statusClass}`}
-                    onClick={() => navigate(`/orders/${order.id}`)}
-                    aria-label={`View ${clickableLabel}`}
-                    style={{ marginBottom: '0.75rem' }}
+                    className={`order-card order-card--${statusClass} ${isSelected ? 'selected' : ''}`}
+                    onClick={() => {
+                      if (isBulkActionActive) {
+                        handleToggleOrderSelection(order.id);
+                      } else {
+                        navigate(`/orders/${order.id}`);
+                      }
+                    }}
+                    aria-label={isBulkActionActive ? `Select ${clickableLabel}` : `View ${clickableLabel}`}
+                    style={{ 
+                      marginBottom: '0.75rem',
+                      border: isSelected ? '2px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
+                      position: 'relative'
+                    }}
                   >
                     <div className="order-card-layout">
+                      {isBulkActionActive && (
+                        <div style={{ marginRight: '0.75rem', display: 'flex', alignItems: 'center' }}>
+                          {isSelected ? (
+                            <CheckCircle2 size={24} className="text-primary" style={{ color: 'hsl(var(--primary))' }} />
+                          ) : (
+                            <Circle size={24} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                          )}
+                        </div>
+                      )}
                       <div className="order-card-left">
                         <p className="order-customer--card">{customerName}</p>
                         <p className="order-card-date">
@@ -288,24 +353,114 @@ export default function OrdersPage({ token }) {
       )}
 
       {!loading && !orders.length && (
-        <EmptyState
-          icon={ShoppingBag}
-          title="No orders yet"
-          description="When you start creating orders, they will appear here. Manage your sales and fulfillment in one place."
-          actionLabel="Create First Order"
-          onAction={openCreateModal}
-        />
+        <>
+          <EmptyState
+            icon={ShoppingBag}
+            title="No orders yet"
+            description="When you start creating orders, they will appear here. Manage your sales and fulfillment in one place."
+            actionLabel="Create First Order"
+            onAction={openCreateModal}
+          />
+          <footer style={{
+            position: 'fixed',
+            bottom: '4rem',
+            left: 0,
+            right: 0,
+            background: 'hsl(var(--background))',
+            borderTop: '1px solid hsl(var(--border))',
+            padding: '1rem',
+            zIndex: 100,
+            display: 'flex',
+            gap: '1rem'
+          }}>
+            <button 
+              type="button" 
+              style={{ height: '2.5rem', flex: 1 }} 
+              onClick={handleToggleBulkAction}
+              disabled
+            >
+              BULK ACTION
+            </button>
+            <button 
+              type="button" 
+              className="primary" 
+              style={{ height: '2.5rem', flex: 1 }} 
+              onClick={openCreateModal}
+            >
+              CREATE ORDER
+            </button>
+          </footer>
+        </>
       )}
 
       {orders.length > 0 && (
-        <button
-          type="button"
-          className="floating-action-btn"
-          onClick={openCreateModal}
-          aria-label="Create a new order"
-        >
-          <Plus size={20} />
-        </button>
+        <footer style={{
+          position: 'fixed',
+          bottom: '4rem',
+          left: 0,
+          right: 0,
+          background: 'hsl(var(--background))',
+          borderTop: '1px solid hsl(var(--border))',
+          padding: '1rem',
+          zIndex: 100,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
+        }}>
+          {isBulkActionActive ? (
+            <>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                 <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedOrderIds.length} Selected</span>
+                 <select 
+                   value={moveToTab} 
+                   onChange={(e) => setMoveToTab(e.target.value)}
+                   style={{ flex: 1, height: '2.5rem' }}
+                 >
+                   <option value="">Move to...</option>
+                   {['NEW', 'DELIVERED', 'OVERDUE', 'PAID']
+                     .filter(t => t !== activeTab)
+                     .map(t => <option key={t} value={t}>{t}</option>)
+                   }
+                 </select>
+              </div>
+              <div className="split-2" style={{ gap: '1rem' }}>
+                 <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>Cancel</button>
+                 <button 
+                   type="button" 
+                   className="primary" 
+                   style={{ height: '2.5rem' }}
+                   disabled={!moveToTab || selectedOrderIds.length === 0 || isProcessingBulk}
+                   onClick={handleBulkMove}
+                 >
+                   {isProcessingBulk ? 'Moving...' : 'Move Orders'}
+                 </button>
+              </div>
+            </>
+          ) : (
+            <div className="split-2" style={{ gap: '1rem' }}>
+              <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>BULK ACTION</button>
+              <button type="button" className="primary" style={{ height: '2.5rem' }} onClick={openCreateModal}>CREATE ORDER</button>
+            </div>
+          )}
+        </footer>
+      )}
+
+      {snackbar.show && (
+        <div style={{
+          position: 'fixed',
+          bottom: '5rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'hsl(var(--primary))',
+          color: 'hsl(var(--primary-foreground))',
+          padding: '0.75rem 1.5rem',
+          borderRadius: 'var(--radius)',
+          zIndex: 1000,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          whiteSpace: 'nowrap'
+        }}>
+          {snackbar.message}
+        </div>
       )}
 
       {/* CREATE ORDER MODAL  */}
