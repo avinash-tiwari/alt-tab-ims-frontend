@@ -64,6 +64,7 @@ export default function ItemsPage({ token }) {
   const [filters, setFilters] = useState({ q: '', minStock: '', maxStock: '', lowStock: false });
   const [tempFilters, setTempFilters] = useState({ q: '', minStock: '', maxStock: '', lowStock: false });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({ show: false, message: '' });
 
   const activeFiltersCount = useMemo(() => {
     return Object.entries(filters).filter(([key, value]) => {
@@ -71,6 +72,10 @@ export default function ItemsPage({ token }) {
       return value !== '';
     }).length;
   }, [filters]);
+
+  const totalSpendMoney = useMemo(() => {
+    return spends.reduce((sum, spend) => sum + (Number(spend.total) || 0), 0);
+  }, [spends]);
 
   const loadItems = async (appliedFilters = filters) => {
     setLoading(true);
@@ -187,28 +192,6 @@ export default function ItemsPage({ token }) {
     }
   };
 
-  const formatSpendTitle = (spend) => {
-    if (!spend || typeof spend !== 'object') return 'Spend';
-    if (spend.title) return String(spend.title);
-    if (spend.name) return String(spend.name);
-    if (spend.description) return String(spend.description);
-    if (spend.vendor) return String(spend.vendor);
-    if (spend.category) return String(spend.category);
-    if (spend.id !== undefined && spend.id !== null) return `Spend #${spend.id}`;
-    return 'Spend';
-  };
-
-  const formatSpendMeta = (spend) => {
-    if (!spend || typeof spend !== 'object') return '';
-    const amountRaw = spend.amount ?? spend.total ?? spend.value ?? spend.cost;
-    const amount = amountRaw === undefined || amountRaw === null || amountRaw === '' ? null : Number(amountRaw);
-    const date = spend.date ?? spend.createdAt ?? spend.created_at;
-    const parts = [];
-    if (Number.isFinite(amount)) parts.push(`Amount: ${amount}`);
-    if (date) parts.push(`Date: ${String(date)}`);
-    return parts.join(' • ');
-  };
-
   const handleVerifyAllSpends = async () => {
     setSpendsVerifying(true);
     setSpendsError('');
@@ -217,11 +200,16 @@ export default function ItemsPage({ token }) {
       const ids = spends.map((spend) => spend?.id).filter((id) => id !== undefined && id !== null);
       if (ids.length === 0) {
         setSpendsSuccess('No pending spends to verify.');
+        setSpendsModalOpen(false);
+        setActiveTab('listing');
         return;
       }
       await bulkMarkSpendsStatusTrue(token, { ids });
-      setSpendsSuccess('All spends verified.');
-      await fetchPendingSpends();
+      setSpendsModalOpen(false);
+      setActiveTab('listing');
+      await loadItems(filters);
+      setSnackbar({ show: true, message: 'Verified successfully' });
+      setTimeout(() => setSnackbar({ show: false, message: '' }), 3000);
     } catch (err) {
       setSpendsError(err.message);
     } finally {
@@ -451,7 +439,14 @@ export default function ItemsPage({ token }) {
 
             {activeTab === 'listing' && (
               <div className="items-list-container">
-                {error ? <p className="error-text" style={{ marginBottom: '1rem' }}>{error}</p> : null}
+                {error ? (
+                  <div className="error-text" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{error}</span>
+                    <button type="button" onClick={() => setError('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0.25rem', display: 'flex' }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : null}
                 {loading ? (
                   <>
                     <ItemSkeleton />
@@ -461,7 +456,7 @@ export default function ItemsPage({ token }) {
                 ) : (
                   <>
                     {items.length === 0 && activeFiltersCount > 0 && (
-                      <p className="muted" style={{ textAlign: 'center', padding: '2rem' }}>No items match your filters.</p>
+                      <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>No items match your filters.</p>
                     )}
                     {items.map((item) => (
                       <article
@@ -522,40 +517,67 @@ export default function ItemsPage({ token }) {
             )}
 
             {activeTab === 'stock' && (
-              <div className="stock-update-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {bulkUpdateError && <p className="error-text">{bulkUpdateError}</p>}
-                {bulkUpdateSuccess && <p className="success-text">{bulkUpdateSuccess}</p>}
-                {!loading && items.length === 0 && <p className="muted">No items to update.</p>}
-                {items.map((item) => (
-                  <div
-                    key={`stock-${item.id}`}
-                    className="card"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}
-                  >
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '1rem' }}>{item.name}</h3>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
-                        Threshold: {item.threshold}
-                      </p>
+              <div className="stock-update-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '5rem' }}>
+                  {bulkUpdateError && (
+                    <div className="error-text" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{bulkUpdateError}</span>
+                      <button type="button" onClick={() => setBulkUpdateError('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0.25rem', display: 'flex' }}>
+                        <X size={16} />
+                      </button>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <label htmlFor={`stock-input-${item.id}`} style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>Stock</label>
-                      <input
-                        id={`stock-input-${item.id}`}
-                        type="number"
-                        value={stockInputs[item.id] ?? String(item.stock ?? '')}
-                        onChange={(e) => handleStockChange(item.id, e.target.value)}
-                        style={{ width: '6rem' }}
-                      />
+                  )}
+                  {bulkUpdateSuccess && (
+                    <div className="success-text" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{bulkUpdateSuccess}</span>
+                      <button type="button" onClick={() => setBulkUpdateSuccess('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0.25rem', display: 'flex' }}>
+                        <X size={16} />
+                      </button>
                     </div>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  )}
+                  {!loading && items.length === 0 && <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>No items to update.</p>}
+                  {items.map((item) => (
+                    <div
+                      key={`stock-${item.id}`}
+                      className="card"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: 0 }}
+                    >
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{item.name}</h3>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
+                          Threshold: {item.threshold}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <label htmlFor={`stock-input-${item.id}`} style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>Stock</label>
+                        <input
+                          id={`stock-input-${item.id}`}
+                          type="number"
+                          value={stockInputs[item.id] ?? String(item.stock ?? '')}
+                          onChange={(e) => handleStockChange(item.id, e.target.value)}
+                          style={{ width: '6rem' }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div style={{ 
+                  position: 'fixed', 
+                  bottom: '4rem', 
+                  left: 0, 
+                  right: 0, 
+                  padding: '1rem', 
+                  background: 'hsl(var(--background))', 
+                  borderTop: '1px solid hsl(var(--border))',
+                  zIndex: 40
+                }}>
                   <button
                     type="button"
                     className="primary"
                     onClick={handleBulkUpdate}
                     disabled={bulkUpdating || items.length === 0}
+                    style={{ width: '100%', padding: '0.75rem', fontWeight: 600 }}
                   >
                     {bulkUpdating ? 'Updating...' : 'Update All Stocks'}
                   </button>
@@ -674,9 +696,6 @@ export default function ItemsPage({ token }) {
           >
             <div>
               <h2 style={{ margin: 0 }}>Pending Spends</h2>
-              <p style={{ margin: '0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                status=false
-              </p>
             </div>
             <button
               type="button"
@@ -689,52 +708,88 @@ export default function ItemsPage({ token }) {
             </button>
           </header>
 
-          {spendsError && <p className="error-text">{spendsError}</p>}
-          {spendsSuccess && <p className="success-text">{spendsSuccess}</p>}
+          {spendsError && (
+            <div className="error-text" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{spendsError}</span>
+              <button type="button" onClick={() => setSpendsError('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0.25rem', display: 'flex' }}>
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          {spendsSuccess && (
+            <div className="success-text" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{spendsSuccess}</span>
+              <button type="button" onClick={() => setSpendsSuccess('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0.25rem', display: 'flex' }}>
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
           <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {spendsLoading ? (
-              <p className="muted">Loading spends...</p>
+              <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>Loading spends...</p>
             ) : spends.length === 0 ? (
-              <p className="muted">No pending spends.</p>
+              <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>No pending spends.</p>
             ) : (
               spends.map((spend, index) => (
                 <div key={`spend-${spend?.id ?? index}`} className="card" style={{ padding: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3
-                        style={{
-                          margin: 0,
-                          fontSize: '1rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {formatSpendTitle(spend)}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'hsl(var(--foreground))' }}>
+                        {spend.itemName || 'Spend'}
                       </h3>
-                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
-                        {formatSpendMeta(spend)}
-                      </p>
+                      {spend.updatedAt && (
+                        <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>
+                          {new Date(spend.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      )}
                     </div>
-                    {spend?.id !== undefined && spend?.id !== null && (
-                      <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>#{spend.id}</div>
-                    )}
+                    
+                    <div className="customer-stats-bar">
+                      <div className="stat-pill">
+                        <span className="stat-label">Price</span>
+                        <span className="stat-value">{formatCurrency(spend.price)}</span>
+                      </div>
+                      <div className="stat-pill">
+                        <span className="stat-label">Qty</span>
+                        <span className="stat-value">{spend.quantity}</span>
+                      </div>
+                      <div className="stat-pill">
+                        <span className="stat-label" style={{ fontWeight: 600 }}>Total</span>
+                        <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontWeight: 700 }}>
+                          {formatCurrency(spend.total)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))
             )}
           </div>
 
-          <footer style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
+          <footer style={{ marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid hsl(var(--border))' }}>
+            {spends.length > 0 && (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '0.5rem',
+                padding: '0.5rem 0.75rem',
+                background: 'hsl(var(--muted) / 0.3)',
+                borderRadius: 'var(--radius)'
+              }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>Total Spent</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>{formatCurrency(totalSpendMoney)}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button
                 type="button"
                 className="ghost-btn"
-                onClick={fetchPendingSpends}
+                onClick={() => setSpendsModalOpen(false)}
                 disabled={spendsLoading || spendsVerifying}
               >
-                Refresh
+                Cancel
               </button>
               <button
                 type="button"
@@ -761,6 +816,26 @@ export default function ItemsPage({ token }) {
           </button>
         )
       }
+
+      {snackbar.show && (
+        <div style={{
+          position: 'fixed',
+          bottom: '5rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'hsl(var(--primary))',
+          color: 'hsl(var(--primary-foreground))',
+          padding: '0.75rem 1.5rem',
+          borderRadius: 'var(--radius)',
+          zIndex: 1200,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          whiteSpace: 'nowrap',
+          fontWeight: 600,
+          fontSize: '0.875rem'
+        }}>
+          {snackbar.message}
+        </div>
+      )}
     </section>
   );
 }

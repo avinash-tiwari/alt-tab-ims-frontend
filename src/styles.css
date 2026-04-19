@@ -306,7 +306,7 @@ button.danger:hover {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  padding: 1.25rem;
+  padding: 1rem;
   margin-bottom: 1rem;
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
@@ -1593,8 +1593,12 @@ button.danger:hover {
 
 .success-text {
   margin: 0;
-  font-size: 0.85rem;
+  padding: 0.75rem;
+  background: hsl(var(--primary) / 0.1);
+  border: 1px solid hsl(var(--primary) / 0.2);
+  border-radius: var(--radius);
   color: hsl(var(--primary));
+  font-size: 0.875rem;
 }
 
 .orders-list-header {
