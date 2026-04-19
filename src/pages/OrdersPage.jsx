@@ -60,6 +60,11 @@ export default function OrdersPage({ token }) {
   const [moveToTab, setMoveToTab] = useState('');
   const [snackbar, setSnackbar] = useState({ show: false, message: '' });
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  const [showPaymentSplitModal, setShowPaymentSplitModal] = useState(false);
+  const [paymentOnline, setPaymentOnline] = useState('');
+  const [paymentCash, setPaymentCash] = useState('');
+  const [paymentSplitError, setPaymentSplitError] = useState('');
+  const [paymentSplitSubmitting, setPaymentSplitSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const loadOrders = async () => {
@@ -233,6 +238,16 @@ export default function OrdersPage({ token }) {
   const handleBulkMove = async () => {
     if (!moveToTab || selectedOrderIds.length === 0) return;
     
+    if (moveToTab === 'PAID') {
+      const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
+      const totalToPay = selectedOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+      setPaymentOnline(String(Math.trunc(totalToPay)));
+      setPaymentCash('0');
+      setPaymentSplitError('');
+      setShowPaymentSplitModal(true);
+      return;
+    }
+
     setIsProcessingBulk(true);
     try {
       await Promise.all(selectedOrderIds.map(id => updateOrderStatus(token, id, moveToTab)));
@@ -246,6 +261,64 @@ export default function OrdersPage({ token }) {
     } catch (err) {
       setError(`Failed to move orders: ${err.message}`);
     } finally {
+      setIsProcessingBulk(false);
+    }
+  };
+
+  const handleConfirmBulkPaymentSplit = async () => {
+    const parsedOnline = Number(paymentOnline);
+    const parsedCash = Number(paymentCash);
+
+    if (
+      paymentOnline === '' ||
+      paymentCash === '' ||
+      Number.isNaN(parsedOnline) ||
+      Number.isNaN(parsedCash) ||
+      parsedOnline < 0 ||
+      parsedCash < 0
+    ) {
+      setPaymentSplitError('Enter valid non-negative amounts for both online and cash.');
+      return;
+    }
+
+    setPaymentSplitError('');
+    setIsProcessingBulk(true);
+    setPaymentSplitSubmitting(true);
+
+    try {
+      // For bulk payment, we split the total payment across all orders proportionally or just assign to first/last?
+      // Usually, if it's bulk, we might just want to mark them all as paid with the split info? 
+      // But the API updateOrderStatus takes status and paymentDetails.
+      // If we move multiple orders to PAID at once, we'll send the SAME split to each? That doesn't seem right.
+      // If the user selects 5 orders totaling 5000, and pays 3000 online and 2000 cash, 
+      // we should probably distribute it.
+      
+      const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
+      const totalAmount = selectedOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+      
+      await Promise.all(selectedOrders.map(order => {
+        const orderAmount = Number(order.totalAmount) || 0;
+        const ratio = totalAmount > 0 ? orderAmount / totalAmount : 1 / selectedOrders.length;
+        
+        // Distribute payment proportionally
+        return updateOrderStatus(token, order.id, 'PAID', {
+          online: Math.round(parsedOnline * ratio),
+          cash: Math.round(parsedCash * ratio)
+        });
+      }));
+
+      await loadOrders();
+      const count = selectedOrderIds.length;
+      setIsBulkActionActive(false);
+      setSelectedOrderIds([]);
+      setActiveTab('PAID');
+      setMoveToTab('');
+      setShowPaymentSplitModal(false);
+      showSnackbar(`${count} order${count > 1 ? 's' : ''} moved to PAID`);
+    } catch (err) {
+      setPaymentSplitError(err.message);
+    } finally {
+      setPaymentSplitSubmitting(false);
       setIsProcessingBulk(false);
     }
   };
@@ -375,16 +448,8 @@ export default function OrdersPage({ token }) {
           }}>
             <button 
               type="button" 
-              style={{ height: '2.5rem', flex: 1 }} 
-              onClick={handleToggleBulkAction}
-              disabled
-            >
-              BULK ACTION
-            </button>
-            <button 
-              type="button" 
               className="primary" 
-              style={{ height: '2.5rem', flex: 1 }} 
+              style={{ height: '2.5rem', width: '100%' }} 
               onClick={openCreateModal}
             >
               CREATE ORDER
@@ -437,9 +502,11 @@ export default function OrdersPage({ token }) {
               </div>
             </>
           ) : (
-            <div className="split-2" style={{ gap: '1rem' }}>
-              <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>BULK ACTION</button>
-              <button type="button" className="primary" style={{ height: '2.5rem' }} onClick={openCreateModal}>CREATE ORDER</button>
+            <div className={(activeTab === 'PAID' || filteredOrders.length === 0) ? "" : "split-2"} style={{ gap: '1rem', display: (activeTab === 'PAID' || filteredOrders.length === 0) ? 'block' : 'grid' }}>
+              {(activeTab !== 'PAID' && filteredOrders.length > 0) && (
+                <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>BULK ACTION</button>
+              )}
+              <button type="button" className="primary" style={{ height: '2.5rem', width: '100%' }} onClick={openCreateModal}>CREATE ORDER</button>
             </div>
           )}
         </footer>
@@ -460,6 +527,66 @@ export default function OrdersPage({ token }) {
           whiteSpace: 'nowrap'
         }}>
           {snackbar.message}
+        </div>
+      )}
+
+      {/* PaymentSplitModal for Bulk Action */}
+      {showPaymentSplitModal && (
+        <div className="orders-payment-split-modal-overlay">
+          <div className="orders-payment-split-modal" role="dialog" aria-modal="true">
+            <header className="orders-payment-split-modal-header">
+              <h3 style={{ margin: 0}}>Bulk Payment Received</h3>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setShowPaymentSplitModal(false)}
+                aria-label="Close payment split dialog"
+              >
+              <X size={24} />
+              </button>
+            </header>
+            <div className="orders-payment-split-modal-body">
+              <label htmlFor="bulk-payment-online">Online amount</label>
+              <input
+                id="bulk-payment-online"
+                type="number"
+                min="0"
+                step="1"
+                value={paymentOnline}
+                onChange={(event) => setPaymentOnline(event.target.value)}
+              />
+              <label htmlFor="bulk-payment-cash">Cash amount</label>
+              <input
+                id="bulk-payment-cash"
+                type="number"
+                min="0"
+                step="1"
+                value={paymentCash}
+                onChange={(event) => setPaymentCash(event.target.value)}
+              />
+              {paymentSplitError && <p className="form-error">{paymentSplitError}</p>}
+              <p style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', marginTop: '1rem' }}>
+                Payment will be distributed proportionally among {selectedOrderIds.length} orders.
+              </p>
+            </div>
+            <footer className="orders-payment-split-modal-actions">
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setShowPaymentSplitModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleConfirmBulkPaymentSplit}
+                disabled={paymentSplitSubmitting}
+              >
+                {paymentSplitSubmitting ? 'Saving…' : 'Confirm split'}
+              </button>
+            </footer>
+          </div>
         </div>
       )}
 

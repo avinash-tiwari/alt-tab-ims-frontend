@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Download, Edit3, FileText, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Edit3, FileText, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   addOrderItem,
@@ -773,24 +773,22 @@ export default function OrderDetailsPage({ token }) {
       </div>
 
 
+      {/* PaymentSplitModal  */}
       {showPaymentSplitModal && (
         <div className="orders-payment-split-modal-overlay">
           <div className="orders-payment-split-modal" role="dialog" aria-modal="true">
             <header className="orders-payment-split-modal-header">
-              <h3>Payment received</h3>
+              <h3 style={{ margin: 0}}>Payment Received</h3>
               <button
                 type="button"
                 className="ghost-btn"
                 onClick={() => closePaymentSplitModal()}
                 aria-label="Close payment split dialog"
               >
-                Close
+              <X size={24} />
               </button>
             </header>
             <div className="orders-payment-split-modal-body">
-              <p className="helper-text">
-                Confirm how the total amount was split between online and cash before marking the order as paid.
-              </p>
               <label htmlFor="payment-online">Online amount</label>
               <input
                 id="payment-online"
