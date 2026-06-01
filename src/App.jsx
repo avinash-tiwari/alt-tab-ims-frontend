@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelpCircle } from 'lucide-react';
 import LoginScreen from './components/LoginScreen';
 import BottomTabs from './components/BottomTabs';
@@ -24,6 +24,17 @@ import OrderDetailsPage from './pages/OrderDetailsPage';
 import PublicOrderPage from './pages/PublicOrderPage';
 
 function AppContent({ token, tenant, logout }) {
+  const location = useLocation();
+
+  const helpUrl = useMemo(() => {
+    const path = location.pathname;
+    if (path.startsWith('/orders')) return import.meta.env.VITE_HELP_URL_ORDERS || 'https://www.youtube.com/';
+    if (path.startsWith('/items')) return import.meta.env.VITE_HELP_URL_ITEMS || 'https://www.youtube.com/';
+    if (path.startsWith('/customers') || path.startsWith('/customer')) return import.meta.env.VITE_HELP_URL_CUSTOMERS || 'https://www.youtube.com/';
+    if (path.startsWith('/dashboard')) return import.meta.env.VITE_HELP_URL_DASHBOARD || 'https://www.youtube.com/';
+    return 'https://www.youtube.com/';
+  }, [location.pathname]);
+
   const initials = useMemo(() => {
     if (!tenant?.name) return 'IMS';
     return tenant.name
@@ -93,7 +104,7 @@ function AppContent({ token, tenant, logout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <h1 className="tenant-name-header" style={{ margin: 0, lineHeight: 1.2 }}>{tenant?.name || 'IMS Admin'}</h1>
             <a
-              href="https://www.youtube.com/"
+              href={helpUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{ 
