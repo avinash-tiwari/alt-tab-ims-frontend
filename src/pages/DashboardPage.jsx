@@ -320,8 +320,13 @@ function AnalyticsTotals({ totals }) {
       />
       <StatCard 
         icon={Users} 
-        label="Total Credits" 
+        label="Total Udhaari" 
         value={formatCurrency(totals?.totalCredits)} 
+      />
+      <StatCard 
+        icon={Activity} 
+        label="Total Bakaya" 
+        value={formatCurrency(totals?.totalBakaya)} 
       />
       <StatCard 
         icon={TrendingDown} 
