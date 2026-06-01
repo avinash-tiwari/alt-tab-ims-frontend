@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle } from 'lucide-react';
+import { Plus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle, Store, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../api';
 import { formatCurrency, getDisplayCustomerName, getStatusLabel } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
+import Input from '../components/ui/Input';
 
 const getCustomerLabel = (customer) =>
   customer?.name ||
@@ -223,6 +224,15 @@ export default function OrdersPage({ token }) {
   };
 
   const handleToggleOrderSelection = (orderId) => {
+    const orderToSelect = orders.find(o => o.id === orderId);
+    if (!orderToSelect) return;
+    const customerToSelect = getDisplayCustomerName(orderToSelect);
+
+    if (currentSelectedCustomer && currentSelectedCustomer !== customerToSelect && !selectedOrderIds.includes(orderId)) {
+      showSnackbar(`Unselect orders from ${currentSelectedCustomer} first`);
+      return;
+    }
+
     setSelectedOrderIds(prev => 
       prev.includes(orderId) 
         ? prev.filter(id => id !== orderId) 
@@ -331,11 +341,48 @@ export default function OrdersPage({ token }) {
     });
   }, [orders, activeTab]);
 
+  const groupedOrders = useMemo(() => {
+    const groups = {};
+    filteredOrders.forEach((order) => {
+      const customerName = getDisplayCustomerName(order);
+      if (!groups[customerName]) {
+        groups[customerName] = [];
+      }
+      groups[customerName].push(order);
+    });
+    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredOrders]);
+
+  const currentSelectedCustomer = useMemo(() => {
+    if (selectedOrderIds.length === 0) return null;
+    const firstOrder = orders.find(o => o.id === selectedOrderIds[0]);
+    return firstOrder ? getDisplayCustomerName(firstOrder) : null;
+  }, [selectedOrderIds, orders]);
+
+  const handleToggleCustomerSelection = (ordersInGroup) => {
+    if (ordersInGroup.length === 0) return;
+    const customerNameInGroup = getDisplayCustomerName(ordersInGroup[0]);
+
+    const orderIdsInGroup = ordersInGroup.map(o => o.id);
+    const selectedInGroup = orderIdsInGroup.filter(id => selectedOrderIds.includes(id));
+    const allSelected = selectedInGroup.length === orderIdsInGroup.length;
+    
+    if (allSelected) {
+      setSelectedOrderIds(prev => prev.filter(id => !orderIdsInGroup.includes(id)));
+    } else {
+      if (currentSelectedCustomer && currentSelectedCustomer !== customerNameInGroup) {
+        showSnackbar(`Unselect orders from ${currentSelectedCustomer} first`);
+        return;
+      }
+      setSelectedOrderIds(prev => [...new Set([...prev, ...orderIdsInGroup])]);
+    }
+  };
+
   return (
     <section className="page" style={{ paddingBottom: orders.length > 0 ? '12rem' : '8rem' }}>
       <div className="sticky-header" style={{ paddingTop: '0.5rem' }}>
         <div className="page-tabs" style={{ marginBottom: '0.5rem', whiteSpace: 'nowrap', marginTop: '0' }}>
-          {['NEW', 'DELIVERED', 'OVERDUE', 'PAID'].map((tab) => (
+          {['NEW', 'DELIVERED', 'PAID'].map((tab) => (
             <button
               key={tab}
               type="button"
@@ -354,57 +401,125 @@ export default function OrdersPage({ token }) {
           {loading && !orders.length && <p className="helper-text">Loading orders…</p>}
 
           <div className="orders-list">
-            {filteredOrders.length > 0 ? (
-              filteredOrders.map((order) => {
-                const customerName = getDisplayCustomerName(order);
-                const orderIdLabel = String(order.id ?? '');
-                const clickableLabel = `${customerName} (${orderIdLabel})`;
-                const orderDateLabel = formatOrderDate(order.orderDate ?? order.createdAt);
-                const totalItems = Array.isArray(order.items) ? order.items.length : 0;
-                const statusClass = order.status?.toLowerCase() ?? 'unknown';
-                const shortOrderId = orderIdLabel.slice(0, 8);
-                const isSelected = selectedOrderIds.includes(order.id);
+            {groupedOrders.length > 0 ? (
+              groupedOrders.map(([customerName, ordersInGroup]) => {
+                const orderIdsInGroup = ordersInGroup.map(o => o.id);
+                const selectedInGroup = orderIdsInGroup.filter(id => selectedOrderIds.includes(id));
+                const allSelected = selectedInGroup.length === orderIdsInGroup.length && orderIdsInGroup.length > 0;
+                const isOtherCustomer = currentSelectedCustomer && currentSelectedCustomer !== customerName;
+
                 return (
-                  <button
-                    key={order.id}
-                    type="button"
-                    className={`order-card order-card--${statusClass} ${isSelected ? 'selected' : ''}`}
-                    onClick={() => {
-                      if (isBulkActionActive) {
-                        handleToggleOrderSelection(order.id);
-                      } else {
-                        navigate(`/orders/${order.id}`);
-                      }
-                    }}
-                    aria-label={isBulkActionActive ? `Select ${clickableLabel}` : `View ${clickableLabel}`}
-                    style={{ 
-                      marginBottom: '0.75rem',
-                      border: isSelected ? '2px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
-                      position: 'relative'
-                    }}
-                  >
-                    <div className="order-card-layout">
-                      {isBulkActionActive && (
-                        <div style={{ marginRight: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                          {isSelected ? (
-                            <CheckCircle2 size={24} className="text-primary" style={{ color: 'hsl(var(--primary))' }} />
+                  <div key={customerName} style={{ marginBottom: '1rem', opacity: isOtherCustomer ? 0.5 : 1 }}>
+                    <div 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.75rem', 
+                        padding: '0.75rem 1rem',
+                        marginBottom: '0.75rem',
+                        cursor: isBulkActionActive ? 'pointer' : 'default',
+                        background: 'hsl(var(--primary) / 0.05)',
+                        borderRadius: 'var(--radius)',
+                        borderLeft: '4px solid hsl(var(--primary))',
+                        boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)'
+                      }}
+                      onClick={() => isBulkActionActive && handleToggleCustomerSelection(ordersInGroup)}
+                    >
+                      {isBulkActionActive ? (
+                        <div>
+                          {allSelected ? (
+                            <CheckCircle2 size={22} style={{ color: 'hsl(var(--primary))' }} />
                           ) : (
-                            <Circle size={24} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                            <Circle size={22} style={{ color: 'hsl(var(--muted-foreground))' }} />
                           )}
                         </div>
+                      ) : (
+                        null
                       )}
-                      <div className="order-card-left">
-                        <p className="order-customer--card">{customerName}</p>
-                        <p className="order-card-date">
-                          {orderDateLabel}
-                        </p>
-                      </div>
-                      <div className="order-card-right">
-                        <p className="order-card-amount">{formatCurrency(order.totalAmount)}</p>
-                        <p className="small-label" style={{ fontSize: '0.65rem', opacity: 0.8 }}>{totalItems} items</p>
+                      <h3 style={{ 
+                        margin: 0, 
+                        fontSize: '1rem', 
+                        fontWeight: 800, 
+                        color: 'hsl(var(--foreground))',
+                        letterSpacing: '0.01em'
+                      }}>
+                        {customerName}
+                      </h3>
+                      <div style={{ marginLeft: 'auto', background: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                        {ordersInGroup.length}
                       </div>
                     </div>
-                  </button>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingLeft: '0.5rem' }}>
+                      {ordersInGroup.map((order) => {
+                        const orderIdLabel = String(order.id ?? '');
+                        const clickableLabel = `${customerName} (${orderIdLabel})`;
+                        const orderDateLabel = formatOrderDate(order.orderDate ?? order.createdAt);
+                        const totalItems = Array.isArray(order.items) ? order.items.length : 0;
+                        const statusClass = order.status?.toLowerCase() ?? 'unknown';
+                        const isSelected = selectedOrderIds.includes(order.id);
+                        return (
+                          <button
+                            key={order.id}
+                            type="button"
+                            className={`order-card order-card--${statusClass} ${isSelected ? 'selected' : ''}`}
+                            onClick={() => {
+                              if (isBulkActionActive) {
+                                handleToggleOrderSelection(order.id);
+                              } else {
+                                navigate(`/orders/${order.id}`);
+                              }
+                            }}
+                            aria-label={isBulkActionActive ? `Select ${clickableLabel}` : `View ${clickableLabel}`}
+                            style={{ 
+                              marginBottom: 0,
+                              border: isSelected ? '2px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
+                              position: 'relative',
+                              padding: '1rem',
+                              background: 'hsl(var(--card))',
+                              display: 'block',
+                              width: '100%',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div className="order-card-layout">
+                              {isBulkActionActive && (
+                                <div style={{ marginRight: '1rem', display: 'flex', alignItems: 'center' }}>
+                                  {isSelected ? (
+                                    <CheckCircle2 size={24} className="text-primary" style={{ color: 'hsl(var(--primary))' }} />
+                                  ) : (
+                                    <Circle size={24} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                                  )}
+                                </div>
+                              )}
+                              <div className="order-card-left" style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                                  <span style={{ 
+                                    fontSize: '0.9rem', 
+                                    fontWeight: 700, 
+                                    color: 'hsl(var(--primary))',
+                                    background: 'hsl(var(--primary) / 0.08)',
+                                    padding: '0.15rem 0.5rem',
+                                    borderRadius: '4px'
+                                  }}>
+                                    Order #{orderIdLabel.slice(-6).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem' }}>
+                                  <Clock size={14} />
+                                  <span>{orderDateLabel}</span>
+                                </div>
+                              </div>
+                              <div className="order-card-right" style={{ textAlign: 'right' }}>
+                                <p className="order-card-amount" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>{formatCurrency(order.totalAmount)}</p>
+                                <p className="small-label" style={{ fontSize: '0.7rem', opacity: 0.8, margin: '0.2rem 0 0' }}>{totalItems} items</p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })
             ) : (
@@ -418,7 +533,7 @@ export default function OrdersPage({ token }) {
               }}>
                 <ShoppingBag size={32} style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '1rem', opacity: 0.5 }} />
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>No {activeTab.toLowerCase()} orders</h3>
-                <p className="muted" style={{ marginTop: '0.25rem' }}>Try switching tabs or creating a new order.</p>
+                <p className="muted" style={{ marginTop: '0.25rem' }}>Dusri tab par jaakar dekhein ya naya order banayein.</p>
               </div>
             )}
           </div>
@@ -482,7 +597,7 @@ export default function OrdersPage({ token }) {
                    style={{ flex: 1, height: '2.5rem' }}
                  >
                    <option value="">Move to...</option>
-                   {['NEW', 'DELIVERED', 'OVERDUE', 'PAID']
+                   {['NEW', 'DELIVERED', 'PAID']
                      .filter(t => t !== activeTab)
                      .map(t => <option key={t} value={t}>{t}</option>)
                    }
@@ -546,18 +661,18 @@ export default function OrdersPage({ token }) {
               </button>
             </header>
             <div className="orders-payment-split-modal-body">
-              <label htmlFor="bulk-payment-online">Online amount</label>
-              <input
+              <Input
                 id="bulk-payment-online"
+                label="Online amount"
                 type="number"
                 min="0"
                 step="1"
                 value={paymentOnline}
                 onChange={(event) => setPaymentOnline(event.target.value)}
               />
-              <label htmlFor="bulk-payment-cash">Cash amount</label>
-              <input
+              <Input
                 id="bulk-payment-cash"
+                label="Cash amount"
                 type="number"
                 min="0"
                 step="1"
@@ -565,9 +680,6 @@ export default function OrdersPage({ token }) {
                 onChange={(event) => setPaymentCash(event.target.value)}
               />
               {paymentSplitError && <p className="form-error">{paymentSplitError}</p>}
-              <p style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', marginTop: '1rem' }}>
-                Payment will be distributed proportionally among {selectedOrderIds.length} orders.
-              </p>
             </div>
             <footer className="orders-payment-split-modal-actions">
               <button
@@ -636,7 +748,6 @@ export default function OrdersPage({ token }) {
             <div style={{ paddingBottom: '1rem', background: 'hsl(var(--background))', zIndex: 10 }}>
               {createOrderError && <p className="form-error" style={{ marginBottom: '1rem' }}>{createOrderError}</p>}
               <div className="form-group">
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Select Customer</label>
                 <select
                   value={customerId}
                   onChange={(e) => setCustomerId(e.target.value)}
@@ -681,8 +792,7 @@ export default function OrdersPage({ token }) {
                       )}
                     </div>
 
-                    <div className="form-group" style={{ marginBottom: '1rem' }}>
-                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Select Item</label>
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                       <select
                         value={line.itemId}
                         onChange={(e) => handleLineItemChange(index, 'itemId', e.target.value)}
@@ -698,32 +808,20 @@ export default function OrdersPage({ token }) {
                     </div>
 
                     <div className="split-2">
-                      <div className="form-group">
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Quantity</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={line.quantity}
-                          onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)}
-                          disabled={creatingOrder}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Line Total</label>
-                        <div style={{ 
-                          padding: '0.6rem 0.75rem', 
-                          background: 'hsl(var(--muted) / 0.3)', 
-                          borderRadius: 'var(--radius)',
-                          fontSize: '0.875rem',
-                          fontWeight: 700,
-                          border: '1px solid hsl(var(--border))',
-                          height: '2.5rem',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}>
-                          {formatCurrency(getLineTotal(line))}
-                        </div>
-                      </div>
+                      <Input
+                        type="number"
+                        label="Quantity"
+                        min="1"
+                        value={line.quantity}
+                        onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)}
+                        disabled={creatingOrder}
+                      />
+                      <Input
+                        label="Line Total"
+                        value={formatCurrency(getLineTotal(line))}
+                        readOnly
+                        disabled={creatingOrder}
+                      />
                     </div>
                   </div>
                 ))}

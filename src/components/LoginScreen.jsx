@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Input from './ui/Input';
 
 export default function LoginScreen({ onSubmit, loading, error }) {
   const [form, setForm] = useState({ loginId: '', password: '' });
@@ -20,29 +21,25 @@ export default function LoginScreen({ onSubmit, loading, error }) {
         <p>Use your tenant login credentials.</p>
 
         <form onSubmit={handleSubmit} className="stack-form">
-          <label>
-            Email / Login ID
-            <input
-              name="loginId"
-              type="text"
-              autoComplete="username"
-              required
-              value={form.loginId}
-              onChange={onChange}
-            />
-          </label>
+          <Input
+            name="loginId"
+            label="Email / Login ID"
+            type="text"
+            autoComplete="username"
+            required
+            value={form.loginId}
+            onChange={onChange}
+          />
 
-          <label>
-            Password
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={form.password}
-              onChange={onChange}
-            />
-          </label>
+          <Input
+            name="password"
+            label="Password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={form.password}
+            onChange={onChange}
+          />
 
           {error ? <p className="error-text">{error}</p> : null}
 

@@ -21,6 +21,7 @@ import {
 } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
 import { generateInvoicePDF } from '../utils/pdfGenerator';
+import Input from '../components/ui/Input';
 
 export default function OrderDetailsPage({ token }) {
   const { id: orderId } = useParams();
@@ -629,36 +630,24 @@ export default function OrderDetailsPage({ token }) {
                         </div>
 
                         <div className="split-2">
-                          <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>QTY</label>
-                            <input
-                              type="number"
-                              min={1}
-                              value={quantityValue}
-                              onChange={(event) =>
-                                handleLineItemQuantityChange(orderItemId, event.target.value)
-                              }
-                              onBlur={() => quantityChanged && handleUpdateOrderItemQuantity(orderItemId)}
-                              disabled={isUpdatingItem}
-                              style={{ padding: '0.4rem 0.5rem' }}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>TOTAL</label>
-                            <div style={{ 
-                              padding: '0.4rem 0.5rem', 
-                              background: 'hsl(var(--muted) / 0.2)', 
-                              borderRadius: 'var(--radius)',
-                              fontSize: '0.875rem',
-                              fontWeight: 700,
-                              border: '1px solid hsl(var(--border))',
-                              height: '2.25rem',
-                              display: 'flex',
-                              alignItems: 'center'
-                            }}>
-                              {formatCurrency(lineTotal)}
-                            </div>
-                          </div>
+                          <Input
+                            type="number"
+                            label="QTY"
+                            min={1}
+                            value={quantityValue}
+                            onChange={(event) =>
+                              handleLineItemQuantityChange(orderItemId, event.target.value)
+                            }
+                            onBlur={() => quantityChanged && handleUpdateOrderItemQuantity(orderItemId)}
+                            disabled={isUpdatingItem}
+                            style={{ padding: '0.4rem 0.5rem' }}
+                          />
+                          <Input
+                            label="TOTAL"
+                            value={formatCurrency(lineTotal)}
+                            readOnly
+                            style={{ padding: '0.4rem 0.5rem' }}
+                          />
                         </div>
                       </div>
                     );
@@ -678,7 +667,6 @@ export default function OrderDetailsPage({ token }) {
                     return (
                       <>
                         <div className="form-group" style={{ marginBottom: '1rem' }}>
-                          <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>Select Item</label>
                           <select
                             value={selectedItemId}
                             onChange={(event) => setSelectedItemId(event.target.value)}
@@ -694,33 +682,21 @@ export default function OrderDetailsPage({ token }) {
                           </select>
                         </div>
                         <div className="split-2" style={{ marginBottom: '1rem', gap: '1rem' }}>
-                          <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>Quantity</label>
-                            <input
-                              type="number"
-                              min={1}
-                              value={newItemQuantity}
-                              onChange={(event) => setNewItemQuantity(event.target.value)}
-                              disabled={addingItem}
-                              style={{ height: '2.5rem' }}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>TOTAL</label>
-                            <div style={{ 
-                              padding: '0.4rem 0.5rem', 
-                              background: 'hsl(var(--muted) / 0.2)', 
-                              borderRadius: 'var(--radius)',
-                              fontSize: '0.875rem',
-                              fontWeight: 700,
-                              border: '1px solid hsl(var(--border))',
-                              height: '2.5rem',
-                              display: 'flex',
-                              alignItems: 'center'
-                            }}>
-                              {formatCurrency(totalForNewItem)}
-                            </div>
-                          </div>
+                          <Input
+                            type="number"
+                            label="Quantity"
+                            min={1}
+                            value={newItemQuantity}
+                            onChange={(event) => setNewItemQuantity(event.target.value)}
+                            disabled={addingItem}
+                            style={{ height: '2.5rem' }}
+                          />
+                          <Input
+                            label="TOTAL"
+                            value={formatCurrency(totalForNewItem)}
+                            readOnly
+                            style={{ height: '2.5rem' }}
+                          />
                         </div>
                       </>
                     );
@@ -789,18 +765,18 @@ export default function OrderDetailsPage({ token }) {
               </button>
             </header>
             <div className="orders-payment-split-modal-body">
-              <label htmlFor="payment-online">Online amount</label>
-              <input
+              <Input
                 id="payment-online"
+                label="Online amount"
                 type="number"
                 min="0"
                 step="1"
                 value={paymentOnline}
                 onChange={(event) => setPaymentOnline(event.target.value)}
               />
-              <label htmlFor="payment-cash">Cash amount</label>
-              <input
+              <Input
                 id="payment-cash"
+                label="Cash amount"
                 type="number"
                 min="0"
                 step="1"

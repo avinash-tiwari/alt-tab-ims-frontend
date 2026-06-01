@@ -8,6 +8,7 @@ import {
   getCustomerPrices
 } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
+import Input from '../components/ui/Input';
 
 export default function AddCustomerPricePage({ token }) {
   const { id } = useParams();
@@ -181,7 +182,6 @@ export default function AddCustomerPricePage({ token }) {
                   </div>
 
                   <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Select Item</label>
                     <select
                       value={entry.itemId}
                       onChange={(e) => handleEntryChange(index, 'itemId', e.target.value)}
@@ -209,47 +209,22 @@ export default function AddCustomerPricePage({ token }) {
                   </div>
 
                   <div className="split-2">
-                    <div className="form-group">
-                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Base Price</label>
-                      <div style={{ 
-                        padding: '0.6rem 0.75rem', 
-                        background: 'hsl(var(--muted) / 0.5)', 
-                        borderRadius: 'var(--radius)',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        border: '1px solid hsl(var(--border))',
-                        height: '2.5rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        color: 'hsl(var(--muted-foreground))',
-                        cursor: 'not-allowed'
-                      }}>
-                        {selectedItem ? formatCurrency(selectedItem.basePrice) : '—'}
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 600 }}>Custom Price</label>
-                      <input
-                        type="number"
-                        step="1"
-                        placeholder="Price"
-                        value={entry.customPrice}
-                        onChange={(e) => handleEntryChange(index, 'customPrice', e.target.value)}
-                        disabled={saving}
-                        required
-                      />
-                      {showIncompleteError && entry.customPrice === '' && (
-                        <p className="error-text" style={{ 
-                          fontSize: '0.75rem', 
-                          padding: '0.25rem 0.5rem', 
-                          marginTop: '0.25rem',
-                          background: 'transparent',
-                          border: 'none'
-                        }}>
-                          Enter price.
-                        </p>
-                      )}
-                    </div>
+                    <Input
+                      label="Base Price"
+                      value={selectedItem ? formatCurrency(selectedItem.basePrice) : '—'}
+                      readOnly
+                      disabled={saving}
+                    />
+                    <Input
+                      type="number"
+                      step="1"
+                      label="Custom Price"
+                      placeholder="Price"
+                      value={entry.customPrice}
+                      onChange={(e) => handleEntryChange(index, 'customPrice', e.target.value)}
+                      disabled={saving}
+                      required
+                    />
                   </div>
                 </div>
               );

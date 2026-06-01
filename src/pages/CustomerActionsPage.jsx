@@ -6,6 +6,7 @@ import {
   updateCustomer,
   getCustomer
 } from '../api';
+import Input from '../components/ui/Input';
 
 const emptyCustomer = {
   name: '',
@@ -88,46 +89,32 @@ export default function CustomerActionsPage({ token }) {
       <div>
         {error && <p className="error-text">{error}</p>}
         <form className="card stack-form" onSubmit={saveCustomer}>
-          <div className="form-group">
-            <input name="name" placeholder="Name *" required value={customerForm.name} onChange={onCustomerChange} />
-          </div>
-          <div className="form-group">
-            <input name="phone" placeholder="Phone *" required value={customerForm.phone} onChange={onCustomerChange} />
-          </div>
-          <div className="form-group">
-            <input name="email" placeholder="Email (Optional)" type="email" value={customerForm.email} onChange={onCustomerChange} />
-          </div>
-          <div className="form-group">
-            <input
-              name="addressLine1"
-              placeholder="Address Line 1 *"
-              required
-              value={customerForm.addressLine1}
-              onChange={onCustomerChange}
-            />
-          </div>
+          <Input name="name" placeholder="Name *" required value={customerForm.name} onChange={onCustomerChange} />
+          <Input name="phone" placeholder="Phone *" required value={customerForm.phone} onChange={onCustomerChange} />
+          <Input name="email" placeholder="Email (Optional)" type="email" value={customerForm.email} onChange={onCustomerChange} />
+          <Input
+            name="addressLine1"
+            placeholder="Address Line 1 *"
+            required
+            value={customerForm.addressLine1}
+            onChange={onCustomerChange}
+          />
           <div className="split-2">
-            <div className="form-group">
-              <input name="city" placeholder="City *" required value={customerForm.city} onChange={onCustomerChange} />
-            </div>
-            <div className="form-group">
-              <input
-                name="postalCode"
-                placeholder="Postal Code *"
-                required
-                value={customerForm.postalCode}
-                onChange={onCustomerChange}
-              />
-            </div>
-          </div>
-          <div className="form-group">
-            <input
-              name="locationLink"
-              placeholder="Google Maps Link (Optional)"
-              value={customerForm.locationLink}
+            <Input name="city" placeholder="City *" required value={customerForm.city} onChange={onCustomerChange} />
+            <Input
+              name="postalCode"
+              placeholder="Postal Code *"
+              required
+              value={customerForm.postalCode}
               onChange={onCustomerChange}
             />
           </div>
+          <Input
+            name="locationLink"
+            placeholder="Google Maps Link (Optional)"
+            value={customerForm.locationLink}
+            onChange={onCustomerChange}
+          />
           <button type="submit" className="primary" style={{ marginTop: '0.5rem' }}>{id ? 'Update Customer' : 'Create Customer'}</button>
         </form>
       </div>

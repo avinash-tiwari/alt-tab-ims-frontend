@@ -53,6 +53,11 @@ textarea {
 }
 
 /* Base element styles matching the POS system */
+.input-group {
+  position: relative;
+  width: 100%;
+}
+
 input,
 select,
 textarea {
@@ -62,7 +67,52 @@ textarea {
   border-radius: var(--radius);
   padding: 0.6rem 0.75rem;
   font-size: 0.875rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: all 0.2s;
+}
+
+input.floating-input,
+textarea.floating-input {
+  padding: 0.8rem 0.75rem;
+}
+
+.floating-label {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.75rem;
+  pointer-events: none;
+  transition: all 0.2s ease;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+input.floating-input:focus ~ .floating-label,
+input.floating-input:not(:placeholder-shown) ~ .floating-label,
+textarea.floating-input:focus ~ .floating-label,
+textarea.floating-input:not(:placeholder-shown) ~ .floating-label {
+  top: -0.5rem;
+  left: 0.6rem;
+  font-size: 0.75rem;
+  color: hsl(var(--primary));
+  background: hsl(var(--card));
+  font-weight: 600;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+  opacity: 1;
+}
+
+input.floating-input::placeholder,
+textarea.floating-input::placeholder {
+  color: transparent;
+}
+
+input.floating-input:focus::placeholder,
+textarea.floating-input:focus::placeholder {
+  color: hsl(var(--muted-foreground) / 0.5);
 }
 
 input:focus,
@@ -153,6 +203,11 @@ button.danger:hover {
   z-index: 40;
   height: 3.5rem;
   flex-shrink: 0;
+}
+
+.help-link-header:hover {
+  color: hsl(var(--primary));
+  background: hsl(var(--muted) / 0.5);
 }
 
 .profile-menu {
@@ -635,6 +690,7 @@ button.danger:hover {
   margin-bottom: 1rem;
   border-bottom: 1px solid hsl(var(--border));
   padding-bottom: 0;
+  justify-content: space-around;
 }
 
 .page-tab-btn {
@@ -1191,7 +1247,6 @@ button.danger:hover {
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
-  padding: 1.25rem;
   align-self: start; 
   width: 100%;
 }
@@ -1483,7 +1538,7 @@ button.danger:hover {
 .orders-payment-split-modal-body {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 1.5rem;
 }
 
 .orders-payment-split-modal-body label {

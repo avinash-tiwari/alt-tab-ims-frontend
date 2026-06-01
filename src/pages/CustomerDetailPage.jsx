@@ -95,11 +95,11 @@ export default function CustomerDetailPage({ token }) {
       value: `${formatCurrency(customer?.totalSpent ?? '0')}`
     },
     {
-      label: 'Credits',
+      label: 'Udhaari',
       value: `${formatCurrency(customer?.totalCredits ?? '0')}`
     },
     {
-      label: 'Total Due',
+      label: 'Total Bakaya',
       value: `${formatCurrency(customer?.totalDue ?? '0')}`
     },
     {
@@ -283,7 +283,7 @@ export default function CustomerDetailPage({ token }) {
 
         <div className="card public-link-card" style={{ marginTop: '1rem', padding: '1rem', borderTop: '4px solid hsl(var(--primary))' }}>
           <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
-            ORDER LINK
+            ORDER LINK FOR
           </div>
           <div className="public-link-row">
             <div style={{ flex: 1 }}>
@@ -326,11 +326,11 @@ export default function CustomerDetailPage({ token }) {
               <span className="stat-value">{formatCurrency(customer?.totalSpent ?? '0')}</span>
             </div>
             <div className="stat-pill">
-              <span className="stat-label">Credits</span>
+              <span className="stat-label">Udhaari</span>
               <span className="stat-value warning">{formatCurrency(customer?.totalCredits ?? '0')}</span>
             </div>
             <div className="stat-pill">
-              <span className="stat-label">Due</span>
+              <span className="stat-label">Bakaya</span>
               <span className="stat-value destructive">{formatCurrency(customer?.totalDue ?? '0')}</span>
             </div>
             <div className="stat-pill">
@@ -342,7 +342,7 @@ export default function CustomerDetailPage({ token }) {
 
         <div className="card" style={{ padding: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>CUSTOM PRICES</h4>
+            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{customer?.name} Price</h4>
             {priceList.length > 0 && (
               <button 
                 type="button" 
@@ -381,14 +381,14 @@ export default function CustomerDetailPage({ token }) {
               </table>
             ) : (
               <div style={{ padding: '2rem 1rem', textAlign: 'center' }}>
-                <p className="muted" style={{ marginBottom: '1.25rem', fontSize: '0.875rem' }}>No custom prices defined for this customer yet.</p>
+                <p className="muted" style={{ marginBottom: '1.25rem', fontSize: '0.875rem' }}><span style={{fontWeight: 'bold'}}>{customer?.name}</span> ke liye koi custom price set nahi hai.</p>
                 <button 
                   type="button" 
                   className="primary" 
                   onClick={() => navigate(`/customer/${id}/add`)}
-                  style={{ width: '100%', maxWidth: '250px' }}
+                  style={{ width: '100%', maxWidth: '250px', fontWeight: 'bold'}}
                 >
-                  CREATE CUSTOM PRICE LIST
+                  ADD <span style={{ textTransform: 'uppercase', whiteSpace: 'nowrap', margin: '0 0.35rem'}}>{customer?.name}</span>PRICE
                 </button>
               </div>
             )}

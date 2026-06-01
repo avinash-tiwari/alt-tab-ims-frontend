@@ -3,6 +3,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import { createPublicOrder, listItems } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
+import Input from '../components/ui/Input';
 
 const DEFAULT_NOTES = 'Order from customer portal';
 
@@ -244,17 +245,15 @@ export default function PublicOrderPage() {
             </div>
 
             <div className="orders-form-row split-2">
-              <div className="form-group">
-                <label htmlFor="public-order-quantity">Quantity</label>
-                <input
-                  id="public-order-quantity"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={selectedQuantity}
-                  onChange={(event) => setSelectedQuantity(event.target.value)}
-                />
-              </div>
+              <Input
+                id="public-order-quantity"
+                label="Quantity"
+                type="number"
+                min="1"
+                step="1"
+                value={selectedQuantity}
+                onChange={(event) => setSelectedQuantity(event.target.value)}
+              />
             </div>
 
             <button
@@ -305,15 +304,14 @@ export default function PublicOrderPage() {
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="public-order-notes">Order notes</label>
-            <textarea
-              id="public-order-notes"
-              rows="3"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-            />
-          </div>
+          <Input
+            id="public-order-notes"
+            label="Order notes"
+            type="textarea"
+            rows="3"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+          />
 
           <div
             className="row-actions"

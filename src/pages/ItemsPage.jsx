@@ -11,6 +11,7 @@ import {
 } from '../api';
 import EmptyState from '../components/EmptyState';
 import { formatCurrency } from '../utils/orderUtils';
+import Input from '../components/ui/Input';
 
 const ItemSkeleton = () => (
   <div className="card customer-card" style={{ cursor: 'default' }}>
@@ -281,7 +282,7 @@ export default function ItemsPage({ token }) {
                   }}
                 >
                   <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                    {tab === 'listing' ? 'Items Listing' : 'Stock Update'}
+                    {tab === 'listing' ? 'Items List' : 'Stock Update'}
                   </span>
                 </button>
               ))}
@@ -491,7 +492,7 @@ export default function ItemsPage({ token }) {
 
                         <div className="customer-stats-bar">
                           <div className="stat-pill">
-                            <span className="stat-label">Cost</span>
+                            <span className="stat-label">COST</span>
                             <span className="stat-value">{formatCurrency(item.costPrice)}</span>
                           </div>
                           <div className="stat-pill">
@@ -505,7 +506,7 @@ export default function ItemsPage({ token }) {
                             </span>
                           </div>
                           <div className="stat-pill">
-                            <span className="stat-label">Threshold</span>
+                            <span className="stat-label">Minimum Limit</span>
                             <span className="stat-value">{item.threshold}</span>
                           </div>
                         </div>
@@ -545,13 +546,13 @@ export default function ItemsPage({ token }) {
                       <div>
                         <h3 style={{ margin: 0, fontSize: '1rem' }}>{item.name}</h3>
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
-                          Threshold: {item.threshold}
+                          Minimum Limit: {item.threshold}
                         </p>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <label htmlFor={`stock-input-${item.id}`} style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>Stock</label>
-                        <input
+                        <Input
                           id={`stock-input-${item.id}`}
+                          label="Stock"
                           type="number"
                           value={stockInputs[item.id] ?? String(item.stock ?? '')}
                           onChange={(e) => handleStockChange(item.id, e.target.value)}
@@ -617,36 +618,33 @@ export default function ItemsPage({ token }) {
           </header>
 
           <div className="stack-form" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Search</label>
-              <input
-                name="q"
-                type="text"
-                placeholder="Search by name"
-                value={tempFilters.q}
-                onChange={onTempFilterChange}
-                style={{ width: '100%' }}
-              />
-            </div>
+            <Input
+              name="q"
+              label="Search"
+              type="text"
+              placeholder="Search by name"
+              value={tempFilters.q}
+              onChange={onTempFilterChange}
+              style={{ width: '100%' }}
+            />
 
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Stock Range</label>
-              <div className="split-2">
-                <input
-                  name="minStock"
-                  type="number"
-                  placeholder="Min stock"
-                  value={tempFilters.minStock}
-                  onChange={onTempFilterChange}
-                />
-                <input
-                  name="maxStock"
-                  type="number"
-                  placeholder="Max stock"
-                  value={tempFilters.maxStock}
-                  onChange={onTempFilterChange}
-                />
-              </div>
+            <div className="split-2">
+              <Input
+                name="minStock"
+                label="Min stock"
+                type="number"
+                placeholder="Min stock"
+                value={tempFilters.minStock}
+                onChange={onTempFilterChange}
+              />
+              <Input
+                name="maxStock"
+                label="Max stock"
+                type="number"
+                placeholder="Max stock"
+                value={tempFilters.maxStock}
+                onChange={onTempFilterChange}
+              />
             </div>
 
             <div className="form-group" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexDirection: 'row' }}>

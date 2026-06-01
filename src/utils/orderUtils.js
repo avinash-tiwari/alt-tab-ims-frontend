@@ -1,7 +1,6 @@
 export const STATUS_OPTIONS = [
   { value: 'NEW', label: 'New' },
   { value: 'DELIVERED', label: 'Delivered' },
-  { value: 'OVERDUE', label: 'Overdue' },
   { value: 'PAID', label: 'Paid' }
 ];
 

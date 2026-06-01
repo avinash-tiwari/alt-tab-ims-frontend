@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { createItem, updateItem, getItem } from '../api';
+import Input from '../components/ui/Input';
 
 const emptyForm = {
   name: '',
@@ -87,8 +88,8 @@ export default function AddItemPage({ token }) {
       <div>
         {error && <p className="error-text">{error}</p>}
         <form className="card stack-form" onSubmit={saveItem}>
-          <input name="name" placeholder="Name" value={form.name} onChange={onFormChange} required />
-          <input
+          <Input name="name" placeholder="Name" value={form.name} onChange={onFormChange} required />
+          <Input
             name="costPrice"
             type="number"
             step="1"
@@ -98,8 +99,8 @@ export default function AddItemPage({ token }) {
             required
           />
           <div className="split-2">
-            <input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={onFormChange} required />
-            <input
+            <Input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={onFormChange} required />
+            <Input
               name="threshold"
               type="number"
               placeholder="Threshold"
@@ -108,7 +109,7 @@ export default function AddItemPage({ token }) {
               required
             />
           </div>
-          <input
+          <Input
             name="basePrice"
             type="number"
             step="1"

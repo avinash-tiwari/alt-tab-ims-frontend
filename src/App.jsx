@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HelpCircle } from 'lucide-react';
 import LoginScreen from './components/LoginScreen';
 import BottomTabs from './components/BottomTabs';
+import Input from './components/ui/Input';
 import {
   clearSession,
   changePassword,
@@ -88,9 +90,32 @@ function AppContent({ token, tenant, logout }) {
       <header className="app-header">
         <div className="header-logo-container">
           <div className="tenant-logo">{initials}</div>
-          <h1 className="tenant-name-header">{tenant?.name || 'IMS Admin'}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <h1 className="tenant-name-header" style={{ margin: 0, lineHeight: 1.2 }}>{tenant?.name || 'IMS Admin'}</h1>
+            <a
+              href="https://www.youtube.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: 'hsl(var(--muted-foreground))',
+                width: '2.25rem',
+                height: '2.25rem',
+                borderRadius: '999px',
+                transition: 'all 0.2s',
+                flexShrink: 0
+              }}
+              className="help-link-header"
+              aria-label="Help"
+            >
+              <HelpCircle size={22} />
+            </a>
+          </div>
         </div>
-        <div className="profile-menu" ref={profileMenuRef}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="profile-menu" ref={profileMenuRef}>
           <button
             type="button"
             className="profile-menu-button"
@@ -128,7 +153,8 @@ function AppContent({ token, tenant, logout }) {
             </div>
           )}
         </div>
-      </header>
+      </div>
+    </header>
       {passwordModalOpen && (
         <div
           className="modal-overlay change-password-overlay"
@@ -175,34 +201,30 @@ function AppContent({ token, tenant, logout }) {
                 ×
               </button>
             </header>
-            <label className="form-group">
-              <span>Current password</span>
-              <input
-                type="password"
-                name="currentPassword"
-                value={passwordForm.currentPassword}
-                onChange={event => {
-                  setPasswordForm(prev => ({ ...prev, currentPassword: event.target.value }));
-                  setPasswordError('');
-                }}
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            <label className="form-group">
-              <span>New password</span>
-              <input
-                type="password"
-                name="newPassword"
-                value={passwordForm.newPassword}
-                onChange={event => {
-                  setPasswordForm(prev => ({ ...prev, newPassword: event.target.value }));
-                  setPasswordError('');
-                }}
-                autoComplete="new-password"
-                required
-              />
-            </label>
+            <Input
+              type="password"
+              name="currentPassword"
+              label="Current password"
+              value={passwordForm.currentPassword}
+              onChange={event => {
+                setPasswordForm(prev => ({ ...prev, currentPassword: event.target.value }));
+                setPasswordError('');
+              }}
+              autoComplete="current-password"
+              required
+            />
+            <Input
+              type="password"
+              name="newPassword"
+              label="New password"
+              value={passwordForm.newPassword}
+              onChange={event => {
+                setPasswordForm(prev => ({ ...prev, newPassword: event.target.value }));
+                setPasswordError('');
+              }}
+              autoComplete="new-password"
+              required
+            />
             {passwordError && (
               <p className="form-error" role="alert">
                 {passwordError}
