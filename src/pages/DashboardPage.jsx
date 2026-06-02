@@ -64,12 +64,12 @@ function LowStockModal({ items, onClose }) {
           </button>
         </div>
         <div className="modal-body">
-          <p className="helper-text" style={{ marginBottom: '1rem' }}>The following items are below their threshold:</p>
+          <p className="helper-text" style={{ marginBottom: '1rem' }}>The following items are below their minimum limit:</p>
           {items.map((item) => (
             <div key={item.id ?? item.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
               <div>
                 <div style={{ fontWeight: 600, color: 'hsl(var(--destructive))' }}>{item.name || 'Item'}</div>
-                <div className="helper-text" style={{ color: 'hsl(var(--destructive) / 0.8)' }}>Threshold: {item.threshold ?? '—'}</div>
+                <div className="helper-text" style={{ color: 'hsl(var(--destructive) / 0.8)' }}>Minimum Limit: {item.threshold ?? '—'}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontWeight: 700, color: 'hsl(var(--destructive))' }}>{item.stock ?? '—'} left</div>
@@ -348,7 +348,7 @@ function LowStockList({ analytics }) {
         <div key={item.id ?? item.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
           <div>
             <div style={{ fontWeight: 600 }}>{item.name || 'Item'}</div>
-            <div className="helper-text">Threshold: {item.threshold ?? '—'}</div>
+            <div className="helper-text">Minimum Limit: {item.threshold ?? '—'}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontWeight: 600, color: 'hsl(var(--destructive))' }}>{item.stock ?? '—'} in stock</div>
