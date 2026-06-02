@@ -260,7 +260,10 @@ export default function OrdersPage({ token }) {
 
     setIsProcessingBulk(true);
     try {
-      await Promise.all(selectedOrderIds.map(id => updateOrderStatus(token, id, moveToTab)));
+      // Serial execution to prevent race conditions on stock level updates
+      for (const id of selectedOrderIds) {
+        await updateOrderStatus(token, id, moveToTab);
+      }
       await loadOrders();
       const count = selectedOrderIds.length;
       setIsBulkActionActive(false);
@@ -296,26 +299,20 @@ export default function OrdersPage({ token }) {
     setPaymentSplitSubmitting(true);
 
     try {
-      // For bulk payment, we split the total payment across all orders proportionally or just assign to first/last?
-      // Usually, if it's bulk, we might just want to mark them all as paid with the split info? 
-      // But the API updateOrderStatus takes status and paymentDetails.
-      // If we move multiple orders to PAID at once, we'll send the SAME split to each? That doesn't seem right.
-      // If the user selects 5 orders totaling 5000, and pays 3000 online and 2000 cash, 
-      // we should probably distribute it.
-      
       const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
       const totalAmount = selectedOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
       
-      await Promise.all(selectedOrders.map(order => {
+      // Serial execution to prevent race conditions on stock level updates
+      for (const order of selectedOrders) {
         const orderAmount = Number(order.totalAmount) || 0;
         const ratio = totalAmount > 0 ? orderAmount / totalAmount : 1 / selectedOrders.length;
         
         // Distribute payment proportionally
-        return updateOrderStatus(token, order.id, 'PAID', {
+        await updateOrderStatus(token, order.id, 'PAID', {
           online: Math.round(parsedOnline * ratio),
           cash: Math.round(parsedCash * ratio)
         });
-      }));
+      }
 
       await loadOrders();
       const count = selectedOrderIds.length;
