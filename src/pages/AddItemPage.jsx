@@ -101,7 +101,7 @@ export default function AddItemPage({ token }) {
           <div className="split-2">
             <Input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={onFormChange} required />
             <Input
-              name="Minimum Limit"
+              name="threshold"
               type="number"
               placeholder="Minimum Limit"
               value={form.threshold}
