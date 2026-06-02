@@ -276,19 +276,19 @@ function EarningsChart({ data }) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-            <XAxis 
-              dataKey="date" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
+            <XAxis
+              dataKey="date"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
             />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
+            <YAxis
+              axisLine={false}
+              tickLine={false}
               tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               tickFormatter={(value) => `₹${value}`}
             />
-            <RechartsTooltip 
+            <RechartsTooltip
               cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
               contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
             />
@@ -302,36 +302,36 @@ function EarningsChart({ data }) {
 
 function AnalyticsTotals({ totals }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-      <StatCard 
-        icon={Activity} 
-        label="Total Orders" 
-        value={totals?.totalOrders ?? '—'} 
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+      <StatCard
+        icon={Activity}
+        label="Total Orders"
+        value={totals?.totalOrders ?? '—'}
       />
-      <StatCard 
-        icon={IndianRupee} 
-        label="Total Amount" 
-        value={formatCurrency(totals?.totalOrderAmount)} 
+      <StatCard
+        icon={IndianRupee}
+        label="Total Amount"
+        value={formatCurrency(totals?.totalOrderAmount)}
       />
-      <StatCard 
-        icon={TrendingUp} 
-        label="Amount Received" 
-        value={formatCurrency(totals?.amountReceived)} 
+      <StatCard
+        icon={TrendingUp}
+        label="Amount Received"
+        value={formatCurrency(totals?.amountReceived)}
       />
-      <StatCard 
-        icon={Users} 
-        label="Total Udhaari" 
-        value={formatCurrency(totals?.totalCredits)} 
+      <StatCard
+        icon={Users}
+        label="Total Udhaari"
+        value={formatCurrency(totals?.totalCredits)}
       />
-      <StatCard 
-        icon={Activity} 
-        label="Total Bakaya" 
-        value={formatCurrency(totals?.totalBakaya)} 
+      <StatCard
+        icon={Activity}
+        label="Total Bakaya"
+        value={formatCurrency(totals?.totalBakaya)}
       />
-      <StatCard 
-        icon={TrendingDown} 
-        label="Total Spends" 
-        value={formatCurrency(totals?.totalSpends)} 
+      <StatCard
+        icon={TrendingDown}
+        label="Total Spends"
+        value={formatCurrency(totals?.totalSpends)}
       />
     </div>
   );
@@ -497,36 +497,36 @@ export default function DashboardPage({ token }) {
   return (
     <section className="page">
       {showLowStockModal && (
-        <LowStockModal 
-          items={analytics?.lowStockItems} 
-          onClose={() => setShowLowStockModal(false)} 
+        <LowStockModal
+          items={analytics?.lowStockItems}
+          onClose={() => setShowLowStockModal(false)}
         />
       )}
-      <div 
-        className="sticky-header" 
-        style={{ 
-          top: '3.5rem', 
-          zIndex: 45, 
+      <div
+        className="sticky-header"
+        style={{
+          top: '3.5rem',
+          zIndex: 45,
           paddingBottom: '0.75rem',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.75rem'
         }}
       >
-        <div 
-          style={{ 
-            display: 'flex', 
-            gap: '0.5rem', 
-            background: 'hsl(var(--muted) / 0.5)', 
-            padding: '0.25rem', 
-            borderRadius: 'var(--radius)' 
+        <div
+          style={{
+            display: 'flex',
+            gap: '0.5rem',
+            background: 'hsl(var(--muted) / 0.5)',
+            padding: '0.25rem',
+            borderRadius: 'var(--radius)'
           }}
         >
           <button
             type="button"
             className="chart-toggle-btn"
-            style={{ 
-              flex: 1, 
+            style={{
+              flex: 1,
               padding: '0.5rem',
               background: activeTab === 'month' ? 'hsl(var(--primary) / 0.15)' : 'transparent',
               color: activeTab === 'month' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
@@ -540,8 +540,8 @@ export default function DashboardPage({ token }) {
           <button
             type="button"
             className="chart-toggle-btn"
-            style={{ 
-              flex: 1, 
+            style={{
+              flex: 1,
               padding: '0.5rem',
               background: activeTab === 'lifetime' ? 'hsl(var(--primary) / 0.15)' : 'transparent',
               color: activeTab === 'lifetime' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
