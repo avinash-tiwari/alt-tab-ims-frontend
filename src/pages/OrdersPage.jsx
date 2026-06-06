@@ -56,6 +56,7 @@ export default function OrdersPage({ token }) {
   const [customerPrices, setCustomerPrices] = useState([]);
   const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState([{ itemId: '', quantity: 1 }]);
+  const [orderDate, setOrderDate] = useState('');
   const [isBulkActionActive, setIsBulkActionActive] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const [moveToTab, setMoveToTab] = useState('');
@@ -127,10 +128,15 @@ export default function OrdersPage({ token }) {
     setCustomerPrices([]);
     setNotes('');
     setLineItems([{ itemId: '', quantity: 1 }]);
+    setOrderDate('');
   };
 
   const openCreateModal = () => {
     resetCreateOrderForm();
+    // default order date to today (YYYY-MM-DD) when opening the create modal
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    setOrderDate(todayStr);
     setIsCreateModalOpen(true);
   };
 
@@ -156,7 +162,7 @@ export default function OrdersPage({ token }) {
   const getEffectivePrice = (itemId) => {
     const custom = customerPrices.find(p => String(p.itemId) === String(itemId));
     if (custom) return custom.customPrice;
-    
+
     const item = items.find(it => String(it.id) === String(itemId));
     return item ? getItemUnitPrice(item) : 0;
   };
@@ -196,6 +202,8 @@ export default function OrdersPage({ token }) {
       customerId,
       customerName: customerLabel,
       totalAmount: orderTotal,
+      // Keep date at local midnight without converting to UTC (avoid 18:30:00Z shifts)
+      orderDate: orderDate ? `${orderDate}T00:00:00` : undefined,
       items: validItems.map(({ itemId, quantity }) => {
         return {
           itemId,
@@ -233,9 +241,9 @@ export default function OrdersPage({ token }) {
       return;
     }
 
-    setSelectedOrderIds(prev => 
-      prev.includes(orderId) 
-        ? prev.filter(id => id !== orderId) 
+    setSelectedOrderIds(prev =>
+      prev.includes(orderId)
+        ? prev.filter(id => id !== orderId)
         : [...prev, orderId]
     );
   };
@@ -247,7 +255,7 @@ export default function OrdersPage({ token }) {
 
   const handleBulkMove = async () => {
     if (!moveToTab || selectedOrderIds.length === 0) return;
-    
+
     if (moveToTab === 'PAID') {
       const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
       const totalToPay = selectedOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
@@ -301,12 +309,12 @@ export default function OrdersPage({ token }) {
     try {
       const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
       const totalAmount = selectedOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
-      
+
       // Serial execution to prevent race conditions on stock level updates
       for (const order of selectedOrders) {
         const orderAmount = Number(order.totalAmount) || 0;
         const ratio = totalAmount > 0 ? orderAmount / totalAmount : 1 / selectedOrders.length;
-        
+
         // Distribute payment proportionally
         await updateOrderStatus(token, order.id, 'PAID', {
           online: Math.round(parsedOnline * ratio),
@@ -363,7 +371,7 @@ export default function OrdersPage({ token }) {
     const orderIdsInGroup = ordersInGroup.map(o => o.id);
     const selectedInGroup = orderIdsInGroup.filter(id => selectedOrderIds.includes(id));
     const allSelected = selectedInGroup.length === orderIdsInGroup.length;
-    
+
     if (allSelected) {
       setSelectedOrderIds(prev => prev.filter(id => !orderIdsInGroup.includes(id)));
     } else {
@@ -407,11 +415,11 @@ export default function OrdersPage({ token }) {
 
                 return (
                   <div key={customerName} style={{ marginBottom: '1rem', opacity: isOtherCustomer ? 0.5 : 1 }}>
-                    <div 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.75rem', 
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
                         padding: '0.75rem 1rem',
                         marginBottom: '0.75rem',
                         cursor: isBulkActionActive ? 'pointer' : 'default',
@@ -433,10 +441,10 @@ export default function OrdersPage({ token }) {
                       ) : (
                         null
                       )}
-                      <h3 style={{ 
-                        margin: 0, 
-                        fontSize: '1rem', 
-                        fontWeight: 800, 
+                      <h3 style={{
+                        margin: 0,
+                        fontSize: '1rem',
+                        fontWeight: 800,
                         color: 'hsl(var(--foreground))',
                         letterSpacing: '0.01em'
                       }}>
@@ -468,7 +476,7 @@ export default function OrdersPage({ token }) {
                               }
                             }}
                             aria-label={isBulkActionActive ? `Select ${clickableLabel}` : `View ${clickableLabel}`}
-                            style={{ 
+                            style={{
                               marginBottom: 0,
                               border: isSelected ? '2px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
                               position: 'relative',
@@ -491,9 +499,9 @@ export default function OrdersPage({ token }) {
                               )}
                               <div className="order-card-left" style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                                  <span style={{ 
-                                    fontSize: '0.9rem', 
-                                    fontWeight: 700, 
+                                  <span style={{
+                                    fontSize: '0.9rem',
+                                    fontWeight: 700,
                                     color: 'hsl(var(--primary))',
                                     background: 'hsl(var(--primary) / 0.08)',
                                     padding: '0.15rem 0.5rem',
@@ -520,13 +528,13 @@ export default function OrdersPage({ token }) {
                 );
               })
             ) : (
-              <div style={{ 
-                padding: '4rem 1rem', 
-                textAlign: 'center', 
-                background: 'hsl(var(--card))', 
-                borderRadius: 'var(--radius)', 
+              <div style={{
+                padding: '4rem 1rem',
+                textAlign: 'center',
+                background: 'hsl(var(--card))',
+                borderRadius: 'var(--radius)',
                 border: '1px dashed hsl(var(--border))',
-                opacity: 0.8 
+                opacity: 0.8
               }}>
                 <ShoppingBag size={32} style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '1rem', opacity: 0.5 }} />
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>No {activeTab.toLowerCase()} orders</h3>
@@ -558,10 +566,10 @@ export default function OrdersPage({ token }) {
             display: 'flex',
             gap: '1rem'
           }}>
-            <button 
-              type="button" 
-              className="primary" 
-              style={{ height: '2.5rem', width: '100%' }} 
+            <button
+              type="button"
+              className="primary"
+              style={{ height: '2.5rem', width: '100%' }}
               onClick={openCreateModal}
             >
               CREATE ORDER
@@ -587,30 +595,30 @@ export default function OrdersPage({ token }) {
           {isBulkActionActive ? (
             <>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                 <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedOrderIds.length} Selected</span>
-                 <select 
-                   value={moveToTab} 
-                   onChange={(e) => setMoveToTab(e.target.value)}
-                   style={{ flex: 1, height: '2.5rem' }}
-                 >
-                   <option value="">Move to...</option>
-                   {['NEW', 'DELIVERED', 'PAID']
-                     .filter(t => t !== activeTab)
-                     .map(t => <option key={t} value={t}>{t}</option>)
-                   }
-                 </select>
+                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedOrderIds.length} Selected</span>
+                <select
+                  value={moveToTab}
+                  onChange={(e) => setMoveToTab(e.target.value)}
+                  style={{ flex: 1, height: '2.5rem' }}
+                >
+                  <option value="">Move to...</option>
+                  {['NEW', 'DELIVERED', 'PAID']
+                    .filter(t => t !== activeTab)
+                    .map(t => <option key={t} value={t}>{t}</option>)
+                  }
+                </select>
               </div>
               <div className="split-2" style={{ gap: '1rem' }}>
-                 <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>Cancel</button>
-                 <button 
-                   type="button" 
-                   className="primary" 
-                   style={{ height: '2.5rem' }}
-                   disabled={!moveToTab || selectedOrderIds.length === 0 || isProcessingBulk}
-                   onClick={handleBulkMove}
-                 >
-                   {isProcessingBulk ? 'Moving...' : 'Move Orders'}
-                 </button>
+                <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>Cancel</button>
+                <button
+                  type="button"
+                  className="primary"
+                  style={{ height: '2.5rem' }}
+                  disabled={!moveToTab || selectedOrderIds.length === 0 || isProcessingBulk}
+                  onClick={handleBulkMove}
+                >
+                  {isProcessingBulk ? 'Moving...' : 'Move Orders'}
+                </button>
               </div>
             </>
           ) : (
@@ -647,14 +655,14 @@ export default function OrdersPage({ token }) {
         <div className="orders-payment-split-modal-overlay">
           <div className="orders-payment-split-modal" role="dialog" aria-modal="true">
             <header className="orders-payment-split-modal-header">
-              <h3 style={{ margin: 0}}>Bulk Payment Received</h3>
+              <h3 style={{ margin: 0 }}>Bulk Payment Received</h3>
               <button
                 type="button"
                 className="ghost-btn"
                 onClick={() => setShowPaymentSplitModal(false)}
                 aria-label="Close payment split dialog"
               >
-              <X size={24} />
+                <X size={24} />
               </button>
             </header>
             <div className="orders-payment-split-modal-body">
@@ -713,13 +721,13 @@ export default function OrdersPage({ token }) {
           display: 'flex',
           flexDirection: 'column'
         }}>
-          <header style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
+          <header style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             paddingBottom: '0.5rem',
             borderBottom: '1px solid hsl(var(--border))',
-            marginBottom: '1rem' 
+            marginBottom: '1rem'
           }}>
             <h2 style={{ margin: 0 }}>Add Order Items</h2>
             <button
@@ -733,12 +741,12 @@ export default function OrdersPage({ token }) {
             </button>
           </header>
 
-          <form 
+          <form
             onSubmit={handleCreateOrderSubmit}
-            style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              flex: 1, 
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
               overflow: 'hidden'
             }}
           >
@@ -759,11 +767,21 @@ export default function OrdersPage({ token }) {
                   ))}
                 </select>
               </div>
+              <div className="form-group">
+                <Input
+                  id="order-date"
+                  label="Order date"
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  disabled={creatingOrder}
+                />
+              </div>
             </div>
 
-            <div style={{ 
-              flex: 1, 
-              overflowY: 'auto', 
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
               paddingRight: '4px',
               display: 'flex',
               flexDirection: 'column',
@@ -778,9 +796,9 @@ export default function OrdersPage({ token }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                       <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Item {index + 1}</span>
                       {lineItems.length > 1 && (
-                        <button 
-                          type="button" 
-                          className="ghost-btn" 
+                        <button
+                          type="button"
+                          className="ghost-btn"
                           onClick={() => handleRemoveLineItem(index)}
                           style={{ padding: '4px', color: 'hsl(var(--muted-foreground))' }}
                         >
@@ -828,9 +846,9 @@ export default function OrdersPage({ token }) {
                 type="button"
                 onClick={handleAddLineItem}
                 className="ghost-btn"
-                style={{ 
-                  width: '100%', 
-                  border: '1px solid hsl(var(--border))', 
+                style={{
+                  width: '100%',
+                  border: '1px solid hsl(var(--border))',
                   background: 'hsl(var(--card))',
                   padding: '0.75rem',
                   display: 'flex',
@@ -844,14 +862,14 @@ export default function OrdersPage({ token }) {
               </button>
             </div>
 
-            <div style={{ 
+            <div style={{
               marginTop: 'auto',
               background: 'hsl(var(--background))',
               paddingTop: '1rem',
               zIndex: 10
             }}>
-              <div style={{ 
-                padding: '0 0 1rem', 
+              <div style={{
+                padding: '0 0 1rem',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
@@ -869,10 +887,10 @@ export default function OrdersPage({ token }) {
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  className="primary" 
-                  disabled={creatingOrder} 
+                <button
+                  type="submit"
+                  className="primary"
+                  disabled={creatingOrder}
                   style={{ width: '100%', height: '2.5rem', fontSize: '1rem' }}
                 >
                   {creatingOrder ? 'Saving...' : 'Save Order'}
