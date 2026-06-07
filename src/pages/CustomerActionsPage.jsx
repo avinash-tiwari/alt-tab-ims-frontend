@@ -90,28 +90,26 @@ export default function CustomerActionsPage({ token }) {
         {error && <p className="error-text">{error}</p>}
         <form className="card stack-form" onSubmit={saveCustomer}>
           <Input name="name" placeholder="Name *" required value={customerForm.name} onChange={onCustomerChange} />
-          <Input name="phone" placeholder="Phone *" required value={customerForm.phone} onChange={onCustomerChange} />
-          <Input name="email" placeholder="Email (Optional)" type="email" value={customerForm.email} onChange={onCustomerChange} />
+          <Input name="phone" placeholder="Phone" value={customerForm.phone} onChange={onCustomerChange} />
+          <Input name="email" placeholder="Email" type="email" value={customerForm.email} onChange={onCustomerChange} />
           <Input
             name="addressLine1"
-            placeholder="Address Line 1 *"
-            required
+            placeholder="Address Line 1"
             value={customerForm.addressLine1}
             onChange={onCustomerChange}
           />
           <div className="split-2">
-            <Input name="city" placeholder="City *" required value={customerForm.city} onChange={onCustomerChange} />
+            <Input name="city" placeholder="City" value={customerForm.city} onChange={onCustomerChange} />
             <Input
               name="postalCode"
-              placeholder="Postal Code *"
-              required
+              placeholder="Postal Code"
               value={customerForm.postalCode}
               onChange={onCustomerChange}
             />
           </div>
           <Input
             name="locationLink"
-            placeholder="Google Maps Link (Optional)"
+            placeholder="Google Maps Link"
             value={customerForm.locationLink}
             onChange={onCustomerChange}
           />

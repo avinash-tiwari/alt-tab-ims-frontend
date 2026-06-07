@@ -75,6 +75,14 @@ textarea.floating-input {
   padding: 0.8rem 0.75rem;
 }
 
+input.floating-input.compact-input {
+  padding: 0.5rem 0.75rem;
+}
+
+input.floating-input.compact-input ~ .floating-label {
+  top: 0.5rem;
+}
+
 .floating-label {
   position: absolute;
   top: 0.8rem;

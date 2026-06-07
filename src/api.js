@@ -136,6 +136,14 @@ export async function listSpends(token, query) {
   return request('/spends', { token, query });
 }
 
+export async function createSpend(token, payload) {
+  return request('/spends', {
+    method: 'POST',
+    token,
+    body: payload
+  });
+}
+
 export async function bulkMarkSpendsStatusTrue(token, payload) {
   return request('/spends/bulk-status-true', {
     method: 'PATCH',

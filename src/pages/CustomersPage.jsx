@@ -164,12 +164,8 @@ export default function CustomersPage({ token }) {
                     <span className="stat-value">{formatCurrency(customer?.totalSpent ?? '0')}</span>
                   </div>
                   <div className="stat-pill">
-                    <span className="stat-label">Udhaari</span>
-                    <span className="stat-value warning">{formatCurrency(customer?.totalCredits ?? '0')}</span>
-                  </div>
-                  <div className="stat-pill">
-                    <span className="stat-label">Bakaya</span>
-                    <span className="stat-value destructive">{formatCurrency(customer?.totalDue ?? '0')}</span>
+                    <span className="stat-label">Un-Spent</span>
+                    <span className="stat-value destructive">{formatCurrency(customer?.unSpentAmount ?? '0')}</span>
                   </div>
                   <div className="stat-pill">
                     <span className="stat-label">Orders</span>

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, LayoutDashboard, IndianRupee, Activity, TrendingDown, Users, TrendingUp, X } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Check, ChevronLeft, ChevronRight, LayoutDashboard, IndianRupee, Activity, TrendingDown, Users, TrendingUp, X, Search, Plus } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
 import EmptyState from '../components/EmptyState';
-import { getDashboardAnalyticsLifetime, getDashboardAnalyticsMonthly } from '../api';
+import { getDashboardAnalyticsLifetime, getDashboardAnalyticsMonthly, listSpends, createSpend, bulkMarkSpendsStatusTrue } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
+import Input from '../components/ui/Input';
 
 const formatYearMonth = (date) => {
   const year = date.getFullYear();
@@ -243,11 +244,18 @@ function AnalyticsCharts({ analytics, activeTab }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value }) {
+function StatCard({ icon: Icon, label, value, color, bgColor }) {
+  const iconStyle = {
+    padding: '0.5rem',
+    background: bgColor || 'hsl(var(--primary) / 0.1)',
+    borderRadius: '0.5rem',
+    color: color || 'hsl(var(--primary))'
+  };
+
   return (
     <div className="card" style={{ padding: '1rem', marginBottom: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ padding: '0.5rem', background: 'hsl(var(--primary) / 0.1)', borderRadius: '0.5rem', color: 'hsl(var(--primary))' }}>
+        <div style={iconStyle}>
           <Icon size={20} />
         </div>
         <div>
@@ -301,6 +309,12 @@ function EarningsChart({ data }) {
 }
 
 function AnalyticsTotals({ totals }) {
+  const amountReceived = parseFloat(totals?.amountReceived || 0);
+  const totalSpends = parseFloat(totals?.totalSpends || 0);
+  
+  const profit = Math.max(0, amountReceived - totalSpends);
+  const loss = Math.max(0, totalSpends - amountReceived);
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
       <StatCard
@@ -332,6 +346,20 @@ function AnalyticsTotals({ totals }) {
         icon={TrendingDown}
         label="Total Spends"
         value={formatCurrency(totals?.totalSpends)}
+      />
+      <StatCard
+        icon={TrendingUp}
+        label="PROFIT"
+        value={formatCurrency(profit)}
+        color="#15803d"
+        bgColor="#dcfce7"
+      />
+      <StatCard
+        icon={TrendingDown}
+        label="LOSS"
+        value={formatCurrency(loss)}
+        color="#b91c1c"
+        bgColor="#fee2e2"
       />
     </div>
   );
@@ -380,6 +408,346 @@ function TopPaidCustomersList({ analytics }) {
   );
 }
 
+function CreateSpendModal({ token, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({ itemName: '', price: '', quantity: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await createSpend(token, {
+        itemName: formData.itemName,
+        price: parseFloat(formData.price),
+        quantity: parseInt(formData.quantity),
+        status: true
+      });
+      onSuccess();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'hsl(var(--background))',
+      zIndex: 1000,
+      padding: '1rem',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid hsl(var(--border))',
+        marginBottom: '1rem'
+      }}>
+        <h3 style={{ margin: 0 }}>Create Spend</h3>
+        <button
+          type="button"
+          className="ghost-btn"
+          onClick={onClose}
+          aria-label="Close"
+          disabled={loading}
+          style={{ padding: '0.25rem' }}
+        >
+          <X size={24} />
+        </button>
+      </header>
+
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          overflow: 'hidden'
+        }}
+      >
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
+          <div className="stack-form">
+            <Input
+              label="Item Name"
+              value={formData.itemName}
+              onChange={(e) => setFormData(prev => ({ ...prev, itemName: e.target.value }))}
+              required
+            />
+            <div className="split-2">
+              <Input
+                label="Price"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                required
+                step="0.01"
+              />
+              <Input
+                label="Quantity"
+                type="number"
+                value={formData.quantity}
+                onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        <footer style={{
+          marginTop: 'auto',
+          paddingTop: '1rem',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '1rem',
+          borderTop: '1px solid hsl(var(--border) / 0.5)'
+        }}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={onClose}
+            disabled={loading}
+            style={{ width: '100%', height: '2.75rem' }}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="primary"
+            disabled={loading}
+            style={{ width: '100%', height: '2.75rem' }}
+          >
+            {loading ? 'Creating...' : 'Create'}
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
+}
+
+function SpendsTab({ token }) {
+  const [spends, setSpends] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState('');
+  const [filters, setFilters] = useState({ q: '', status: 'verified' });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const fetchSpends = async () => {
+    setLoading(true);
+    setError('');
+    setSelectedIds([]);
+    try {
+      const query = {
+        q: filters.q,
+        limit: 200 // Max allowed by backend
+      };
+      if (filters.status !== 'all') {
+        query.status = filters.status === 'verified';
+      }
+      const data = await listSpends(token, query);
+      setSpends(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSpends();
+  }, [filters, token]);
+
+  const stats = useMemo(() => {
+    const total = spends.reduce((sum, s) => sum + parseFloat(s.total || 0), 0);
+    return {
+      total,
+      count: spends.length,
+      verifiedCount: spends.filter(s => s.status).length,
+      pendingCount: spends.filter(s => !s.status).length
+    };
+  }, [spends]);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === spends.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(spends.map(s => s.id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkVerify = async () => {
+    if (selectedIds.length === 0) return;
+    setVerifying(true);
+    setError('');
+    try {
+      await bulkMarkSpendsStatusTrue(token, { ids: selectedIds });
+      fetchSpends();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {isModalOpen && (
+        <CreateSpendModal
+          token={token}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchSpends();
+          }}
+        />
+      )}
+      {error && <p className="form-error">{error}</p>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem' }}>
+        <StatCard
+          icon={TrendingDown}
+          label="Total Spent"
+          value={formatCurrency(stats.total)}
+        />
+        <StatCard
+          icon={Activity}
+          label="Total Spends"
+          value={stats.count}
+        />
+      </div>
+
+      <div className="card" style={{ padding: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <Input
+              placeholder="Search items..."
+              value={filters.q}
+              onChange={(e) => setFilters(prev => ({ ...prev, q: e.target.value }))}
+              style={{ marginBottom: 0 }}
+            />
+          </div>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+            style={{
+              width: 'auto',
+              padding: '0.5rem',
+              borderRadius: 'var(--radius)',
+              border: '1px solid hsl(var(--border))',
+              fontSize: '0.875rem'
+            }}
+          >
+            <option value="verified">Verified</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+
+        {selectedIds.length > 0 && filters.status === 'pending' && (
+          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+            <button 
+              className="primary" 
+              onClick={handleBulkVerify} 
+              disabled={verifying}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}
+            >
+              <Check size={16} />
+              {verifying ? 'Verifying...' : `Verify ${selectedIds.length} Selected`}
+            </button>
+          </div>
+        )}
+
+        <div style={{ overflowX: 'auto' }}>
+          <table className="chart-table">
+            <thead>
+              <tr>
+                {filters.status === 'pending' && (
+                  <th style={{ width: '40px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={spends.length > 0 && selectedIds.length === spends.length}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                )}
+                <th>Item</th>
+                <th className="text-right">Qty</th>
+                <th className="text-right">Total</th>
+                <th className="text-right">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={filters.status === 'pending' ? 5 : 4} className="text-center helper-text">Loading...</td>
+                </tr>
+              ) : spends.length === 0 ? (
+                <tr>
+                  <td colSpan={filters.status === 'pending' ? 5 : 4} className="text-center helper-text">No spends found</td>
+                </tr>
+              ) : (
+                spends.map((spend) => (
+                  <tr key={spend.id}>
+                    {filters.status === 'pending' && (
+                      <td>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.includes(spend.id)}
+                          onChange={() => toggleSelect(spend.id)}
+                        />
+                      </td>
+                    )}
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{spend.itemName}</div>
+                    </td>
+                    <td className="text-right">{spend.quantity}</td>
+                    <td className="text-right">{formatCurrency(spend.total)}</td>
+                    <td className="text-right">
+                      <div style={{ fontSize: '0.875rem' }}>
+                        {new Date(spend.createdAt).toLocaleDateString('en-GB', { 
+                          day: '2-digit', 
+                          month: '2-digit',
+                          year: '2-digit'
+                        })}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="floating-action-btn"
+        onClick={() => setIsModalOpen(true)}
+        title="Add Spend"
+        style={{ bottom: '5rem' }}
+      >
+        <Plus size={24} />
+      </button>
+    </div>
+  );
+}
+
 export default function DashboardPage({ token }) {
   const [activeTab, setActiveTab] = useState('month');
   const [selectedMonth, setSelectedMonth] = useState(() => formatYearMonth(new Date()));
@@ -406,7 +774,7 @@ export default function DashboardPage({ token }) {
 
   useEffect(() => {
     if (!token) return;
-    if (activeTab === 'lifetime') return;
+    if (activeTab === 'lifetime' || activeTab === 'spends') return;
 
     let alive = true;
     const load = async () => {
@@ -552,6 +920,21 @@ export default function DashboardPage({ token }) {
           >
             Lifetime
           </button>
+          <button
+            type="button"
+            className="chart-toggle-btn"
+            style={{
+              flex: 1,
+              padding: '0.5rem',
+              background: activeTab === 'spends' ? 'hsl(var(--primary) / 0.15)' : 'transparent',
+              color: activeTab === 'spends' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+              fontWeight: activeTab === 'spends' ? 700 : 500,
+              boxShadow: activeTab === 'spends' ? 'none' : 'none'
+            }}
+            onClick={() => setActiveTab('spends')}
+          >
+            Spends
+          </button>
         </div>
 
         {activeTab === 'month' && (
@@ -596,29 +979,35 @@ export default function DashboardPage({ token }) {
       </div>
 
       <div style={{ marginTop: '0.5rem' }}>
-        {error ? (
+        {error && activeTab !== 'spends' ? (
           <p className="form-error" style={{ marginBottom: '1rem' }}>
             {error}
           </p>
         ) : null}
 
-        {loading && !analytics ? <p className="helper-text">Loading analytics…</p> : null}
-
-        {analytics?.totals ? (
+        {activeTab === 'spends' ? (
+          <SpendsTab token={token} />
+        ) : (
           <>
-            <AnalyticsTotals totals={analytics.totals} />
-            <LowStockList analytics={analytics} />
-            <EarningsChart data={analytics.last7DaysEarnings} />
-            <AnalyticsCharts analytics={analytics} activeTab={activeTab} />
-            <TopPaidCustomersList analytics={analytics} />
+            {loading && !analytics ? <p className="helper-text">Loading analytics…</p> : null}
+
+            {analytics?.totals ? (
+              <>
+                <AnalyticsTotals totals={analytics.totals} />
+                <LowStockList analytics={analytics} />
+                <EarningsChart data={analytics.last7DaysEarnings} />
+                <AnalyticsCharts analytics={analytics} activeTab={activeTab} />
+                <TopPaidCustomersList analytics={analytics} />
+              </>
+            ) : !loading ? (
+              <EmptyState
+                icon={LayoutDashboard}
+                title="No analytics yet"
+                description={activeTab === 'lifetime' ? 'No lifetime metrics found yet.' : 'No metrics found for this period.'}
+              />
+            ) : null}
           </>
-        ) : !loading ? (
-          <EmptyState
-            icon={LayoutDashboard}
-            title="No analytics yet"
-            description={activeTab === 'lifetime' ? 'No lifetime metrics found yet.' : 'No metrics found for this period.'}
-          />
-        ) : null}
+        )}
       </div>
     </section>
   );

@@ -95,12 +95,8 @@ export default function CustomerDetailPage({ token }) {
       value: `${formatCurrency(customer?.totalSpent ?? '0')}`
     },
     {
-      label: 'Udhaari',
-      value: `${formatCurrency(customer?.totalCredits ?? '0')}`
-    },
-    {
-      label: 'Total Bakaya',
-      value: `${formatCurrency(customer?.totalDue ?? '0')}`
+      label: 'Un-Spent',
+      value: `${formatCurrency(customer?.unSpentAmount ?? '0')}`
     },
     {
       label: 'Total Orders',
@@ -326,12 +322,8 @@ export default function CustomerDetailPage({ token }) {
               <span className="stat-value">{formatCurrency(customer?.totalSpent ?? '0')}</span>
             </div>
             <div className="stat-pill">
-              <span className="stat-label">Udhaari</span>
-              <span className="stat-value warning">{formatCurrency(customer?.totalCredits ?? '0')}</span>
-            </div>
-            <div className="stat-pill">
-              <span className="stat-label">Bakaya</span>
-              <span className="stat-value destructive">{formatCurrency(customer?.totalDue ?? '0')}</span>
+              <span className="stat-label">Un-Spent</span>
+              <span className="stat-value destructive">{formatCurrency(customer?.unSpentAmount ?? '0')}</span>
             </div>
             <div className="stat-pill">
               <span className="stat-label">Orders</span>
