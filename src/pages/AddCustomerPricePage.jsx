@@ -9,6 +9,7 @@ import {
 } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
+import SearchableSelect from '../components/ui/SearchableSelect';
 
 export default function AddCustomerPricePage({ token }) {
   const { id } = useParams();
@@ -182,19 +183,17 @@ export default function AddCustomerPricePage({ token }) {
                   </div>
 
                   <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <select
+                    <SearchableSelect
                       value={entry.itemId}
                       onChange={(e) => handleEntryChange(index, 'itemId', e.target.value)}
+                      options={availableItems.map((item) => ({
+                        value: item.id,
+                        label: `${item.name} (${formatCurrency(item.basePrice)})`
+                      }))}
+                      placeholder="Search item..."
                       disabled={saving}
                       required
-                    >
-                      <option value="">Search item...</option>
-                      {availableItems.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name} ({formatCurrency(item.basePrice)})
-                        </option>
-                      ))}
-                    </select>
+                    />
                     {showIncompleteError && !entry.itemId && (
                       <p className="error-text" style={{ 
                         fontSize: '0.75rem', 

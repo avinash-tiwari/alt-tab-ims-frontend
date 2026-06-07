@@ -13,6 +13,7 @@ import {
 import { formatCurrency, getDisplayCustomerName, getStatusLabel } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
 import Input from '../components/ui/Input';
+import SearchableSelect from '../components/ui/SearchableSelect';
 
 const getCustomerLabel = (customer) =>
   customer?.name ||
@@ -595,18 +596,18 @@ export default function OrdersPage({ token }) {
           {isBulkActionActive ? (
             <>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedOrderIds.length} Selected</span>
-                <select
-                  value={moveToTab}
-                  onChange={(e) => setMoveToTab(e.target.value)}
-                  style={{ flex: 1, height: '2.5rem' }}
-                >
-                  <option value="">Move to...</option>
-                  {['NEW', 'DELIVERED', 'PAID']
-                    .filter(t => t !== activeTab)
-                    .map(t => <option key={t} value={t}>{t}</option>)
-                  }
-                </select>
+                 <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedOrderIds.length} Selected</span>
+                 <SearchableSelect 
+                   value={moveToTab} 
+                   onChange={(e) => setMoveToTab(e.target.value)}
+                   options={['NEW', 'DELIVERED', 'PAID']
+                     .filter(t => t !== activeTab)
+                     .map(t => ({ value: t, label: t }))
+                   }
+                   placeholder="Move to..."
+                   className="flex-1"
+                   style={{ height: '2.5rem' }}
+                 />
               </div>
               <div className="split-2" style={{ gap: '1rem' }}>
                 <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>Cancel</button>
@@ -753,19 +754,17 @@ export default function OrdersPage({ token }) {
             <div style={{ paddingBottom: '1rem', background: 'hsl(var(--background))', zIndex: 10 }}>
               {createOrderError && <p className="form-error" style={{ marginBottom: '1rem' }}>{createOrderError}</p>}
               <div className="form-group">
-                <select
+                <SearchableSelect
                   value={customerId}
                   onChange={(e) => setCustomerId(e.target.value)}
+                  options={customers.map((customer) => ({
+                    value: customer.id,
+                    label: getCustomerLabel(customer)
+                  }))}
+                  placeholder="Select a customer"
                   disabled={creatingOrder}
                   required
-                >
-                  <option value="">Select a customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {getCustomerLabel(customer)}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div className="form-group">
                 <Input
@@ -808,18 +807,16 @@ export default function OrdersPage({ token }) {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                      <select
+                      <SearchableSelect
                         value={line.itemId}
                         onChange={(e) => handleLineItemChange(index, 'itemId', e.target.value)}
+                        options={items.map((item) => ({
+                          value: item.id,
+                          label: getItemLabel(item)
+                        }))}
+                        placeholder="Search item..."
                         disabled={creatingOrder}
-                      >
-                        <option value="">Search item...</option>
-                        {items.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {getItemLabel(item)}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
 
                     <div className="split-2">

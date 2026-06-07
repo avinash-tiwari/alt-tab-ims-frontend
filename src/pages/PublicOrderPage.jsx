@@ -4,6 +4,7 @@ import { createPublicOrder, listItems } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
 import Input from '../components/ui/Input';
+import SearchableSelect from '../components/ui/SearchableSelect';
 
 const DEFAULT_NOTES = 'Order from customer portal';
 
@@ -26,7 +27,6 @@ export default function PublicOrderPage() {
     const params = new URLSearchParams(location.search);
     return (params.get('tenantToken') || '').trim();
   }, [location.search]);
-  const searchTimerRef = useRef(null);
 
   useEffect(() => {
     let isActive = true;
@@ -72,14 +72,6 @@ export default function PublicOrderPage() {
     };
   }, [tenantToken, itemQuery]);
 
-  useEffect(() => {
-    return () => {
-      if (searchTimerRef.current) {
-        clearTimeout(searchTimerRef.current);
-      }
-    };
-  }, []);
-
   const handleAddLineItem = () => {
     if (!selectedItemId) {
       setSubmitError('Select an item before adding.');
@@ -116,29 +108,6 @@ export default function PublicOrderPage() {
     setItemQuery('');
     setSubmitError('');
     setSuccessMessage('');
-  };
-
-  const handleSelectKeyDown = (event) => {
-    const { key } = event;
-    const isCharacterKey = key.length === 1 && !event.ctrlKey && !event.metaKey;
-    if (key === 'Backspace') {
-      setItemQuery((prev) => prev.slice(0, -1));
-    } else if (key === 'Escape') {
-      setItemQuery('');
-    } else if (isCharacterKey) {
-      setItemQuery((prev) => prev + key);
-    } else {
-      return;
-    }
-
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-    }
-    searchTimerRef.current = setTimeout(() => {
-      setItemQuery('');
-    }, 1500);
-
-    event.preventDefault();
   };
 
   const handleRemoveLineItem = (index) => {
@@ -223,25 +192,16 @@ export default function PublicOrderPage() {
               <p className="muted" style={{ marginTop: '0', marginBottom: '0.25rem' }}>
                 Focus the dropdown and type to filter the catalog in place.
               </p>
-              <select
-                id="public-order-item-select"
+              <SearchableSelect
                 value={selectedItemId}
                 onChange={(event) => setSelectedItemId(event.target.value)}
-                onKeyDown={handleSelectKeyDown}
+                options={items.map((item) => ({
+                  value: item.id,
+                  label: `${getItemLabel(item)} — ${formatCurrency(getItemUnitPrice(item))}`
+                }))}
+                placeholder="Select an item"
                 disabled={!tenantToken || loadingItems}
-              >
-                <option value="">Select an item</option>
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {getItemLabel(item)} — {formatCurrency(getItemUnitPrice(item))}
-                  </option>
-                ))}
-              </select>
-              {itemQuery && (
-                <p className="helper-text" style={{ marginTop: '0.25rem' }}>
-                  Filtering by &ldquo;{itemQuery}&rdquo;
-                </p>
-              )}
+              />
             </div>
 
             <div className="orders-form-row split-2">

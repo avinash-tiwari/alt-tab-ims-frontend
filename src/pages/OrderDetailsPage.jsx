@@ -22,6 +22,7 @@ import {
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
 import { generateInvoicePDF } from '../utils/pdfGenerator';
 import Input from '../components/ui/Input';
+import SearchableSelect from '../components/ui/SearchableSelect';
 
 export default function OrderDetailsPage({ token }) {
   const { id: orderId } = useParams();
@@ -526,24 +527,16 @@ export default function OrderDetailsPage({ token }) {
         {!loading && orderDetail && (
           // UPDATE STATUS
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-            <select
-              id="order-status"
+            <SearchableSelect
               value={statusInput}
               onChange={(event) => setStatusInput(event.target.value)}
-              style={{ 
-                flex: 7, 
-                height: '2.4rem', 
-                fontSize: '0.875rem', 
-                padding: '0 0.5rem',
-                minWidth: 0
-              }}
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              options={STATUS_OPTIONS.map((option) => ({
+                value: option.value,
+                label: option.label
+              }))}
+              className="flex-7"
+              placeholder="Status"
+            />
             <button
               type="button"
               className="primary"
@@ -667,19 +660,16 @@ export default function OrderDetailsPage({ token }) {
                     return (
                       <>
                         <div className="form-group" style={{ marginBottom: '1rem' }}>
-                          <select
+                          <SearchableSelect
                             value={selectedItemId}
                             onChange={(event) => setSelectedItemId(event.target.value)}
+                            options={availableItems.map((item) => ({
+                              value: item.id,
+                              label: getItemLabel(item)
+                            }))}
+                            placeholder="Search item..."
                             disabled={addingItem}
-                            style={{ width: '100%', height: '2.5rem' }}
-                          >
-                            <option value="">Search item...</option>
-                            {availableItems.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {getItemLabel(item)}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
                         <div className="split-2" style={{ marginBottom: '1rem', gap: '1rem' }}>
                           <Input
