@@ -347,20 +347,23 @@ function AnalyticsTotals({ totals }) {
         label="Total Spends"
         value={formatCurrency(totals?.totalSpends)}
       />
-      <StatCard
-        icon={TrendingUp}
-        label="PROFIT"
-        value={formatCurrency(profit)}
-        color="#15803d"
-        bgColor="#dcfce7"
-      />
-      <StatCard
-        icon={TrendingDown}
-        label="LOSS"
-        value={formatCurrency(loss)}
-        color="#b91c1c"
-        bgColor="#fee2e2"
-      />
+      {profit >= loss ? (
+        <StatCard
+          icon={TrendingUp}
+          label="PROFIT"
+          value={formatCurrency(profit)}
+          color="#15803d"
+          bgColor="#dcfce7"
+        />
+      ) : (
+        <StatCard
+          icon={TrendingDown}
+          label="LOSS"
+          value={formatCurrency(loss)}
+          color="#b91c1c"
+          bgColor="#fee2e2"
+        />
+      )}
     </div>
   );
 }
