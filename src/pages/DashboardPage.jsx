@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, LayoutDashboard, IndianRupee, Activity, TrendingDown, Users, TrendingUp, X, Search, Plus } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, LayoutDashboard, IndianRupee, Activity, TrendingDown, Users, TrendingUp, X, Search, Plus, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
 import EmptyState from '../components/EmptyState';
 import { getDashboardAnalyticsLifetime, getDashboardAnalyticsMonthly, listSpends, createSpend, bulkMarkSpendsStatusTrue } from '../api';
@@ -244,7 +244,7 @@ function AnalyticsCharts({ analytics, activeTab }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value, color, bgColor }) {
+function StatCard({ icon: Icon, label, value, color, bgColor, labelIcon: LabelIcon, onLabelIconClick, onClick }) {
   const iconStyle = {
     padding: '0.5rem',
     background: bgColor || 'hsl(var(--primary) / 0.1)',
@@ -253,13 +253,29 @@ function StatCard({ icon: Icon, label, value, color, bgColor }) {
   };
 
   return (
-    <div className="card" style={{ padding: '1rem', marginBottom: 0 }}>
+    <div 
+      className="card" 
+      onClick={onClick}
+      style={{ 
+        padding: '1rem', 
+        marginBottom: 0, 
+        cursor: onClick ? 'pointer' : 'default',
+        transition: onClick ? 'transform 0.1s ease, background-color 0.1s ease' : 'none'
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <div style={iconStyle}>
           <Icon size={20} />
         </div>
         <div>
-          <p className="helper-text" style={{ margin: 0, fontSize: '0.75rem' }}>{label}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <p className="helper-text" style={{ margin: 0, fontSize: '0.75rem' }}>{label}</p>
+            {LabelIcon && (
+              <div style={{ color: 'hsl(var(--muted-foreground))', display: 'flex' }}>
+                <LabelIcon size={12} />
+              </div>
+            )}
+          </div>
           <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{value}</div>
         </div>
       </div>
@@ -308,8 +324,9 @@ function EarningsChart({ data }) {
   );
 }
 
-function AnalyticsTotals({ totals }) {
+function AnalyticsTotals({ totals, analytics, onShowLowStock }) {
   const profit = parseFloat(totals?.profit || 0);
+  const lowStockCount = analytics?.lowStockItems?.length || 0;
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
@@ -358,6 +375,17 @@ function AnalyticsTotals({ totals }) {
           value={formatCurrency(Math.abs(profit))}
           color="#b91c1c"
           bgColor="#fee2e2"
+        />
+      )}
+      {lowStockCount > 0 && (
+        <StatCard
+          icon={Activity}
+          label="Low Stock"
+          value={lowStockCount}
+          color="#b91c1c"
+          bgColor="#fee2e2"
+          labelIcon={Info}
+          onClick={onShowLowStock}
         />
       )}
     </div>
@@ -762,6 +790,16 @@ export default function DashboardPage({ token }) {
   const [showLowStockModal, setShowLowStockModal] = useState(false);
   const [hasShownModal, setHasShownModal] = useState(false);
 
+  const handleCloseLowStockModal = () => {
+    setShowLowStockModal(false);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem('lowStockAlertShownDate', today);
+    } catch (err) {
+      console.error('Failed to save low stock alert state', err);
+    }
+  };
+
   const monthLabel = useMemo(() => {
     const date = toMonthDate(selectedMonth);
     return date.toLocaleString('en-IN', {
@@ -840,12 +878,17 @@ export default function DashboardPage({ token }) {
 
   useEffect(() => {
     if (analytics?.lowStockItems?.length > 0 && !hasShownModal && !loading) {
-      setShowLowStockModal(true);
-      setHasShownModal(true);
-      const timer = setTimeout(() => {
-        setShowLowStockModal(false);
-      }, 5000);
-      return () => clearTimeout(timer);
+      const today = new Date().toISOString().split('T')[0];
+      const lastShownDate = localStorage.getItem('lowStockAlertShownDate');
+
+      if (lastShownDate !== today) {
+        setShowLowStockModal(true);
+        setHasShownModal(true);
+        const timer = setTimeout(() => {
+          handleCloseLowStockModal();
+        }, 5000);
+        return () => clearTimeout(timer);
+      }
     }
   }, [analytics, hasShownModal, loading]);
 
@@ -866,7 +909,7 @@ export default function DashboardPage({ token }) {
       {showLowStockModal && (
         <LowStockModal
           items={analytics?.lowStockItems}
-          onClose={() => setShowLowStockModal(false)}
+          onClose={handleCloseLowStockModal}
         />
       )}
       <div
@@ -992,7 +1035,11 @@ export default function DashboardPage({ token }) {
 
             {analytics?.totals ? (
               <>
-                <AnalyticsTotals totals={analytics.totals} />
+                <AnalyticsTotals 
+                  totals={analytics.totals} 
+                  analytics={analytics} 
+                  onShowLowStock={() => setShowLowStockModal(true)}
+                />
                 <LowStockList analytics={analytics} />
                 <EarningsChart data={analytics.last7DaysEarnings} />
                 <AnalyticsCharts analytics={analytics} activeTab={activeTab} />
