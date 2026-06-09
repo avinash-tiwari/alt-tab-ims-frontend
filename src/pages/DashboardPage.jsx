@@ -309,11 +309,7 @@ function EarningsChart({ data }) {
 }
 
 function AnalyticsTotals({ totals }) {
-  const amountReceived = parseFloat(totals?.amountReceived || 0);
-  const totalSpends = parseFloat(totals?.totalSpends || 0);
-  
-  const profit = Math.max(0, amountReceived - totalSpends);
-  const loss = Math.max(0, totalSpends - amountReceived);
+  const profit = parseFloat(totals?.profit || 0);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
@@ -347,7 +343,7 @@ function AnalyticsTotals({ totals }) {
         label="Total Spends"
         value={formatCurrency(totals?.totalSpends)}
       />
-      {profit >= loss ? (
+      {profit >= 0 ? (
         <StatCard
           icon={TrendingUp}
           label="PROFIT"
@@ -359,7 +355,7 @@ function AnalyticsTotals({ totals }) {
         <StatCard
           icon={TrendingDown}
           label="LOSS"
-          value={formatCurrency(loss)}
+          value={formatCurrency(Math.abs(profit))}
           color="#b91c1c"
           bgColor="#fee2e2"
         />

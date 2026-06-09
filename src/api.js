@@ -246,7 +246,7 @@ export async function updateOrderStatus(token, orderId, status, paymentDetails =
   });
 }
 
-export async function updateOrderItemQuantity(token, orderId, orderItemId, payload) {
+export async function updateOrderItem(token, orderId, orderItemId, payload) {
   return request(`/orders/${orderId}/items/${orderItemId}`, {
     method: 'PATCH',
     token,

@@ -10,7 +10,7 @@ import {
   getOrderInvoiceData,
   listItems,
   updateOrder,
-  updateOrderItemQuantity,
+  updateOrderItem,
   updateOrderStatus
 } from '../api';
 import {
@@ -40,9 +40,11 @@ export default function OrderDetailsPage({ token }) {
   const [addItemModalOpen, setAddItemModalOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState('1');
+  const [newItemPrice, setNewItemPrice] = useState('0');
   const [modalError, setModalError] = useState('');
   const [addingItem, setAddingItem] = useState(false);
   const [quantityInputs, setQuantityInputs] = useState({});
+  const [priceInputs, setPriceInputs] = useState({});
   const [updatingOrderItemId, setUpdatingOrderItemId] = useState('');
   const [deletingOrderItemId, setDeletingOrderItemId] = useState('');
   const [showPaymentSplitModal, setShowPaymentSplitModal] = useState(false);
@@ -122,18 +124,21 @@ export default function OrderDetailsPage({ token }) {
     return orderItems.reduce((sum, item, index) => {
       const orderItemId = item.id ?? item.itemId ?? `order-item-${index}`;
       const q = Number(quantityInputs[orderItemId] ?? item.quantity ?? 0);
-      const p = Number(item.unitPrice ?? 0);
+      const p = Number(priceInputs[orderItemId] ?? item.unitPrice ?? 0);
       return sum + (p * q);
     }, 0);
-  }, [orderItems, quantityInputs]);
+  }, [orderItems, quantityInputs, priceInputs]);
 
   useEffect(() => {
-    const next = {};
+    const nextQty = {};
+    const nextPrice = {};
     orderItems.forEach((item, index) => {
       const orderItemId = item.id ?? item.itemId ?? `order-item-${index}`;
-      next[orderItemId] = String(item.quantity ?? '');
+      nextQty[orderItemId] = String(item.quantity ?? '');
+      nextPrice[orderItemId] = String(item.unitPrice ? Math.round(item.unitPrice) : '');
     });
-    setQuantityInputs(next);
+    setQuantityInputs(nextQty);
+    setPriceInputs(nextPrice);
   }, [orderItems]);
   const hasNotesChanges = orderDetail && (orderDetail.notes || '') !== notesInput;
   const statusChanged = orderDetail && orderDetail.status !== statusInput;
@@ -312,6 +317,7 @@ export default function OrderDetailsPage({ token }) {
     setAddItemModalOpen(false);
     setSelectedItemId('');
     setNewItemQuantity('1');
+    setNewItemPrice('0');
     setModalError('');
   };
 
@@ -330,12 +336,18 @@ export default function OrderDetailsPage({ token }) {
       return;
     }
 
+    const parsedPrice = Number(newItemPrice);
+    if (newItemPrice === '' || Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      setModalError('Unit price must be a non-negative number.');
+      return;
+    }
+
     setModalError('');
     setAddingItem(true);
     
-    // Find the item being added to get its details (like price/label)
+    // Find the item being added to get its details (like label)
     const selectedItem = availableItems.find(i => String(i.id) === String(selectedItemId));
-    const effectiveUnitPrice = getEffectivePrice(selectedItem);
+    const effectiveUnitPrice = parsedPrice;
     
     try {
       // Optimistic update: we add the item locally first so the header updates "suddenly"
@@ -357,13 +369,15 @@ export default function OrderDetailsPage({ token }) {
         };
       });
       
-      // Update quantity inputs for the temp item so useMemo picks it up
+      // Update inputs for the temp item so useMemo picks it up
       setQuantityInputs(prev => ({ ...prev, [tempId]: String(parsedQuantity) }));
+      setPriceInputs(prev => ({ ...prev, [tempId]: String(effectiveUnitPrice) }));
       closeAddItemModal();
 
       const { orderItem, order } = await addOrderItem(token, orderDetail.id, {
         itemId: selectedItemId,
-        quantity: parsedQuantity
+        quantity: parsedQuantity,
+        unitPrice: effectiveUnitPrice
       });
 
       // Replace optimistic item with the actual item from the server
@@ -373,10 +387,15 @@ export default function OrderDetailsPage({ token }) {
         return { ...prev, ...(order || {}), items };
       });
       
-      // Update quantity inputs for the real item ID
+      // Update inputs for the real item ID
       if (orderItem.id) {
         setQuantityInputs(prev => {
           const next = { ...prev, [orderItem.id]: String(orderItem.quantity) };
+          delete next[tempId];
+          return next;
+        });
+        setPriceInputs(prev => {
+          const next = { ...prev, [orderItem.id]: String(orderItem.unitPrice) };
           delete next[tempId];
           return next;
         });
@@ -398,26 +417,43 @@ export default function OrderDetailsPage({ token }) {
     }));
   };
 
-  const handleUpdateOrderItemQuantity = async (orderItemId) => {
+  const handleLineItemPriceChange = (orderItemId, value) => {
+    setPriceInputs((prev) => ({
+      ...prev,
+      [orderItemId]: value
+    }));
+  };
+
+  const handleUpdateOrderItem = async (orderItemId) => {
     if (!orderDetail || !orderItemId) {
       return;
     }
 
-    const rawValue = quantityInputs[orderItemId];
-    const parsedQuantity = Number(rawValue);
-    if (!rawValue || Number.isNaN(parsedQuantity) || parsedQuantity < 1) {
+    const rawQty = quantityInputs[orderItemId];
+    const parsedQuantity = Number(rawQty);
+    if (!rawQty || Number.isNaN(parsedQuantity) || parsedQuantity < 1) {
       setError('Quantity must be at least 1.');
+      return;
+    }
+
+    const rawPrice = priceInputs[orderItemId];
+    const parsedPrice = Number(rawPrice);
+    if (rawPrice === '' || Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      setError('Unit price must be a non-negative number.');
       return;
     }
 
     setUpdatingOrderItemId(orderItemId);
     setError('');
     try {
-      const { order, orderItem } = await updateOrderItemQuantity(
+      const { order, orderItem } = await updateOrderItem(
         token,
         orderDetail.id,
         orderItemId,
-        { quantity: parsedQuantity }
+        { 
+          quantity: parsedQuantity,
+          unitPrice: parsedPrice
+        }
       );
       setOrderDetail((prev) => {
         if (!prev) {
@@ -437,7 +473,11 @@ export default function OrderDetailsPage({ token }) {
         ...prev,
         [orderItem.id]: String(orderItem.quantity)
       }));
-      showSnackbar('Quantity updated');
+      setPriceInputs((prev) => ({
+        ...prev,
+        [orderItem.id]: String(orderItem.unitPrice)
+      }));
+      showSnackbar('Item updated');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -595,9 +635,11 @@ export default function OrderDetailsPage({ token }) {
                   {orderItems.map((item, index) => {
                     const orderItemId = item.id ?? item.itemId ?? `order-item-${index}`;
                     const quantityValue = quantityInputs[orderItemId] ?? '';
+                    const priceValue = priceInputs[orderItemId] ?? '';
                     const parsedInputQty = Number(quantityValue);
-                    const lineTotal = !Number.isNaN(parsedInputQty) && quantityValue !== ''
-                      ? parsedInputQty * Number(item.unitPrice || 0)
+                    const parsedInputPrice = Number(priceValue);
+                    const lineTotal = !Number.isNaN(parsedInputQty) && quantityValue !== '' && !Number.isNaN(parsedInputPrice) && priceValue !== ''
+                      ? parsedInputQty * parsedInputPrice
                       : item.lineTotal
                       ? Number(item.lineTotal)
                       : Number(item.unitPrice || 0) * Number(item.quantity || 0);
@@ -606,7 +648,8 @@ export default function OrderDetailsPage({ token }) {
                     const itemLabel = getItemLabel({ ...item, id: displayId });
                     const showProductId = Boolean(item.itemId && itemLabel !== item.itemId);
                     const currentQuantity = String(item.quantity ?? '');
-                    const quantityChanged = Boolean(quantityValue && quantityValue !== currentQuantity);
+                    const currentPrice = String(item.unitPrice ?? '');
+                    const changed = Boolean((quantityValue && quantityValue !== currentQuantity) || (priceValue && priceValue !== currentPrice));
                     const isUpdatingItem = updatingOrderItemId === orderItemId;
                     const isDeletingItem = deletingOrderItemId === orderItemId;
                     
@@ -638,14 +681,20 @@ export default function OrderDetailsPage({ token }) {
                             onChange={(event) =>
                               handleLineItemQuantityChange(orderItemId, event.target.value)
                             }
-                            onBlur={() => quantityChanged && handleUpdateOrderItemQuantity(orderItemId)}
+                            onBlur={() => changed && handleUpdateOrderItem(orderItemId)}
                             disabled={isUpdatingItem}
                             style={{ padding: '0.4rem 0.5rem' }}
                           />
                           <Input
-                            label="TOTAL"
-                            value={formatCurrency(lineTotal)}
-                            readOnly
+                            type="number"
+                            label="PRICE"
+                            min={0}
+                            value={priceValue}
+                            onChange={(event) =>
+                              handleLineItemPriceChange(orderItemId, event.target.value)
+                            }
+                            onBlur={() => changed && handleUpdateOrderItem(orderItemId)}
+                            disabled={isUpdatingItem}
                             style={{ padding: '0.4rem 0.5rem' }}
                           />
                         </div>
@@ -660,8 +709,7 @@ export default function OrderDetailsPage({ token }) {
               {addItemModalOpen ? (
                 <div className="card" style={{ padding: '1rem', border: '1px solid hsl(var(--primary))', background: 'hsl(var(--primary) / 0.03)', marginTop: '1rem' }}>
                   {(() => {
-                    const selectedItem = availableItems.find(i => String(i.id) === String(selectedItemId));
-                    const unitPrice = getEffectivePrice(selectedItem);
+                    const unitPrice = Number(newItemPrice || 0);
                     const totalForNewItem = unitPrice * Number(newItemQuantity || 0);
 
                     return (
@@ -669,7 +717,16 @@ export default function OrderDetailsPage({ token }) {
                         <div className="form-group" style={{ marginBottom: '1rem' }}>
                           <select
                             value={selectedItemId}
-                            onChange={(event) => setSelectedItemId(event.target.value)}
+                            onChange={(event) => {
+                              const val = event.target.value;
+                              setSelectedItemId(val);
+                              const item = availableItems.find(i => String(i.id) === String(val));
+                              if (item) {
+                                setNewItemPrice(String(Math.round(getEffectivePrice(item))));
+                              } else {
+                                setNewItemPrice('0');
+                              }
+                            }}
                             disabled={addingItem}
                             style={{ width: '100%', height: '2.5rem' }}
                           >
@@ -684,7 +741,7 @@ export default function OrderDetailsPage({ token }) {
                         <div className="split-2" style={{ marginBottom: '1rem', gap: '1rem' }}>
                           <Input
                             type="number"
-                            label="Quantity"
+                            label="Qty"
                             min={1}
                             value={newItemQuantity}
                             onChange={(event) => setNewItemQuantity(event.target.value)}
@@ -692,9 +749,13 @@ export default function OrderDetailsPage({ token }) {
                             style={{ height: '2.5rem' }}
                           />
                           <Input
-                            label="TOTAL"
-                            value={formatCurrency(totalForNewItem)}
-                            readOnly
+                            type="number"
+                            label="Price"
+                            min={0}
+                            step="1"
+                            value={newItemPrice}
+                            onChange={(event) => setNewItemPrice(event.target.value)}
+                            disabled={addingItem}
                             style={{ height: '2.5rem' }}
                           />
                         </div>

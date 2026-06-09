@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle, Store, Clock } from 'lucide-react';
+import { Plus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle, Store, Clock, Download, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
 import {
@@ -8,10 +8,12 @@ import {
   listItems,
   listOrders,
   getCustomerPrices,
-  updateOrderStatus
+  updateOrderStatus,
+  getCustomerDeliveredOrdersInvoiceData
 } from '../api';
 import { formatCurrency, getDisplayCustomerName, getStatusLabel } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
+import { generateInvoicePDF } from '../utils/pdfGenerator';
 import Input from '../components/ui/Input';
 import SearchableSelect from '../components/ui/SearchableSelect';
 
@@ -56,7 +58,7 @@ export default function OrdersPage({ token }) {
   const [customerId, setCustomerId] = useState('');
   const [customerPrices, setCustomerPrices] = useState([]);
   const [notes, setNotes] = useState('');
-  const [lineItems, setLineItems] = useState([{ itemId: '', quantity: 1 }]);
+  const [lineItems, setLineItems] = useState([{ itemId: '', quantity: 1, unitPrice: 0 }]);
   const [orderDate, setOrderDate] = useState('');
   const [isBulkActionActive, setIsBulkActionActive] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
@@ -68,7 +70,11 @@ export default function OrdersPage({ token }) {
   const [paymentCash, setPaymentCash] = useState('');
   const [paymentSplitError, setPaymentSplitError] = useState('');
   const [paymentSplitSubmitting, setPaymentSplitSubmitting] = useState(false);
+  const [invoiceDownloading, setInvoiceDownloading] = useState(null); // stores customerId being downloaded
+  const [shareProcessing, setShareProcessing] = useState(null); // stores customerId being shared
   const navigate = useNavigate();
+
+  const shareSupported = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   const loadOrders = async () => {
     setLoading(true);
@@ -128,7 +134,7 @@ export default function OrdersPage({ token }) {
     setCustomerId('');
     setCustomerPrices([]);
     setNotes('');
-    setLineItems([{ itemId: '', quantity: 1 }]);
+    setLineItems([{ itemId: '', quantity: 1, unitPrice: 0 }]);
     setOrderDate('');
   };
 
@@ -147,7 +153,7 @@ export default function OrdersPage({ token }) {
   };
 
   const handleAddLineItem = () => {
-    setLineItems([...lineItems, { itemId: '', quantity: 1 }]);
+    setLineItems([...lineItems, { itemId: '', quantity: 1, unitPrice: 0 }]);
   };
 
   const handleRemoveLineItem = (index) => {
@@ -157,20 +163,25 @@ export default function OrdersPage({ token }) {
   const handleLineItemChange = (index, field, value) => {
     const next = [...lineItems];
     next[index] = { ...next[index], [field]: value };
+
+    if (field === 'itemId') {
+      next[index].unitPrice = Math.round(getEffectivePrice(value));
+    }
+
     setLineItems(next);
   };
 
   const getEffectivePrice = (itemId) => {
     const custom = customerPrices.find(p => String(p.itemId) === String(itemId));
-    if (custom) return custom.customPrice;
+    if (custom) return Number(custom.customPrice);
 
     const item = items.find(it => String(it.id) === String(itemId));
-    return item ? getItemUnitPrice(item) : 0;
+    return item ? Number(getItemUnitPrice(item)) : 0;
   };
 
   const getLineTotal = (line) => {
     if (!line.itemId) return 0;
-    return getEffectivePrice(line.itemId) * (Number(line.quantity) || 0);
+    return (Number(line.unitPrice) || 0) * (Number(line.quantity) || 0);
   };
 
   const orderTotal = useMemo(() => {
@@ -205,11 +216,11 @@ export default function OrdersPage({ token }) {
       totalAmount: orderTotal,
       // Keep date at local midnight without converting to UTC (avoid 18:30:00Z shifts)
       orderDate: orderDate ? `${orderDate}T00:00:00` : undefined,
-      items: validItems.map(({ itemId, quantity }) => {
+      items: validItems.map(({ itemId, quantity, unitPrice }) => {
         return {
           itemId,
           quantity: Number(quantity),
-          unitPrice: getEffectivePrice(itemId)
+          unitPrice: Number(unitPrice)
         };
       }),
       notes: notes.trim() || undefined
@@ -339,6 +350,65 @@ export default function OrdersPage({ token }) {
     }
   };
 
+  const handleDownloadDeliveredOrdersInvoice = async (customerId, customerName) => {
+    if (!customerId) return;
+    setInvoiceDownloading(customerId);
+    setError('');
+    try {
+      const data = await getCustomerDeliveredOrdersInvoiceData(token, customerId);
+      const today = new Date().toISOString().split('T')[0];
+      const fileName = `${data.customer.id}-${(data.customer.name || 'customer').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}-delivered-orders-${today}.pdf`;
+      
+      const blob = await generateInvoicePDF(data, fileName);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(`Failed to download invoice: ${err.message}`);
+    } finally {
+      setInvoiceDownloading(null);
+    }
+  };
+
+  const handleShareDeliveredOrdersInvoice = async (customerId, customerName) => {
+    if (!customerId) return;
+
+    if (!shareSupported) {
+      setError('Your device does not support sharing PDFs.');
+      return;
+    }
+
+    setShareProcessing(customerId);
+    setError('');
+    try {
+      const data = await getCustomerDeliveredOrdersInvoiceData(token, customerId);
+      const today = new Date().toISOString().split('T')[0];
+      const fileName = `${data.customer.id}-${(data.customer.name || 'customer').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}-delivered-orders-${today}.pdf`;
+      
+      const blob = await generateInvoicePDF(data, fileName);
+      const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
+
+      if (navigator.canShare && typeof navigator.canShare === 'function' && !navigator.canShare({ files: [pdfFile] })) {
+        throw new Error('Sharing PDFs is not supported by your browser.');
+      }
+
+      await navigator.share({
+        title: `${customerName || 'Customer'} delivered orders`,
+        text: `Delivered orders invoice for ${customerName || 'your customer'}.`,
+        files: [pdfFile]
+      });
+    } catch (err) {
+      setError(`Failed to share invoice: ${err.message}`);
+    } finally {
+      setShareProcessing(null);
+    }
+  };
+
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const status = order.status?.toUpperCase();
@@ -451,6 +521,41 @@ export default function OrdersPage({ token }) {
                       }}>
                         {customerName}
                       </h3>
+                      {activeTab === 'DELIVERED' && !isBulkActionActive && (
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          {/* DOWNLOAD INVOICE BUTTON */}
+                          {/* <button
+                            type="button"
+                            className="ghost-btn"
+                            style={{ padding: '4px', marginLeft: '0.5rem', display: 'flex', alignItems: 'center', color: 'hsl(var(--primary))' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const customerId = ordersInGroup[0]?.customerId;
+                              handleDownloadDeliveredOrdersInvoice(customerId, customerName);
+                            }}
+                            disabled={invoiceDownloading === ordersInGroup[0]?.customerId}
+                            title="Download Delivered Orders Invoice"
+                          >
+                            <Download size={18} />
+                          </button> */}
+                          {shareSupported && (
+                            <button
+                              type="button"
+                              className="ghost-btn"
+                              style={{ padding: '4px', display: 'flex', alignItems: 'center', color: 'hsl(var(--primary))' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const customerId = ordersInGroup[0]?.customerId;
+                                handleShareDeliveredOrdersInvoice(customerId, customerName);
+                              }}
+                              disabled={shareProcessing === ordersInGroup[0]?.customerId}
+                              title="Share Delivered Orders Invoice"
+                            >
+                              <Share2 size={18} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                       <div style={{ marginLeft: 'auto', background: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700 }}>
                         {ordersInGroup.length}
                       </div>
@@ -596,18 +701,21 @@ export default function OrdersPage({ token }) {
           {isBulkActionActive ? (
             <>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                 <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedOrderIds.length} Selected</span>
-                 <SearchableSelect 
+                 <span style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{selectedOrderIds.length} Selected</span>
+                 <select 
                    value={moveToTab} 
                    onChange={(e) => setMoveToTab(e.target.value)}
-                   options={['NEW', 'DELIVERED', 'PAID']
-                     .filter(t => t !== activeTab)
-                     .map(t => ({ value: t, label: t }))
-                   }
-                   placeholder="Move to..."
                    className="flex-1"
-                   style={{ height: '2.5rem' }}
-                 />
+                   style={{ height: '2.5rem', flex: 1 }}
+                 >
+                   <option value="">Move to...</option>
+                   {['NEW', 'DELIVERED', 'PAID']
+                     .filter(t => t !== activeTab)
+                     .map(t => (
+                       <option key={t} value={t}>{t}</option>
+                     ))
+                   }
+                 </select>
               </div>
               <div className="split-2" style={{ gap: '1rem' }}>
                 <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>Cancel</button>
@@ -822,16 +930,19 @@ export default function OrdersPage({ token }) {
                     <div className="split-2">
                       <Input
                         type="number"
-                        label="Quantity"
+                        label="QTY"
                         min="1"
                         value={line.quantity}
                         onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)}
                         disabled={creatingOrder}
                       />
                       <Input
-                        label="Line Total"
-                        value={formatCurrency(getLineTotal(line))}
-                        readOnly
+                        type="number"
+                        label="PRICE"
+                        min="0"
+                        step="1"
+                        value={line.unitPrice}
+                        onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)}
                         disabled={creatingOrder}
                       />
                     </div>
