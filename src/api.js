@@ -152,6 +152,18 @@ export async function bulkMarkSpendsStatusTrue(token, payload) {
   });
 }
 
+export async function listSuppliers(token, query) {
+  return request('/suppliers', { token, query });
+}
+
+export async function createSupplier(token, payload) {
+  return request('/suppliers', {
+    method: 'POST',
+    token,
+    body: payload
+  });
+}
+
 export async function listCustomers(token) {
   return request('/customers', { token });
 }

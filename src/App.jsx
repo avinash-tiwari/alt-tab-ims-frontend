@@ -20,6 +20,7 @@ import CustomerActionsPage from './pages/CustomerActionsPage';
 import AddCustomerPricePage from './pages/AddCustomerPricePage';
 import OrdersPage from './pages/OrdersPage';
 import DashboardPage from './pages/DashboardPage';
+import SpendsPage from './pages/SpendsPage';
 import OrderDetailsPage from './pages/OrderDetailsPage';
 import PublicOrderPage from './pages/PublicOrderPage';
 
@@ -31,6 +32,7 @@ function AppContent({ token, tenant, logout }) {
     if (path.startsWith('/orders')) return import.meta.env.VITE_HELP_URL_ORDERS || 'https://www.youtube.com/';
     if (path.startsWith('/items')) return import.meta.env.VITE_HELP_URL_ITEMS || 'https://www.youtube.com/';
     if (path.startsWith('/customers') || path.startsWith('/customer')) return import.meta.env.VITE_HELP_URL_CUSTOMERS || 'https://www.youtube.com/';
+    if (path.startsWith('/spends')) return import.meta.env.VITE_HELP_URL_SPENDS || 'https://www.youtube.com/';
     if (path.startsWith('/dashboard')) return import.meta.env.VITE_HELP_URL_DASHBOARD || 'https://www.youtube.com/';
     return 'https://www.youtube.com/';
   }, [location.pathname]);
@@ -266,6 +268,7 @@ function AppContent({ token, tenant, logout }) {
           <Route path="/customer/:id" element={<CustomerDetailPage token={token} />} />
           <Route path="/customer/:id/add" element={<AddCustomerPricePage token={token} />} />
           <Route path="/dashboard" element={<DashboardPage token={token} />} />
+          <Route path="/spends" element={<SpendsPage token={token} />} />
           <Route path="/" element={<Navigate to="/orders" replace />} />
         </Routes>
       </main>

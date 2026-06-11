@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Plus, X, Package } from 'lucide-react';
+import { Pencil, Trash2, Plus, X, Package, Search, ChevronDown } from 'lucide-react';
 import {
   bulkMarkSpendsStatusTrue,
   deleteItem,
   listItems,
   listLowStockItems,
   listSpends,
+  listSuppliers,
+  createSupplier,
   updateBulkStock
 } from '../api';
 import EmptyState from '../components/EmptyState';
@@ -64,6 +66,27 @@ export default function ItemsPage({ token }) {
   const [spends, setSpends] = useState([]);
   const [filters, setFilters] = useState({ q: '', minStock: '', maxStock: '', lowStock: false });
   const [snackbar, setSnackbar] = useState({ show: false, message: '' });
+  const [suppliers, setSuppliers] = useState([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const [selectedSupplierId, setSelectedSupplierId] = useState(null);
+  const [showCreateSupplier, setShowCreateSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierPhone, setNewSupplierPhone] = useState('');
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const supplierDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!showSupplierDropdown) return;
+    function handleClick(e) {
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(e.target)) {
+        setShowSupplierDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSupplierDropdown]);
 
   const activeFiltersCount = useMemo(() => {
     return Object.entries(filters).filter(([key, value]) => {
@@ -107,6 +130,22 @@ export default function ItemsPage({ token }) {
       return next;
     });
   }, [items]);
+
+  useEffect(() => {
+    if (!showSupplierDropdown) return;
+    const timer = setTimeout(async () => {
+      setSuppliersLoading(true);
+      try {
+        const data = await listSuppliers(token, { q: supplierSearchTerm, limit: 10 });
+        setSuppliers(Array.isArray(data?.data) ? data.data : []);
+      } catch {
+        setSuppliers([]);
+      } finally {
+        setSuppliersLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [supplierSearchTerm, showSupplierDropdown, token]);
 
   const onFilterChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -185,7 +224,7 @@ export default function ItemsPage({ token }) {
         setActiveTab('listing');
         return;
       }
-      await bulkMarkSpendsStatusTrue(token, { ids });
+      await bulkMarkSpendsStatusTrue(token, { ids, ...(selectedSupplierId ? { supplierId: selectedSupplierId } : {}) });
       setSpendsModalOpen(false);
       setActiveTab('listing');
       await loadItems(filters);
@@ -224,6 +263,14 @@ export default function ItemsPage({ token }) {
     setBulkUpdateError('');
     setBulkUpdateSuccess('');
   }, [activeTab]);
+
+  useEffect(() => {
+    if (spendsModalOpen) {
+      setSelectedSupplierId(null);
+      setShowSupplierDropdown(false);
+      setShowCreateSupplier(false);
+    }
+  }, [spendsModalOpen]);
 
   return (
     <section className="page" style={{ position: 'relative', minHeight: 'calc(100vh - 8rem)' }}>
@@ -523,6 +570,169 @@ export default function ItemsPage({ token }) {
             </button>
           </header>
 
+          <div ref={supplierDropdownRef} style={{ marginBottom: '1rem', position: 'relative', zIndex: 60 }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+              Supplier
+            </label>
+            <div
+              onClick={() => { setShowSupplierDropdown(prev => !prev); if (!showSupplierDropdown) setSupplierSearchTerm(''); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0.5rem 0.75rem', border: '1px solid hsl(var(--border))',
+                borderRadius: 'var(--radius)', cursor: 'pointer', minHeight: '38px',
+                background: 'hsl(var(--background))'
+              }}
+            >
+              <span style={{ color: selectedSupplierId ? 'inherit' : 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                {selectedSupplierId
+                  ? suppliers.find(s => s.id === selectedSupplierId)?.name || 'Unknown'
+                  : 'Select supplier'}
+              </span>
+              <ChevronDown size={18} />
+            </div>
+
+            {showSupplierDropdown && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
+                borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden'
+              }}>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <Search size={16} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
+                  <input
+                    type="text"
+                    placeholder="Search suppliers..."
+                    value={supplierSearchTerm}
+                    onChange={(e) => setSupplierSearchTerm(e.target.value)}
+                    autoFocus
+                    style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {supplierSearchTerm && (
+                    <X size={16} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setSupplierSearchTerm(''); }} />
+                  )}
+                </div>
+                <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+                  {suppliersLoading ? (
+                    <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Loading...</div>
+                  ) : suppliers.length > 0 ? (
+                    suppliers.map(supplier => (
+                      <div
+                        key={supplier.id}
+                        onClick={() => { setSelectedSupplierId(supplier.id); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
+                        style={{
+                          padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                          background: selectedSupplierId === supplier.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                          fontWeight: selectedSupplierId === supplier.id ? 600 : 400
+                        }}
+                        onMouseEnter={(e) => { if (selectedSupplierId !== supplier.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
+                        onMouseLeave={(e) => { if (selectedSupplierId !== supplier.id) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        {supplier.name}
+                        {supplier.phone && <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.5rem' }}>{supplier.phone}</span>}
+                      </div>
+                    ))
+                  ) : null}
+                  {supplierSearchTerm && !suppliersLoading && (suppliers.length === 0 || !suppliers.some(s => s.name.toLowerCase() === supplierSearchTerm.toLowerCase())) && (
+                    <div
+                      onClick={() => {
+                        setNewSupplierName(supplierSearchTerm);
+                        setNewSupplierPhone('');
+                        setShowCreateSupplier(true);
+                        setShowSupplierDropdown(false);
+                        setSupplierSearchTerm('');
+                      }}
+                      style={{
+                        padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                        borderTop: '1px solid hsl(var(--border))',
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        color: 'hsl(var(--primary))', fontWeight: 600
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Plus size={16} /> Create "{supplierSearchTerm}"
+                    </div>
+                  )}
+                  {!supplierSearchTerm && !suppliersLoading && suppliers.length === 0 && (
+                    <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>No suppliers found</div>
+                  )}
+                  <div
+                    onClick={() => {
+                      setNewSupplierName(supplierSearchTerm);
+                      setNewSupplierPhone('');
+                      setShowCreateSupplier(true);
+                      setShowSupplierDropdown(false);
+                      setSupplierSearchTerm('');
+                    }}
+                    style={{
+                      padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                      borderTop: '1px solid hsl(var(--border))',
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      color: 'hsl(var(--primary))', fontWeight: 600
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <Plus size={16} /> Add new supplier
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {showCreateSupplier && (
+            <div style={{
+              padding: '1rem', background: 'hsl(var(--muted) / 0.3)',
+              borderRadius: 'var(--radius)', marginBottom: '1rem'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '1rem' }}>Create Supplier</h4>
+                <Input
+                  label="Name"
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                />
+                <Input
+                  label="Phone"
+                  value={newSupplierPhone}
+                  onChange={(e) => setNewSupplierPhone(e.target.value)}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className="ghost-btn"
+                    onClick={() => setShowCreateSupplier(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="primary"
+                    disabled={creatingSupplier || !newSupplierName.trim()}
+                    onClick={async () => {
+                      setCreatingSupplier(true);
+                      try {
+                        const newSupplier = await createSupplier(token, { name: newSupplierName.trim(), phone: newSupplierPhone.trim() });
+                        setSelectedSupplierId(newSupplier.id);
+                        setShowCreateSupplier(false);
+                        const data = await listSuppliers(token, { limit: 10 });
+                        setSuppliers(Array.isArray(data?.data) ? data.data : []);
+                      } catch (err) {
+                        // creation error handled silently
+                      } finally {
+                        setCreatingSupplier(false);
+                      }
+                    }}
+                  >
+                    {creatingSupplier ? 'Creating...' : 'Create'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {spendsError && (
             <div className="error-text" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>{spendsError}</span>
@@ -550,9 +760,16 @@ export default function ItemsPage({ token }) {
                 <div key={`spend-${spend?.id ?? index}`} className="card" style={{ padding: '1rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'hsl(var(--foreground))' }}>
-                        {spend.itemName || 'Spend'}
-                      </h3>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'hsl(var(--foreground))' }}>
+                          {spend.itemName || 'Spend'}
+                        </h3>
+                        {spend.supplier?.name && (
+                          <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))' }}>
+                            {spend.supplier.name}
+                          </p>
+                        )}
+                      </div>
                       {spend.updatedAt && (
                         <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>
                           {new Date(spend.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}

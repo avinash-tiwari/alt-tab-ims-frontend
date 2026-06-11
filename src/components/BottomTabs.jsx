@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { ClipboardList, Package, Users, Gauge } from 'lucide-react';
+import { ClipboardList, Package, Users, Gauge, IndianRupee } from 'lucide-react';
 
 const TABS = [
   { id: 'orders', label: 'Orders', path: '/orders', icon: ClipboardList },
   { id: 'items', label: 'Items', path: '/items', icon: Package },
   { id: 'customers', label: 'Customers', path: '/customers', icon: Users },
+  { id: 'spends', label: 'Spends', path: '/spends', icon: IndianRupee },
   { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: Gauge }
 ];
 
