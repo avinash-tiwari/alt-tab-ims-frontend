@@ -425,30 +425,37 @@ export default function ItemsPage({ token }) {
                     </div>
                   )}
                   {!loading && items.length === 0 && <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>No items to update.</p>}
-                  {items.map((item) => (
-                    <div
-                      key={`stock-${item.id}`}
-                      className="card"
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: 0 }}
-                    >
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{item.name}</h3>
-                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
-                          Minimum Limit: {item.threshold}
-                        </p>
+                  {items.map((item) => {
+                    const originalStock = String(item.stock ?? '');
+                    const isChanged = stockInputs[item.id] !== originalStock;
+                    return (
+                      <div
+                        key={`stock-${item.id}`}
+                        className="card"
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: 0,
+                          ...(isChanged ? { background: 'hsl(var(--primary) / 0.15)' } : {})
+                        }}
+                      >
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '1rem' }}>{item.name}</h3>
+                          <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
+                            Minimum Limit: {item.threshold}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <Input
+                            id={`stock-input-${item.id}`}
+                            label="Stock"
+                            type="number"
+                            value={stockInputs[item.id] ?? String(item.stock ?? '')}
+                            onChange={(e) => handleStockChange(item.id, e.target.value)}
+                            style={{ width: '6rem' }}
+                          />
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <Input
-                          id={`stock-input-${item.id}`}
-                          label="Stock"
-                          type="number"
-                          value={stockInputs[item.id] ?? String(item.stock ?? '')}
-                          onChange={(e) => handleStockChange(item.id, e.target.value)}
-                          style={{ width: '6rem' }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 
                 <div style={{ 
