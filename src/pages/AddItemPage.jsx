@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
-import { createItem, updateItem, getItem } from '../api';
+import { ChevronLeft, Trash2 } from 'lucide-react';
+import { createItem, updateItem, deleteItem, getItem, getItemBatches } from '../api';
+import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
 
 const emptyForm = {
@@ -18,6 +19,7 @@ export default function AddItemPage({ token }) {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [batches, setBatches] = useState([]);
 
   const loadItem = async () => {
     if (!id) return;
@@ -40,13 +42,35 @@ export default function AddItemPage({ token }) {
     }
   };
 
+  const loadBatches = async () => {
+    if (!id) return;
+    try {
+      const data = await getItemBatches(token, id);
+      setBatches(data?.batches || []);
+    } catch {
+      // silently fail
+    }
+  };
+
   useEffect(() => {
     loadItem();
+    loadBatches();
   }, [id]);
 
   const onFormChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    setError('');
+    try {
+      await deleteItem(token, id);
+      navigate('/items');
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const saveItem = async (event) => {
@@ -119,8 +143,55 @@ export default function AddItemPage({ token }) {
             required
           />
           <button type="submit" className="primary">{id ? 'Update Item' : 'Create Item'}</button>
+          {id && (
+            <button type="button" className="secondary" onClick={handleDelete} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              <Trash2 size={16} /> Delete Item
+            </button>
+          )}
         </form>
       </div>
+
+      {id && (
+        <div className="card" style={{ padding: '1rem', marginTop: '1.5rem' }}>
+          <h3 style={{ marginBottom: '0.75rem' }}>Past Batches</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="chart-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Quantity</th>
+                  <th className="text-right">Cost Price</th>
+                  <th className="text-right">Received At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batches.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center helper-text">No batches found</td>
+                  </tr>
+                ) : (
+                  batches.map((batch, idx) => (
+                    <tr key={batch.id}>
+                      <td>{idx + 1}</td>
+                      <td>{batch.quantity}</td>
+                      <td className="text-right">{formatCurrency(batch.costPrice)}</td>
+                      <td className="text-right">
+                        <div style={{ fontSize: '0.875rem' }}>
+                          {new Date(batch.receivedAt).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: '2-digit'
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

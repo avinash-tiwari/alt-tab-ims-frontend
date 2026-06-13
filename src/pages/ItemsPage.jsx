@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Plus, X, Package, Search, ChevronDown } from 'lucide-react';
+import { Plus, X, Package, Search, ChevronDown } from 'lucide-react';
 import {
   bulkMarkSpendsStatusTrue,
-  deleteItem,
   listItems,
   listLowStockItems,
   listSpends,
@@ -55,6 +54,7 @@ export default function ItemsPage({ token }) {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('listing');
   const [stockInputs, setStockInputs] = useState({});
+  const [costPriceInputs, setCostPriceInputs] = useState({});
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [bulkUpdateError, setBulkUpdateError] = useState('');
   const [bulkUpdateSuccess, setBulkUpdateSuccess] = useState('');
@@ -129,6 +129,13 @@ export default function ItemsPage({ token }) {
       });
       return next;
     });
+    setCostPriceInputs((prev) => {
+      const next = {};
+      items.forEach((item) => {
+        next[item.id] = prev[item.id] ?? String(item.costPrice ?? '');
+      });
+      return next;
+    });
   }, [items]);
 
   useEffect(() => {
@@ -164,17 +171,6 @@ export default function ItemsPage({ token }) {
     navigate(`/items/edit/${item.id}`);
   };
 
-  const removeItem = async (itemId) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
-    setError('');
-    try {
-      await deleteItem(token, itemId);
-      await loadItems(filters);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   const handleStockChange = (itemId, value) => {
     setStockInputs((prev) => ({
       ...prev,
@@ -182,19 +178,38 @@ export default function ItemsPage({ token }) {
     }));
   };
 
+  const handleCostPriceChange = (itemId, value) => {
+    setCostPriceInputs((prev) => ({
+      ...prev,
+      [itemId]: value
+    }));
+  };
+
   const prepareBulkUpdates = () => {
     return items.map((item) => {
-      const rawValue = stockInputs[item.id];
-      const candidate = rawValue === undefined || rawValue === '' ? item.stock : rawValue;
-      const parsed = Number(candidate);
+      const rawStock = stockInputs[item.id];
+      const candidateStock = rawStock === undefined || rawStock === '' ? item.stock : rawStock;
+      const parsedStock = Number(candidateStock);
       const currentStockRaw = Number(item.stock ?? 0);
       const currentStock = Number.isFinite(currentStockRaw) ? currentStockRaw : 0;
-      const nextStock = Number.isFinite(parsed) ? parsed : currentStock;
+      const nextStock = Number.isFinite(parsedStock) ? parsedStock : currentStock;
+      const stockDiff = nextStock - currentStock;
+
+      const rawCostPrice = costPriceInputs[item.id];
+      const candidateCostPrice = rawCostPrice === undefined || rawCostPrice === '' ? item.costPrice : rawCostPrice;
+      const parsedCostPrice = Number(candidateCostPrice);
+      const currentCostPrice = Number(item.costPrice ?? 0);
+      const nextCostPrice = Number.isFinite(parsedCostPrice) ? parsedCostPrice : currentCostPrice;
+      const costPriceChanged = nextCostPrice !== currentCostPrice;
+
+      if (stockDiff === 0 && !costPriceChanged) return null;
+
       return {
         id: item.id,
-        diff: nextStock - currentStock
+        ...(stockDiff !== 0 ? { diff: stockDiff } : {}),
+        ...(costPriceChanged ? { costPrice: nextCostPrice } : {})
       };
-    }).filter((update) => update.diff !== 0);
+    }).filter(Boolean);
   };
 
   const fetchPendingSpends = async () => {
@@ -397,52 +412,25 @@ export default function ItemsPage({ token }) {
                     {items.map((item) => (
                       <article
                         key={item.id}
-                        className="card customer-card"
+                        className="card"
+                        onClick={() => editItem(item)}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}
                       >
-                        <div className="customer-card-main">
-                          <div className="customer-content">
-                            <header className="customer-card-header">
-                              <h3 className="customer-name-heading">{item.name}</h3>
-                              <div className="col-actions">
-                                <button
-                                  type="button"
-                                  className="ghost-btn"
-                                  onClick={() => editItem(item)}
-                                  title="Edit"
-                                >
-                                  <Pencil size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="ghost-btn delete-action"
-                                  onClick={() => removeItem(item.id)}
-                                  title="Delete"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </header>
-                          </div>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{item.name}</h3>
                         </div>
-
-                        <div className="customer-stats-bar">
-                          <div className="stat-pill">
-                            <span className="stat-label">COST</span>
-                            <span className="stat-value">{formatCurrency(item.costPrice)}</span>
+                        <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cost</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 500 }}>{formatCurrency(item.costPrice)}</div>
                           </div>
-                          <div className="stat-pill">
-                            <span className="stat-label">Base</span>
-                            <span className="stat-value">{formatCurrency(item.basePrice)}</span>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Base</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 500 }}>{formatCurrency(item.basePrice)}</div>
                           </div>
-                          <div className="stat-pill">
-                            <span className="stat-label">Stock</span>
-                            <span className={`stat-value ${Number(item.stock) <= Number(item.threshold) ? 'destructive' : ''}`}>
-                              {item.stock}
-                            </span>
-                          </div>
-                          <div className="stat-pill">
-                            <span className="stat-label">Minimum Limit</span>
-                            <span className="stat-value">{item.threshold}</span>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 500, color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'inherit' }}>{item.stock}</div>
                           </div>
                         </div>
                       </article>
@@ -474,7 +462,10 @@ export default function ItemsPage({ token }) {
                   {!loading && items.length === 0 && <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>No items to update.</p>}
                   {items.map((item) => {
                     const originalStock = String(item.stock ?? '');
-                    const isChanged = stockInputs[item.id] !== originalStock;
+                    const originalCostPrice = String(item.costPrice ?? '');
+                    const stockChanged = stockInputs[item.id] !== originalStock;
+                    const costPriceChanged = costPriceInputs[item.id] !== originalCostPrice;
+                    const isChanged = stockChanged || costPriceChanged;
                     return (
                       <div
                         key={`stock-${item.id}`}
@@ -490,7 +481,16 @@ export default function ItemsPage({ token }) {
                             Minimum Limit: {item.threshold}
                           </p>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+                          <Input
+                            id={`costprice-input-${item.id}`}
+                            label="Cost Price"
+                            type="number"
+                            step="1"
+                            value={costPriceInputs[item.id] ?? String(item.costPrice ?? '')}
+                            onChange={(e) => handleCostPriceChange(item.id, e.target.value)}
+                            style={{ width: '6rem' }}
+                          />
                           <Input
                             id={`stock-input-${item.id}`}
                             label="Stock"

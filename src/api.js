@@ -124,6 +124,10 @@ export async function deleteItem(token, itemId) {
   });
 }
 
+export async function getItemBatches(token, itemId) {
+  return request(`/items/${itemId}/batches`, { token });
+}
+
 export async function updateBulkStock(token, payload) {
   return request('/items/bulk-stock', {
     method: 'PATCH',
