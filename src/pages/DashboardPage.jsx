@@ -391,28 +391,6 @@ function AnalyticsTotals({ totals, analytics, onShowLowStock }) {
   );
 }
 
-function LowStockList({ analytics }) {
-  const items = Array.isArray(analytics?.lowStockItems) ? analytics.lowStockItems : [];
-  if (items.length === 0) return null;
-
-  return (
-    <div className="card" style={{ marginBottom: '1rem' }}>
-      <h3>Low Stock Items</h3>
-      {items.map((item) => (
-        <div key={item.id ?? item.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
-          <div>
-            <div style={{ fontWeight: 600 }}>{item.name || 'Item'}</div>
-            <div className="helper-text">Minimum Limit: {item.threshold ?? '—'}</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontWeight: 600, color: 'hsl(var(--destructive))' }}>{item.stock ?? '—'} in stock</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function TopPaidCustomersList({ analytics }) {
   const items = Array.isArray(analytics?.topPaidCustomers) ? analytics.topPaidCustomers : [];
   if (items.length === 0) return null;
@@ -680,7 +658,6 @@ export default function DashboardPage({ token }) {
               analytics={analytics} 
               onShowLowStock={() => setShowLowStockModal(true)}
             />
-            <LowStockList analytics={analytics} />
             <EarningsChart data={analytics.last7DaysEarnings} />
             <AnalyticsCharts analytics={analytics} activeTab={activeTab} />
             <TopPaidCustomersList analytics={analytics} />

@@ -231,6 +231,13 @@ export async function createPublicOrder(payload, token) {
   });
 }
 
+export async function listPublicCustomerOrders(token, customerIdentifier) {
+  return request('/public/orders/customer', {
+    token,
+    query: { customerIdentifier }
+  });
+}
+
 export async function getOrder(token, orderId) {
   return request(`/orders/${orderId}`, { token });
 }
