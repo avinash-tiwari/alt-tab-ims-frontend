@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, Check, ChevronDown, Plus, Search, Trash2, TrendingDown, X } from 'lucide-react';
-import { listSpends, createSpend, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, deleteSpend } from '../api';
+import { listSpends, createSpend, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, deleteSpend, listItems, createItem } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
 
@@ -42,6 +42,17 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
   const [creatingSupplier, setCreatingSupplier] = useState(false);
   const supplierDropdownRef = useRef(null);
 
+  const [items, setItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemSearchTerm, setItemSearchTerm] = useState('');
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState(null);
+  const [showCreateItem, setShowCreateItem] = useState(false);
+  const [newItemCostPrice, setNewItemCostPrice] = useState('');
+  const [newItemBasePrice, setNewItemBasePrice] = useState('');
+  const [creatingItem, setCreatingItem] = useState(false);
+  const itemDropdownRef = useRef(null);
+
   useEffect(() => {
     if (!showSupplierDropdown) return;
     function handleClick(e) {
@@ -68,6 +79,33 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
     }, 300);
     return () => clearTimeout(timer);
   }, [supplierSearchTerm, showSupplierDropdown, token]);
+
+  useEffect(() => {
+    if (!showItemDropdown) return;
+    function handleClick(e) {
+      if (itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) {
+        setShowItemDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showItemDropdown]);
+
+  useEffect(() => {
+    if (!showItemDropdown) return;
+    const timer = setTimeout(async () => {
+      setItemsLoading(true);
+      try {
+        const data = await listItems(token, { q: itemSearchTerm, limit: 10 });
+        setItems(Array.isArray(data) ? data : []);
+      } catch {
+        setItems([]);
+      } finally {
+        setItemsLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [itemSearchTerm, showItemDropdown, token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -136,12 +174,167 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
           <div className="stack-form">
-            <Input
-              label="Item Name"
-              value={formData.itemName}
-              onChange={(e) => setFormData(prev => ({ ...prev, itemName: e.target.value }))}
-              required
-            />
+            <div style={{ marginBottom: '0.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                Item
+              </label>
+              <div ref={itemDropdownRef} style={{ position: 'relative' }}>
+                <div
+                  onClick={() => { setShowItemDropdown(prev => !prev); if (!showItemDropdown) setItemSearchTerm(''); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '0.5rem 0.75rem', border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)', cursor: 'pointer', minHeight: '38px',
+                    background: 'hsl(var(--background))'
+                  }}
+                >
+                  <span style={{ color: selectedItemId ? 'inherit' : 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                    {selectedItemId
+                      ? items.find(i => i.id === selectedItemId)?.name || formData.itemName || 'Unknown'
+                      : formData.itemName || 'Select item'}
+                  </span>
+                  <ChevronDown size={18} />
+                </div>
+                {showItemDropdown && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0,
+                    background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden'
+                  }}>
+                    <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <Search size={16} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
+                      <input
+                        type="text"
+                        placeholder="Search items..."
+                        value={itemSearchTerm}
+                        onChange={(e) => setItemSearchTerm(e.target.value)}
+                        autoFocus
+                        style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      {itemSearchTerm && (
+                        <X size={16} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setItemSearchTerm(''); }} />
+                      )}
+                    </div>
+                    <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+                      {itemsLoading ? (
+                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Loading...</div>
+                      ) : items.length > 0 ? (
+                        items.map(item => (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              setSelectedItemId(item.id);
+                              setFormData(prev => ({ ...prev, itemName: item.name, price: item.costPrice || '' }));
+                              setShowItemDropdown(false);
+                              setItemSearchTerm('');
+                            }}
+                            style={{
+                              padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                              background: selectedItemId === item.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                              fontWeight: selectedItemId === item.id ? 600 : 400
+                            }}
+                            onMouseEnter={(e) => { if (selectedItemId !== item.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
+                            onMouseLeave={(e) => { if (selectedItemId !== item.id) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {item.name}
+                          </div>
+                        ))
+                      ) : null}
+                      {itemSearchTerm && !itemsLoading && (items.length === 0 || !items.some(i => i.name.toLowerCase() === itemSearchTerm.toLowerCase())) && (
+                        <div
+                          onClick={() => {
+                            setSelectedItemId(null);
+                            setFormData(prev => ({ ...prev, itemName: itemSearchTerm }));
+                            setNewItemCostPrice('');
+                            setNewItemBasePrice('');
+                            setShowCreateItem(true);
+                            setShowItemDropdown(false);
+                            setItemSearchTerm('');
+                          }}
+                          style={{
+                            padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                            borderTop: '1px solid hsl(var(--border))',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            color: 'hsl(var(--primary))', fontWeight: 600
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <Plus size={16} /> Create "{itemSearchTerm}"
+                        </div>
+                      )}
+                      {!itemSearchTerm && !itemsLoading && items.length === 0 && (
+                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>No items found</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {showCreateItem && (
+              <div style={{
+                padding: '1rem', background: 'hsl(var(--muted) / 0.3)',
+                borderRadius: 'var(--radius)', marginBottom: '1rem'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem' }}>Create Item</h4>
+                  <Input
+                    label="Name"
+                    value={formData.itemName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, itemName: e.target.value }))}
+                  />
+                  <Input
+                    label="Cost Price"
+                    type="number"
+                    value={newItemCostPrice}
+                    onChange={(e) => setNewItemCostPrice(e.target.value)}
+                  />
+                  <Input
+                    label="Base Price"
+                    type="number"
+                    value={newItemBasePrice}
+                    onChange={(e) => setNewItemBasePrice(e.target.value)}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      onClick={() => setShowCreateItem(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={creatingItem || !formData.itemName.trim()}
+                      onClick={async () => {
+                        setCreatingItem(true);
+                        try {
+                          const newItem = await createItem(token, {
+                            name: formData.itemName.trim(),
+                            costPrice: parseFloat(newItemCostPrice) || 0,
+                            basePrice: parseFloat(newItemBasePrice) || 0
+                          });
+                          setSelectedItemId(newItem.id);
+                          setFormData(prev => ({ ...prev, price: newItem.costPrice || newItemCostPrice || '' }));
+                          setShowCreateItem(false);
+                          const data = await listItems(token, { limit: 10 });
+                          setItems(Array.isArray(data) ? data : []);
+                        } catch (err) {
+                          // creation error handled silently
+                        } finally {
+                          setCreatingItem(false);
+                        }
+                      }}
+                    >
+                      {creatingItem ? 'Creating...' : 'Create'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div style={{ marginBottom: '0.5rem' }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
                 Supplier
