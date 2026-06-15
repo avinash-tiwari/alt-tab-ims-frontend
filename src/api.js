@@ -156,6 +156,13 @@ export async function bulkMarkSpendsStatusTrue(token, payload) {
   });
 }
 
+export async function deleteSpend(token, id) {
+  return request(`/spends/${id}`, {
+    method: 'DELETE',
+    token
+  });
+}
+
 export async function listSuppliers(token, query) {
   return request('/suppliers', { token, query });
 }
