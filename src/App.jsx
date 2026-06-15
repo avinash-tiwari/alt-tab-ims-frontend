@@ -10,8 +10,10 @@ import {
   getStoredTenant,
   getStoredToken,
   login,
-  storeSession
+  storeSession,
+  registerFcmToken
 } from './api';
+import { requestNotificationPermission, onMessageListener } from './lib/firebase';
 import ItemsPage from './pages/ItemsPage';
 import AddItemPage from './pages/AddItemPage';
 import CustomersPage from './pages/CustomersPage';
@@ -25,6 +27,29 @@ import PublicOrderPage from './pages/PublicOrderPage';
 
 function AppContent({ token, tenant, logout }) {
   const location = useLocation();
+
+  useEffect(() => {
+    if (token) {
+      const initFcm = async () => {
+        const fcmToken = await requestNotificationPermission();
+        if (fcmToken) {
+          try {
+            await registerFcmToken(token, fcmToken);
+          } catch (error) {
+            console.error("Failed to register FCM token:", error);
+          }
+        }
+      };
+      initFcm();
+
+      onMessageListener().then(payload => {
+        console.log('Message received: ', payload);
+        if (payload.notification) {
+          window.alert(`${payload.notification.title}\n${payload.notification.body}`);
+        }
+      }).catch(err => console.log('failed: ', err));
+    }
+  }, [token]);
 
   const helpUrl = useMemo(() => {
     const path = location.pathname;

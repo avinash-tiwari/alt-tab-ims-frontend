@@ -89,6 +89,14 @@ export async function changePassword(token, payload) {
   });
 }
 
+export async function registerFcmToken(token, fcmToken) {
+  return request('/auth/fcm-token', {
+    method: 'POST',
+    token,
+    body: { fcmToken }
+  });
+}
+
 export async function listItems(token, query) {
   return request('/items', { token, query });
 }
