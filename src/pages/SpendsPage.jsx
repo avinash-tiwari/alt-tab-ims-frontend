@@ -28,7 +28,12 @@ function StatCard({ icon: Icon, label, value, color, bgColor }) {
 }
 
 function CreateSpendModal({ token, onClose, onSuccess }) {
-  const [formData, setFormData] = useState({ itemName: '', price: '', quantity: '' });
+  const [formData, setFormData] = useState({ 
+    itemName: '', 
+    price: '', 
+    quantity: '',
+    spendDate: new Date().toISOString().split('T')[0]
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [suppliers, setSuppliers] = useState([]);
@@ -116,6 +121,7 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
         itemName: formData.itemName,
         price: parseFloat(formData.price),
         quantity: parseInt(formData.quantity),
+        spendDate: formData.spendDate,
         status: true
       };
       if (selectedSupplierId) payload.supplierId = selectedSupplierId;
@@ -530,6 +536,15 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
                 </div>
               </div>
             )}
+            <div style={{ marginBottom: '1rem' }}>
+              <Input
+                label="Date"
+                type="date"
+                value={formData.spendDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, spendDate: e.target.value }))}
+                required
+              />
+            </div>
             <div className="split-2">
               <Input
                 label="Price"
@@ -960,7 +975,7 @@ export default function SpendsPage({ token }) {
                       <td className="text-right">{formatCurrency(spend.total)}</td>
                       <td className="text-right">
                         <div style={{ fontSize: '0.875rem' }}>
-                          {new Date(spend.createdAt).toLocaleDateString('en-GB', {
+                          {new Date(spend.spendDate).toLocaleDateString('en-GB', {
                             day: '2-digit',
                             month: '2-digit',
                             year: '2-digit'
