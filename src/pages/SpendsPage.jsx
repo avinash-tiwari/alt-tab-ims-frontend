@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, Check, ChevronDown, Plus, Search, Trash2, TrendingDown, X } from 'lucide-react';
-import { listSpends, createSpend, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, deleteSpend, listItems, createItem } from '../api';
+import { Activity, Check, ChevronDown, Pencil, Plus, Search, Trash2, TrendingDown, X } from 'lucide-react';
+import { listSpends, createSpend, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, updateSpend, deleteSpend, listItems, createItem } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
 
@@ -548,6 +548,528 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
   );
 }
 
+function EditSpendModal({ token, spend, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({ itemName: spend.itemName || '', price: spend.price?.toString() || '', quantity: spend.quantity?.toString() || '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [suppliers, setSuppliers] = useState([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const [selectedSupplierId, setSelectedSupplierId] = useState(spend.supplierId || spend.Supplier?.id || null);
+  const [showCreateSupplier, setShowCreateSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierPhone, setNewSupplierPhone] = useState('');
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const supplierDropdownRef = useRef(null);
+
+  const [items, setItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemSearchTerm, setItemSearchTerm] = useState('');
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState(spend.itemId || null);
+  const [showCreateItem, setShowCreateItem] = useState(false);
+  const [newItemCostPrice, setNewItemCostPrice] = useState('');
+  const [newItemBasePrice, setNewItemBasePrice] = useState('');
+  const [creatingItem, setCreatingItem] = useState(false);
+  const itemDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!showSupplierDropdown) return;
+    function handleClick(e) {
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(e.target)) {
+        setShowSupplierDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSupplierDropdown]);
+
+  useEffect(() => {
+    if (!showSupplierDropdown) return;
+    const timer = setTimeout(async () => {
+      setSuppliersLoading(true);
+      try {
+        const data = await listSuppliers(token, { q: supplierSearchTerm, limit: 10 });
+        setSuppliers(Array.isArray(data?.data) ? data.data : []);
+      } catch {
+        setSuppliers([]);
+      } finally {
+        setSuppliersLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [supplierSearchTerm, showSupplierDropdown, token]);
+
+  useEffect(() => {
+    if (!showItemDropdown) return;
+    function handleClick(e) {
+      if (itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) {
+        setShowItemDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showItemDropdown]);
+
+  useEffect(() => {
+    if (!showItemDropdown) return;
+    const timer = setTimeout(async () => {
+      setItemsLoading(true);
+      try {
+        const data = await listItems(token, { q: itemSearchTerm, limit: 10 });
+        setItems(Array.isArray(data) ? data : []);
+      } catch {
+        setItems([]);
+      } finally {
+        setItemsLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [itemSearchTerm, showItemDropdown, token]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const payload = {
+        itemName: formData.itemName,
+        price: parseFloat(formData.price),
+        quantity: parseInt(formData.quantity),
+      };
+      if (selectedSupplierId) {
+        payload.supplierId = selectedSupplierId;
+      } else {
+        payload.supplierId = null;
+      }
+      await updateSpend(token, spend.id, payload);
+      onSuccess();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'hsl(var(--background))',
+      zIndex: 1000,
+      padding: '1rem',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid hsl(var(--border))',
+        marginBottom: '1rem'
+      }}>
+        <h3 style={{ margin: 0 }}>Edit Spend</h3>
+        <button
+          type="button"
+          className="ghost-btn"
+          onClick={onClose}
+          aria-label="Close"
+          disabled={loading}
+          style={{ padding: '0.25rem' }}
+        >
+          <X size={24} />
+        </button>
+      </header>
+
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          overflow: 'hidden'
+        }}
+      >
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
+          <div className="stack-form">
+            <div style={{ marginBottom: '0.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                Item
+              </label>
+              <div ref={itemDropdownRef} style={{ position: 'relative' }}>
+                <div
+                  onClick={() => { setShowItemDropdown(prev => !prev); if (!showItemDropdown) setItemSearchTerm(''); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '0.5rem 0.75rem', border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)', cursor: 'pointer', minHeight: '38px',
+                    background: 'hsl(var(--background))'
+                  }}
+                >
+                  <span style={{ color: selectedItemId ? 'inherit' : 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                    {selectedItemId
+                      ? items.find(i => i.id === selectedItemId)?.name || formData.itemName || 'Unknown'
+                      : formData.itemName || 'Select item'}
+                  </span>
+                  <ChevronDown size={18} />
+                </div>
+                {showItemDropdown && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0,
+                    background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden'
+                  }}>
+                    <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <Search size={16} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
+                      <input
+                        type="text"
+                        placeholder="Search items..."
+                        value={itemSearchTerm}
+                        onChange={(e) => setItemSearchTerm(e.target.value)}
+                        autoFocus
+                        style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      {itemSearchTerm && (
+                        <X size={16} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setItemSearchTerm(''); }} />
+                      )}
+                    </div>
+                    <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+                      {itemsLoading ? (
+                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Loading...</div>
+                      ) : items.length > 0 ? (
+                        items.map(item => (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              setSelectedItemId(item.id);
+                              setFormData(prev => ({ ...prev, itemName: item.name, price: item.costPrice || '' }));
+                              setShowItemDropdown(false);
+                              setItemSearchTerm('');
+                            }}
+                            style={{
+                              padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                              background: selectedItemId === item.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                              fontWeight: selectedItemId === item.id ? 600 : 400
+                            }}
+                            onMouseEnter={(e) => { if (selectedItemId !== item.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
+                            onMouseLeave={(e) => { if (selectedItemId !== item.id) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {item.name}
+                          </div>
+                        ))
+                      ) : null}
+                      {itemSearchTerm && !itemsLoading && (items.length === 0 || !items.some(i => i.name.toLowerCase() === itemSearchTerm.toLowerCase())) && (
+                        <div
+                          onClick={() => {
+                            setSelectedItemId(null);
+                            setFormData(prev => ({ ...prev, itemName: itemSearchTerm }));
+                            setNewItemCostPrice('');
+                            setNewItemBasePrice('');
+                            setShowCreateItem(true);
+                            setShowItemDropdown(false);
+                            setItemSearchTerm('');
+                          }}
+                          style={{
+                            padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                            borderTop: '1px solid hsl(var(--border))',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            color: 'hsl(var(--primary))', fontWeight: 600
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <Plus size={16} /> Create "{itemSearchTerm}"
+                        </div>
+                      )}
+                      {!itemSearchTerm && !itemsLoading && items.length === 0 && (
+                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>No items found</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {showCreateItem && (
+              <div style={{
+                padding: '1rem', background: 'hsl(var(--muted) / 0.3)',
+                borderRadius: 'var(--radius)', marginBottom: '1rem'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem' }}>Create Item</h4>
+                  <Input
+                    label="Name"
+                    value={formData.itemName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, itemName: e.target.value }))}
+                  />
+                  <Input
+                    label="Cost Price"
+                    type="number"
+                    value={newItemCostPrice}
+                    onChange={(e) => setNewItemCostPrice(e.target.value)}
+                  />
+                  <Input
+                    label="Base Price"
+                    type="number"
+                    value={newItemBasePrice}
+                    onChange={(e) => setNewItemBasePrice(e.target.value)}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      onClick={() => setShowCreateItem(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={creatingItem || !formData.itemName.trim()}
+                      onClick={async () => {
+                        setCreatingItem(true);
+                        try {
+                          const newItem = await createItem(token, {
+                            name: formData.itemName.trim(),
+                            costPrice: parseFloat(newItemCostPrice) || 0,
+                            basePrice: parseFloat(newItemBasePrice) || 0
+                          });
+                          setSelectedItemId(newItem.id);
+                          setFormData(prev => ({ ...prev, price: newItem.costPrice || newItemCostPrice || '' }));
+                          setShowCreateItem(false);
+                          const data = await listItems(token, { limit: 10 });
+                          setItems(Array.isArray(data) ? data : []);
+                        } catch (err) {
+                        } finally {
+                          setCreatingItem(false);
+                        }
+                      }}
+                    >
+                      {creatingItem ? 'Creating...' : 'Create'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div style={{ marginBottom: '0.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                Supplier
+              </label>
+              <div ref={supplierDropdownRef} style={{ position: 'relative' }}>
+                <div
+                  onClick={() => { setShowSupplierDropdown(prev => !prev); if (!showSupplierDropdown) setSupplierSearchTerm(''); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '0.5rem 0.75rem', border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)', cursor: 'pointer', minHeight: '38px',
+                    background: 'hsl(var(--background))'
+                  }}
+                >
+                  <span style={{ color: selectedSupplierId ? 'inherit' : 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                    {selectedSupplierId
+                      ? suppliers.find(s => s.id === selectedSupplierId)?.name || spend.Supplier?.name || 'Unknown'
+                      : 'Select supplier'}
+                  </span>
+                  <ChevronDown size={18} />
+                </div>
+                {showSupplierDropdown && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0,
+                    background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden'
+                  }}>
+                    <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <Search size={16} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
+                      <input
+                        type="text"
+                        placeholder="Search suppliers..."
+                        value={supplierSearchTerm}
+                        onChange={(e) => setSupplierSearchTerm(e.target.value)}
+                        autoFocus
+                        style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      {supplierSearchTerm && (
+                        <X size={16} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setSupplierSearchTerm(''); }} />
+                      )}
+                    </div>
+                    <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+                      {suppliersLoading ? (
+                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Loading...</div>
+                      ) : suppliers.length > 0 ? (
+                        suppliers.map(supplier => (
+                          <div
+                            key={supplier.id}
+                            onClick={() => { setSelectedSupplierId(supplier.id); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
+                            style={{
+                              padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                              background: selectedSupplierId === supplier.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                              fontWeight: selectedSupplierId === supplier.id ? 600 : 400
+                            }}
+                            onMouseEnter={(e) => { if (selectedSupplierId !== supplier.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
+                            onMouseLeave={(e) => { if (selectedSupplierId !== supplier.id) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {supplier.name}
+                            {supplier.phone && <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.5rem' }}>{supplier.phone}</span>}
+                          </div>
+                        ))
+                      ) : null}
+                      {supplierSearchTerm && !suppliersLoading && (suppliers.length === 0 || !suppliers.some(s => s.name.toLowerCase() === supplierSearchTerm.toLowerCase())) && (
+                        <div
+                          onClick={() => {
+                            setNewSupplierName(supplierSearchTerm);
+                            setNewSupplierPhone('');
+                            setShowCreateSupplier(true);
+                            setShowSupplierDropdown(false);
+                            setSupplierSearchTerm('');
+                          }}
+                          style={{
+                            padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                            borderTop: '1px solid hsl(var(--border))',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            color: 'hsl(var(--primary))', fontWeight: 600
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <Plus size={16} /> Create "{supplierSearchTerm}"
+                        </div>
+                      )}
+                      {!supplierSearchTerm && !suppliersLoading && suppliers.length === 0 && (
+                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>No suppliers found</div>
+                      )}
+                      <div
+                        onClick={() => {
+                          setNewSupplierName(supplierSearchTerm);
+                          setNewSupplierPhone('');
+                          setShowCreateSupplier(true);
+                          setShowSupplierDropdown(false);
+                          setSupplierSearchTerm('');
+                        }}
+                        style={{
+                          padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                          borderTop: '1px solid hsl(var(--border))',
+                          display: 'flex', alignItems: 'center', gap: '0.5rem',
+                          color: 'hsl(var(--primary))', fontWeight: 600
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <Plus size={16} /> Add new supplier
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {showCreateSupplier && (
+              <div style={{
+                padding: '1rem', background: 'hsl(var(--muted) / 0.3)',
+                borderRadius: 'var(--radius)', marginBottom: '1rem'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem' }}>Create Supplier</h4>
+                  <Input
+                    label="Name"
+                    value={newSupplierName}
+                    onChange={(e) => setNewSupplierName(e.target.value)}
+                  />
+                  <Input
+                    label="Phone"
+                    value={newSupplierPhone}
+                    onChange={(e) => setNewSupplierPhone(e.target.value)}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      onClick={() => setShowCreateSupplier(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={creatingSupplier || !newSupplierName.trim()}
+                      onClick={async () => {
+                        setCreatingSupplier(true);
+                        try {
+                          const newSupplier = await createSupplier(token, { name: newSupplierName.trim(), phone: newSupplierPhone.trim() });
+                          setSelectedSupplierId(newSupplier.id);
+                          setShowCreateSupplier(false);
+                          const data = await listSuppliers(token, { limit: 10 });
+                          setSuppliers(Array.isArray(data?.data) ? data.data : []);
+                        } catch (err) {
+                        } finally {
+                          setCreatingSupplier(false);
+                        }
+                      }}
+                    >
+                      {creatingSupplier ? 'Creating...' : 'Create'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="split-2">
+              <Input
+                label="Price"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                required
+                step="0.01"
+              />
+              <Input
+                label="Quantity"
+                type="number"
+                value={formData.quantity}
+                onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        <footer style={{
+          marginTop: 'auto',
+          paddingTop: '1rem',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '1rem',
+          borderTop: '1px solid hsl(var(--border) / 0.5)'
+        }}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={onClose}
+            disabled={loading}
+            style={{ width: '100%', height: '2.75rem' }}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="primary"
+            disabled={loading}
+            style={{ width: '100%', height: '2.75rem' }}
+          >
+            {loading ? 'Updating...' : 'Update'}
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
+}
+
 export default function SpendsPage({ token }) {
   const [spends, setSpends] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -562,6 +1084,7 @@ export default function SpendsPage({ token }) {
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
   const [supplierFilterId, setSupplierFilterId] = useState(null);
+  const [editingSpend, setEditingSpend] = useState(null);
   const supplierDropdownRef = useRef(null);
 
   useEffect(() => {
@@ -627,6 +1150,33 @@ export default function SpendsPage({ token }) {
     };
   }, [spends]);
 
+  const groupedColors = useMemo(() => {
+    const sorted = [...spends].sort((a, b) => {
+      const aDate = new Date(a.createdAt);
+      const bDate = new Date(b.createdAt);
+      if (aDate - bDate !== 0) return aDate - bDate;
+      const aName = (a.Supplier?.name || '')?.toLowerCase();
+      const bName = (b.Supplier?.name || '')?.toLowerCase();
+      if (aName < bName) return -1;
+      if (aName > bName) return 1;
+      return 0;
+    });
+    const colors = {};
+    let groupIndex = 0;
+    let prevKey = null;
+    const palette = ['hsl(var(--secondary))', 'transparent'];
+    for (const s of sorted) {
+      const dateStr = new Date(s.createdAt).toLocaleDateString('en-GB');
+      const key = `${dateStr}|${s.supplierId || ''}`;
+      if (prevKey !== null && key !== prevKey) {
+        groupIndex++;
+      }
+      prevKey = key;
+      colors[s.id] = palette[groupIndex % palette.length];
+    }
+    return colors;
+  }, [spends]);
+
   const toggleSelectAll = () => {
     if (selectedIds.length === spends.length) {
       setSelectedIds([]);
@@ -678,6 +1228,17 @@ export default function SpendsPage({ token }) {
             onClose={() => setIsModalOpen(false)}
             onSuccess={() => {
               setIsModalOpen(false);
+              fetchSpends();
+            }}
+          />
+        )}
+        {editingSpend && (
+          <EditSpendModal
+            token={token}
+            spend={editingSpend}
+            onClose={() => setEditingSpend(null)}
+            onSuccess={() => {
+              setEditingSpend(null);
               fetchSpends();
             }}
           />
@@ -844,7 +1405,7 @@ export default function SpendsPage({ token }) {
                   </tr>
                 ) : (
                   spends.map((spend) => (
-                    <tr key={spend.id}>
+                    <tr key={spend.id} style={{ backgroundColor: groupedColors[spend.id] }}>
                       {filters.status === 'pending' && (
                         <td>
                           <input
@@ -874,16 +1435,27 @@ export default function SpendsPage({ token }) {
                         </div>
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="ghost-btn"
-                          onClick={() => handleDeleteSpend(spend.id)}
-                          disabled={deletingId === spend.id}
-                          title="Delete"
-                          style={{ padding: '0.25rem', color: 'hsl(var(--destructive))' }}
-                        >
-                          {deletingId === spend.id ? <span style={{ fontSize: '0.75rem' }}>...</span> : <Trash2 size={16} />}
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            className="ghost-btn"
+                            onClick={() => setEditingSpend(spend)}
+                            title="Edit"
+                            style={{ padding: '0.25rem' }}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost-btn"
+                            onClick={() => handleDeleteSpend(spend.id)}
+                            disabled={deletingId === spend.id}
+                            title="Delete"
+                            style={{ padding: '0.25rem', color: 'hsl(var(--destructive))' }}
+                          >
+                            {deletingId === spend.id ? <span style={{ fontSize: '0.75rem' }}>...</span> : <Trash2 size={16} />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
