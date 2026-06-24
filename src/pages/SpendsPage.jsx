@@ -28,7 +28,12 @@ function StatCard({ icon: Icon, label, value, color, bgColor }) {
 }
 
 function CreateSpendModal({ token, onClose, onSuccess }) {
-  const [formData, setFormData] = useState({ itemName: '', price: '', quantity: '' });
+  const [formData, setFormData] = useState({ 
+    itemName: '', 
+    price: '', 
+    quantity: '',
+    spendDate: new Date().toISOString().split('T')[0]
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [suppliers, setSuppliers] = useState([]);
@@ -116,6 +121,7 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
         itemName: formData.itemName,
         price: parseFloat(formData.price),
         quantity: parseInt(formData.quantity),
+        spendDate: formData.spendDate,
         status: true
       };
       if (selectedSupplierId) payload.supplierId = selectedSupplierId;
@@ -449,54 +455,96 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
             </div>
             {showCreateSupplier && (
               <div style={{
-                padding: '1rem', background: 'hsl(var(--muted) / 0.3)',
-                borderRadius: 'var(--radius)', marginBottom: '1rem'
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 1100,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem'
               }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <h4 style={{ margin: 0, fontSize: '1rem' }}>Create Supplier</h4>
-                  <Input
-                    label="Name"
-                    value={newSupplierName}
-                    onChange={(e) => setNewSupplierName(e.target.value)}
-                  />
-                  <Input
-                    label="Phone"
-                    value={newSupplierPhone}
-                    onChange={(e) => setNewSupplierPhone(e.target.value)}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      className="ghost-btn"
+                <div className="card" style={{ 
+                  width: '100%', 
+                  maxWidth: '400px', 
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  background: 'hsl(var(--background))',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ margin: 0, fontSize: '1.1rem' }}>Create Supplier</h4>
+                    <button 
+                      type="button" 
+                      className="ghost-btn" 
                       onClick={() => setShowCreateSupplier(false)}
+                      style={{ padding: '0.25rem' }}
                     >
-                      Cancel
+                      <X size={20} />
                     </button>
-                    <button
-                      type="button"
-                      className="primary"
-                      disabled={creatingSupplier || !newSupplierName.trim()}
-                      onClick={async () => {
-                        setCreatingSupplier(true);
-                        try {
-                          const newSupplier = await createSupplier(token, { name: newSupplierName.trim(), phone: newSupplierPhone.trim() });
-                          setSelectedSupplierId(newSupplier.id);
-                          setShowCreateSupplier(false);
-                          const data = await listSuppliers(token, { limit: 10 });
-                          setSuppliers(Array.isArray(data?.data) ? data.data : []);
-                        } catch (err) {
-                          // creation error handled silently
-                        } finally {
-                          setCreatingSupplier(false);
-                        }
-                      }}
-                    >
-                      {creatingSupplier ? 'Creating...' : 'Create'}
-                    </button>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <Input
+                      label="Name"
+                      value={newSupplierName}
+                      onChange={(e) => setNewSupplierName(e.target.value)}
+                      autoFocus
+                    />
+                    <Input
+                      label="Phone"
+                      value={newSupplierPhone}
+                      onChange={(e) => setNewSupplierPhone(e.target.value)}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setShowCreateSupplier(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="primary"
+                        disabled={creatingSupplier || !newSupplierName.trim()}
+                        onClick={async () => {
+                          setCreatingSupplier(true);
+                          try {
+                            const newSupplier = await createSupplier(token, { name: newSupplierName.trim(), phone: newSupplierPhone.trim() });
+                            setSelectedSupplierId(newSupplier.id);
+                            setShowCreateSupplier(false);
+                            const data = await listSuppliers(token, { limit: 10 });
+                            setSuppliers(Array.isArray(data?.data) ? data.data : []);
+                          } catch (err) {
+                            // creation error handled silently
+                          } finally {
+                            setCreatingSupplier(false);
+                          }
+                        }}
+                      >
+                        {creatingSupplier ? 'Creating...' : 'Create'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
+            <div style={{ marginBottom: '1rem' }}>
+              <Input
+                label="Date"
+                type="date"
+                value={formData.spendDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, spendDate: e.target.value }))}
+                required
+              />
+            </div>
             <div className="split-2">
               <Input
                 label="Price"
@@ -1220,7 +1268,7 @@ export default function SpendsPage({ token }) {
   };
 
   return (
-    <section className="page" style={{ position: 'relative', minHeight: 'calc(100vh - 8rem)' }}>
+    <section className="page" style={{ position: 'relative', minHeight: 'calc(100vh - 8rem)', paddingTop: '1rem' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {isModalOpen && (
           <CreateSpendModal
@@ -1257,105 +1305,166 @@ export default function SpendsPage({ token }) {
           />
         </div>
 
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
-              <Input
+        <div className="card" style={{ padding: '1.25rem', border: '1px solid hsl(var(--border) / 0.5)' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.75rem', 
+            marginBottom: '1.25rem', 
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ flex: '1', minWidth: '200px', position: 'relative' }}>
+              <Search 
+                size={18} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '0.75rem', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: 'hsl(var(--muted-foreground))',
+                  zIndex: 1
+                }} 
+              />
+              <input
                 placeholder="Search items..."
                 value={filters.q}
                 onChange={(e) => setFilters(prev => ({ ...prev, q: e.target.value }))}
-                style={{ marginBottom: 0 }}
+                style={{ 
+                  width: '100%',
+                  height: '40px',
+                  paddingLeft: '2.5rem',
+                  paddingRight: '0.75rem',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid hsl(var(--border))',
+                  fontSize: '0.875rem',
+                  background: 'hsl(var(--background))',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'hsl(var(--primary))'}
+                onBlur={(e) => e.target.style.borderColor = 'hsl(var(--border))'}
               />
             </div>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-              style={{
-                width: 'auto',
-                padding: '0.5rem',
-                borderRadius: 'var(--radius)',
-                border: '1px solid hsl(var(--border))',
-                fontSize: '0.875rem'
-              }}
-            >
-              <option value="verified">Verified</option>
-              <option value="pending">Pending</option>
-            </select>
-            <div ref={supplierDropdownRef} style={{ position: 'relative', width: 'auto', minWidth: '140px' }}>
-              <div
-                onClick={() => { setShowSupplierDropdown(prev => !prev); if (!showSupplierDropdown) setSupplierSearchTerm(''); }}
+            
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                 style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem',
-                  padding: '0.5rem', border: '1px solid hsl(var(--border))',
-                  borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '0.8rem',
-                  background: 'hsl(var(--background))', whiteSpace: 'nowrap'
+                  height: '40px',
+                  padding: '0 1rem',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid hsl(var(--border))',
+                  fontSize: '0.875rem',
+                  background: 'hsl(var(--background))',
+                  minWidth: '110px',
+                  cursor: 'pointer',
+                  outline: 'none'
                 }}
               >
-                <span style={{ color: supplierFilterId ? 'inherit' : 'hsl(var(--muted-foreground))' }}>
-                  {supplierFilterId
-                    ? suppliers.find(s => s.id === supplierFilterId)?.name || 'Supplier'
-                    : 'Supplier'}
-                </span>
-                <ChevronDown size={14} />
-              </div>
-              {showSupplierDropdown && (
-                <div style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0,
-                  background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
-                  borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden', minWidth: '200px'
-                }}>
-                  <div style={{ padding: '0.4rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                    <Search size={14} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
-                    <input
-                      type="text"
-                      placeholder="Search..."
-                      value={supplierSearchTerm}
-                      onChange={(e) => setSupplierSearchTerm(e.target.value)}
-                      autoFocus
-                      style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.8rem' }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    {supplierSearchTerm && (
-                      <X size={14} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setSupplierSearchTerm(''); }} />
-                    )}
-                  </div>
-                  <div style={{ maxHeight: '180px', overflow: 'auto' }}>
-                    <div
-                      onClick={() => { setSupplierFilterId(null); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
-                      style={{
-                        padding: '0.5rem 0.65rem', cursor: 'pointer', fontSize: '0.8rem',
-                        background: !supplierFilterId ? 'hsl(var(--primary) / 0.1)' : 'transparent',
-                        fontWeight: !supplierFilterId ? 600 : 400,
-                        borderBottom: '1px solid hsl(var(--border) / 0.3)'
-                      }}
-                      onMouseEnter={(e) => { if (supplierFilterId) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
-                      onMouseLeave={(e) => { if (supplierFilterId) e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      All Suppliers
-                    </div>
-                    {suppliersLoading ? (
-                      <div style={{ padding: '0.5rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem' }}>Loading...</div>
-                    ) : (
-                      suppliers.map(supplier => (
-                        <div
-                          key={supplier.id}
-                          onClick={() => { setSupplierFilterId(supplier.id); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
-                          style={{
-                            padding: '0.5rem 0.65rem', cursor: 'pointer', fontSize: '0.8rem',
-                            background: supplierFilterId === supplier.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
-                            fontWeight: supplierFilterId === supplier.id ? 600 : 400
-                          }}
-                          onMouseEnter={(e) => { if (supplierFilterId !== supplier.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
-                          onMouseLeave={(e) => { if (supplierFilterId !== supplier.id) e.currentTarget.style.background = 'transparent'; }}
-                        >
-                          {supplier.name}
-                        </div>
-                      ))
-                    )}
-                  </div>
+                <option value="verified">Verified</option>
+                <option value="pending">Pending</option>
+              </select>
+
+              <div ref={supplierDropdownRef} style={{ position: 'relative', minWidth: '160px' }}>
+                <div
+                  onClick={() => { setShowSupplierDropdown(prev => !prev); if (!showSupplierDropdown) setSupplierSearchTerm(''); }}
+                  style={{
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    gap: '0.5rem',
+                    height: '40px',
+                    padding: '0 1rem', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)', 
+                    cursor: 'pointer', 
+                    fontSize: '0.875rem',
+                    background: 'hsl(var(--background))', 
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <span style={{ 
+                    color: supplierFilterId ? 'inherit' : 'hsl(var(--muted-foreground))',
+                    maxWidth: '120px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {supplierFilterId
+                      ? suppliers.find(s => s.id === supplierFilterId)?.name || 'Supplier'
+                      : 'All Suppliers'}
+                  </span>
+                  <ChevronDown size={16} style={{ flexShrink: 0 }} />
                 </div>
-              )}
+                {showSupplierDropdown && (
+                  <div style={{
+                    position: 'absolute', 
+                    top: 'calc(100% + 4px)', 
+                    right: 0,
+                    width: '240px',
+                    background: 'hsl(var(--background))', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)', 
+                    zIndex: 100,
+                    boxShadow: 'var(--shadow-lg)', 
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <Search size={14} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
+                      <input
+                        type="text"
+                        placeholder="Search supplier..."
+                        value={supplierSearchTerm}
+                        onChange={(e) => setSupplierSearchTerm(e.target.value)}
+                        autoFocus
+                        style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      {supplierSearchTerm && (
+                        <X size={14} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setSupplierSearchTerm(''); }} />
+                      )}
+                    </div>
+                    <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+                      <div
+                        onClick={() => { setSupplierFilterId(null); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
+                        style={{
+                          padding: '0.625rem 0.75rem', 
+                          cursor: 'pointer', 
+                          fontSize: '0.875rem',
+                          background: !supplierFilterId ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                          fontWeight: !supplierFilterId ? 600 : 400,
+                          borderBottom: '1px solid hsl(var(--border) / 0.3)'
+                        }}
+                        onMouseEnter={(e) => { if (supplierFilterId) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
+                        onMouseLeave={(e) => { if (supplierFilterId) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        All Suppliers
+                      </div>
+                      {suppliersLoading ? (
+                        <div style={{ padding: '1rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>Loading...</div>
+                      ) : (
+                        suppliers.map(supplier => (
+                          <div
+                            key={supplier.id}
+                            onClick={() => { setSupplierFilterId(supplier.id); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
+                            style={{
+                              padding: '0.625rem 0.75rem', 
+                              cursor: 'pointer', 
+                              fontSize: '0.875rem',
+                              background: supplierFilterId === supplier.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                              fontWeight: supplierFilterId === supplier.id ? 600 : 400
+                            }}
+                            onMouseEnter={(e) => { if (supplierFilterId !== supplier.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
+                            onMouseLeave={(e) => { if (supplierFilterId !== supplier.id) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {supplier.name}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1427,7 +1536,7 @@ export default function SpendsPage({ token }) {
                       <td className="text-right">{formatCurrency(spend.total)}</td>
                       <td className="text-right">
                         <div style={{ fontSize: '0.875rem' }}>
-                          {new Date(spend.createdAt).toLocaleDateString('en-GB', {
+                          {new Date(spend.spendDate).toLocaleDateString('en-GB', {
                             day: '2-digit',
                             month: '2-digit',
                             year: '2-digit'
