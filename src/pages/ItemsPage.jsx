@@ -76,6 +76,19 @@ export default function ItemsPage({ token }) {
   const [newSupplierPhone, setNewSupplierPhone] = useState('');
   const [creatingSupplier, setCreatingSupplier] = useState(false);
   const supplierDropdownRef = useRef(null);
+  const [stockSearchQuery, setStockSearchQuery] = useState('');
+  const [stockSearchResults, setStockSearchResults] = useState([]);
+  const [stockSearchLoading, setStockSearchLoading] = useState(false);
+  const [pinnedItems, setPinnedItems] = useState([]);
+  const prevChangedRef = useRef('');
+
+  const stockDisplayedItems = useMemo(() => {
+    const baseItems = stockSearchResults.length > 0 || stockSearchQuery !== ''
+      ? stockSearchResults
+      : items;
+    const pinnedIds = new Set(pinnedItems.map(p => p.id));
+    return [...pinnedItems, ...baseItems.filter(i => !pinnedIds.has(i.id))];
+  }, [pinnedItems, stockSearchResults, items, stockSearchQuery]);
 
   useEffect(() => {
     if (!showSupplierDropdown) return;
@@ -124,19 +137,41 @@ export default function ItemsPage({ token }) {
   useEffect(() => {
     setStockInputs((prev) => {
       const next = {};
-      items.forEach((item) => {
+      stockDisplayedItems.forEach((item) => {
         next[item.id] = prev[item.id] ?? String(item.stock ?? '');
       });
       return next;
     });
     setCostPriceInputs((prev) => {
       const next = {};
-      items.forEach((item) => {
+      stockDisplayedItems.forEach((item) => {
         next[item.id] = prev[item.id] ?? String(item.costPrice ?? '');
       });
       return next;
     });
-  }, [items]);
+  }, [stockDisplayedItems]);
+
+  useEffect(() => {
+    if (activeTab !== 'stock') return;
+    const displayedIds = new Set(stockDisplayedItems.map(i => i.id));
+    const changedItems = [];
+    const itemsToCheck = [...stockDisplayedItems];
+    for (const p of pinnedItems) {
+      if (!displayedIds.has(p.id)) itemsToCheck.push(p);
+    }
+    for (const item of itemsToCheck) {
+      const stockChanged = stockInputs[item.id] !== String(item.stock ?? '');
+      const costPriceChanged = costPriceInputs[item.id] !== String(item.costPrice ?? '');
+      if (stockChanged || costPriceChanged) {
+        changedItems.push(item);
+      }
+    }
+    const key = changedItems.map(i => i.id).sort().join(',');
+    if (key !== prevChangedRef.current) {
+      prevChangedRef.current = key;
+      setPinnedItems(changedItems);
+    }
+  }, [stockInputs, costPriceInputs, stockDisplayedItems, activeTab]);
 
   useEffect(() => {
     if (!showSupplierDropdown) return;
@@ -153,6 +188,22 @@ export default function ItemsPage({ token }) {
     }, 300);
     return () => clearTimeout(timer);
   }, [supplierSearchTerm, showSupplierDropdown, token]);
+
+  useEffect(() => {
+    if (activeTab !== 'stock') return;
+    const timer = setTimeout(async () => {
+      setStockSearchLoading(true);
+      try {
+        const data = await listItems(token, { q: stockSearchQuery });
+        setStockSearchResults(Array.isArray(data) ? data : []);
+      } catch {
+        setStockSearchResults([]);
+      } finally {
+        setStockSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [stockSearchQuery, activeTab, token]);
 
   const onFilterChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -185,8 +236,8 @@ export default function ItemsPage({ token }) {
     }));
   };
 
-  const prepareBulkUpdates = () => {
-    return items.map((item) => {
+  const prepareBulkUpdates = (itemsList) => {
+    return itemsList.map((item) => {
       const rawStock = stockInputs[item.id];
       const candidateStock = rawStock === undefined || rawStock === '' ? item.stock : rawStock;
       const parsedStock = Number(candidateStock);
@@ -257,7 +308,7 @@ export default function ItemsPage({ token }) {
     setBulkUpdateError('');
     setBulkUpdateSuccess('');
     try {
-      const updates = prepareBulkUpdates();
+      const updates = prepareBulkUpdates(stockDisplayedItems);
       if (updates.length === 0) {
         setBulkUpdateSuccess('No stock changes to apply.');
         return;
@@ -443,6 +494,27 @@ export default function ItemsPage({ token }) {
             {activeTab === 'stock' && (
               <div className="stock-update-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--muted-foreground))' }} />
+                      <input
+                        type="text"
+                        placeholder="Search items to update stock..."
+                        value={stockSearchQuery}
+                        onChange={(e) => setStockSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem',
+                          border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)',
+                          fontSize: '0.875rem', background: 'hsl(var(--background))', outline: 'none'
+                        }}
+                      />
+                      {stockSearchQuery && (
+                        <X size={16} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'hsl(var(--muted-foreground))' }}
+                          onClick={() => setStockSearchQuery('')} />
+                      )}
+                    </div>
+                    {stockSearchLoading && <span style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))' }}>Searching...</span>}
+                  </div>
                   {bulkUpdateError && (
                     <div className="error-text" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>{bulkUpdateError}</span>
@@ -459,19 +531,21 @@ export default function ItemsPage({ token }) {
                       </button>
                     </div>
                   )}
-                  {!loading && items.length === 0 && <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>No items to update.</p>}
-                  {items.map((item) => {
+                  {!loading && !stockSearchLoading && stockDisplayedItems.length === 0 && <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>No items to update.</p>}
+                  {stockDisplayedItems.map((item) => {
                     const originalStock = String(item.stock ?? '');
                     const originalCostPrice = String(item.costPrice ?? '');
                     const stockChanged = stockInputs[item.id] !== originalStock;
                     const costPriceChanged = costPriceInputs[item.id] !== originalCostPrice;
                     const isChanged = stockChanged || costPriceChanged;
+                    const isPinned = pinnedItems.some(p => p.id === item.id);
                     return (
                       <div
                         key={`stock-${item.id}`}
                         className="card"
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: 0,
+                          border: isPinned ? '1px solid hsl(var(--primary) / 0.3)' : undefined,
                           ...(isChanged ? { background: 'hsl(var(--primary) / 0.15)' } : {})
                         }}
                       >
@@ -519,7 +593,7 @@ export default function ItemsPage({ token }) {
                     type="button"
                     className="primary"
                     onClick={handleBulkUpdate}
-                    disabled={bulkUpdating || items.length === 0}
+                    disabled={bulkUpdating || stockDisplayedItems.length === 0}
                     style={{ width: '100%', padding: '0.75rem', fontWeight: 600 }}
                   >
                     {bulkUpdating ? 'Updating...' : 'Update All Stocks'}
