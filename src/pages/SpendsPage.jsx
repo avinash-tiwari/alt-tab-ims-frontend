@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, Check, ChevronDown, Pencil, Plus, Search, Trash2, TrendingDown, X } from 'lucide-react';
-import { listSpends, createSpend, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, updateSpend, deleteSpend, listItems, createItem } from '../api';
+import { listSpends, createSpend, createBulkSpends, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, updateSpend, deleteSpend, listItems, createItem } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
 
@@ -27,7 +27,182 @@ function StatCard({ icon: Icon, label, value, color, bgColor }) {
   );
 }
 
+function ItemSelect({ token, value, onChange, placeholder = 'Select item' }) {
+  const [items, setItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createCostPrice, setCreateCostPrice] = useState('');
+  const [createBasePrice, setCreateBasePrice] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    function handleClick(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+        setShowCreate(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showDropdown]);
+
+  useEffect(() => {
+    if (!showDropdown || showCreate) return;
+    setItemsLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const data = await listItems(token, { q: searchTerm, limit: 10 });
+        setItems(Array.isArray(data) ? data : []);
+      } catch {
+        setItems([]);
+      } finally {
+        setItemsLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, showDropdown, showCreate, token]);
+
+  const handleSelect = (item) => {
+    onChange({ id: item.id, name: item.name, costPrice: item.costPrice || 0 });
+    setShowDropdown(false);
+    setSearchTerm('');
+    setShowCreate(false);
+  };
+
+  const handleCreate = async () => {
+    if (!createName.trim()) return;
+    setCreating(true);
+    try {
+      const newItem = await createItem(token, {
+        name: createName.trim(),
+        costPrice: parseFloat(createCostPrice) || 0,
+        basePrice: parseFloat(createBasePrice) || 0
+      });
+      onChange({ id: newItem.id, name: newItem.name, costPrice: newItem.costPrice || 0 });
+      setShowDropdown(false);
+      setShowCreate(false);
+      setSearchTerm('');
+    } catch {
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const displayName = value
+    ? (items.find(i => i.id === value)?.name || 'Unknown')
+    : '';
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative' }}>
+      <div
+        onClick={() => { setShowDropdown(prev => !prev); if (!showDropdown) { setSearchTerm(''); setShowCreate(false); } }}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0.5rem 0.75rem', border: '1px solid hsl(var(--border))',
+          borderRadius: 'var(--radius)', cursor: 'pointer', minHeight: '38px',
+          background: 'hsl(var(--background))'
+        }}
+      >
+        <span style={{ color: value ? 'inherit' : 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+          {value ? displayName : placeholder}
+        </span>
+        <ChevronDown size={18} />
+      </div>
+      {showDropdown && !showCreate && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
+          borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden'
+        }}>
+          <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <Search size={16} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
+            <input
+              type="text"
+              placeholder={placeholder}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoFocus
+              style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
+              onClick={(e) => e.stopPropagation()}
+            />
+            {searchTerm && (
+              <X size={16} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setSearchTerm(''); }} />
+            )}
+          </div>
+          <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+            {itemsLoading ? (
+              <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Loading...</div>
+            ) : items.length > 0 ? (
+              items.map(item => (
+                <div
+                  key={item.id}
+                  onClick={() => handleSelect(item)}
+                  style={{
+                    padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                    background: value === item.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                    fontWeight: value === item.id ? 600 : 400
+                  }}
+                  onMouseEnter={(e) => { if (value !== item.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
+                  onMouseLeave={(e) => { if (value !== item.id) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {item.name}
+                </div>
+              ))
+            ) : null}
+            {searchTerm && !itemsLoading && (items.length === 0 || !items.some(i => i.name.toLowerCase() === searchTerm.toLowerCase())) && (
+              <div
+                onClick={() => { setCreateName(searchTerm); setShowCreate(true); }}
+                style={{
+                  padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                  borderTop: '1px solid hsl(var(--border))',
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  color: 'hsl(var(--primary))', fontWeight: 600
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <Plus size={16} /> Create &ldquo;{searchTerm}&rdquo;
+              </div>
+            )}
+            {!searchTerm && !itemsLoading && items.length === 0 && (
+              <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>No items found</div>
+            )}
+          </div>
+        </div>
+      )}
+      {showDropdown && showCreate && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
+          borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden', padding: '1rem'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ margin: 0, fontSize: '1rem' }}>Create Item</h4>
+            <Input label="Name" value={createName} onChange={(e) => setCreateName(e.target.value)} />
+            <Input label="Cost Price" type="number" value={createCostPrice} onChange={(e) => setCreateCostPrice(e.target.value)} />
+            <Input label="Base Price" type="number" value={createBasePrice} onChange={(e) => setCreateBasePrice(e.target.value)} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button type="button" className="ghost-btn" onClick={() => setShowCreate(false)} disabled={creating}>Cancel</button>
+              <button type="button" className="primary" onClick={handleCreate} disabled={creating || !createName.trim()}>
+                {creating ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CreateSpendModal({ token, onClose, onSuccess }) {
+  const [mode, setMode] = useState('single');
   const [formData, setFormData] = useState({ 
     itemName: '', 
     price: '', 
@@ -37,6 +212,8 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [updateStock, setUpdateStock] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState(null);
+
   const [suppliers, setSuppliers] = useState([]);
   const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
@@ -48,16 +225,8 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
   const [creatingSupplier, setCreatingSupplier] = useState(false);
   const supplierDropdownRef = useRef(null);
 
-  const [items, setItems] = useState([]);
-  const [itemsLoading, setItemsLoading] = useState(false);
-  const [itemSearchTerm, setItemSearchTerm] = useState('');
-  const [showItemDropdown, setShowItemDropdown] = useState(false);
-  const [selectedItemId, setSelectedItemId] = useState(null);
-  const [showCreateItem, setShowCreateItem] = useState(false);
-  const [newItemCostPrice, setNewItemCostPrice] = useState('');
-  const [newItemBasePrice, setNewItemBasePrice] = useState('');
-  const [creatingItem, setCreatingItem] = useState(false);
-  const itemDropdownRef = useRef(null);
+  const [bulkSpendDate, setBulkSpendDate] = useState(new Date().toISOString().split('T')[0]);
+  const [bulkRows, setBulkRows] = useState([{ itemName: '', price: '', quantity: '', selectedItemId: null }]);
 
   useEffect(() => {
     if (!showSupplierDropdown) return;
@@ -86,34 +255,12 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
     return () => clearTimeout(timer);
   }, [supplierSearchTerm, showSupplierDropdown, token]);
 
-  useEffect(() => {
-    if (!showItemDropdown) return;
-    function handleClick(e) {
-      if (itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) {
-        setShowItemDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showItemDropdown]);
+  const handleItemSelect = (item) => {
+    setSelectedItemId(item.id);
+    setFormData(prev => ({ ...prev, itemName: item.name, price: item.costPrice || '' }));
+  };
 
-  useEffect(() => {
-    if (!showItemDropdown) return;
-    const timer = setTimeout(async () => {
-      setItemsLoading(true);
-      try {
-        const data = await listItems(token, { q: itemSearchTerm, limit: 10 });
-        setItems(Array.isArray(data) ? data : []);
-      } catch {
-        setItems([]);
-      } finally {
-        setItemsLoading(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [itemSearchTerm, showItemDropdown, token]);
-
-  const handleSubmit = async (e) => {
+  const handleSingleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -136,468 +283,347 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
     }
   };
 
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault();
+    const validRows = bulkRows.filter(r => r.itemName.trim());
+    if (validRows.length === 0) {
+      setError('Add at least one item');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const spends = validRows.map(r => ({
+        itemName: r.itemName,
+        price: parseFloat(r.price),
+        quantity: parseInt(r.quantity),
+        spendDate: bulkSpendDate,
+        updateStock,
+        ...(selectedSupplierId ? { supplierId: selectedSupplierId } : {})
+      }));
+      await createBulkSpends(token, { spends });
+      onSuccess();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateBulkRow = (index, updates) => {
+    setBulkRows(prev => prev.map((row, i) => i === index ? { ...row, ...updates } : row));
+  };
+
+  const addBulkRow = () => {
+    setBulkRows(prev => [...prev, { itemName: '', price: '', quantity: '', selectedItemId: null }]);
+  };
+
+  const removeBulkRow = (index) => {
+    setBulkRows(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleBulkItemSelect = (index, item) => {
+    updateBulkRow(index, { selectedItemId: item.id, itemName: item.name, price: item.costPrice || '' });
+  };
+
+  const renderBulkRows = () => (
+    <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '1rem', marginBottom: '0.5rem' }}>
+      <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>
+        Items ({bulkRows.length})
+      </p>
+      {bulkRows.map((row, index) => (
+        <div key={index} style={{
+          padding: '0.75rem', background: 'hsl(var(--muted) / 0.15)',
+          borderRadius: 'var(--radius)', marginBottom: '0.75rem'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>
+              Item #{index + 1}
+            </span>
+            {bulkRows.length > 1 && (
+              <button type="button" className="ghost-btn" onClick={() => removeBulkRow(index)} title="Remove item" style={{ padding: '0.25rem', color: 'hsl(var(--destructive))' }}>
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <ItemSelect
+              token={token}
+              value={row.selectedItemId}
+              onChange={(item) => handleBulkItemSelect(index, item)}
+              placeholder="Search item..."
+            />
+          </div>
+          <div className="split-2">
+            <Input
+              label="Price"
+              type="number"
+              value={row.price}
+              onChange={(e) => updateBulkRow(index, { price: e.target.value })}
+              required
+              step="0.01"
+            />
+            <Input
+              label="Quantity"
+              type="number"
+              value={row.quantity}
+              onChange={(e) => updateBulkRow(index, { quantity: e.target.value })}
+              required
+            />
+          </div>
+        </div>
+      ))}
+      <button type="button" className="secondary" onClick={addBulkRow} style={{ width: '100%', padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+        <Plus size={16} /> Add Item
+      </button>
+    </div>
+  );
+
+  const supplierDropdown = (
+    <div style={{ marginBottom: '0.5rem' }}>
+      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>Supplier</label>
+      <div ref={supplierDropdownRef} style={{ position: 'relative' }}>
+        <div
+          onClick={() => { setShowSupplierDropdown(prev => !prev); if (!showSupplierDropdown) setSupplierSearchTerm(''); }}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0.5rem 0.75rem', border: '1px solid hsl(var(--border))',
+            borderRadius: 'var(--radius)', cursor: 'pointer', minHeight: '38px',
+            background: 'hsl(var(--background))'
+          }}
+        >
+          <span style={{ color: selectedSupplierId ? 'inherit' : 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+            {selectedSupplierId ? suppliers.find(s => s.id === selectedSupplierId)?.name || 'Unknown' : 'Select supplier'}
+          </span>
+          <ChevronDown size={18} />
+        </div>
+        {showSupplierDropdown && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0,
+            background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
+            borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden'
+          }}>
+            <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <Search size={16} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
+              <input type="text" placeholder="Search suppliers..." value={supplierSearchTerm}
+                onChange={(e) => setSupplierSearchTerm(e.target.value)} autoFocus
+                style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              {supplierSearchTerm && (
+                <X size={16} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setSupplierSearchTerm(''); }} />
+              )}
+            </div>
+            <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+              {suppliersLoading ? (
+                <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Loading...</div>
+              ) : suppliers.length > 0 ? (
+                suppliers.map(supplier => (
+                  <div key={supplier.id}
+                    onClick={() => { setSelectedSupplierId(supplier.id); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
+                    style={{
+                      padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                      background: selectedSupplierId === supplier.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                      fontWeight: selectedSupplierId === supplier.id ? 600 : 400
+                    }}
+                    onMouseEnter={(e) => { if (selectedSupplierId !== supplier.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
+                    onMouseLeave={(e) => { if (selectedSupplierId !== supplier.id) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {supplier.name}
+                    {supplier.phone && <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.5rem' }}>{supplier.phone}</span>}
+                  </div>
+                ))
+              ) : null}
+              {supplierSearchTerm && !suppliersLoading && (suppliers.length === 0 || !suppliers.some(s => s.name.toLowerCase() === supplierSearchTerm.toLowerCase())) && (
+                <div onClick={() => { setNewSupplierName(supplierSearchTerm); setNewSupplierPhone(''); setShowCreateSupplier(true); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
+                  style={{
+                    padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                    borderTop: '1px solid hsl(var(--border))', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    color: 'hsl(var(--primary))', fontWeight: 600
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Plus size={16} /> Create &ldquo;{supplierSearchTerm}&rdquo;
+                </div>
+              )}
+              {!supplierSearchTerm && !suppliersLoading && suppliers.length === 0 && (
+                <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>No suppliers found</div>
+              )}
+              <div onClick={() => { setNewSupplierName(''); setNewSupplierPhone(''); setShowCreateSupplier(true); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
+                style={{
+                  padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
+                  borderTop: '1px solid hsl(var(--border))', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  color: 'hsl(var(--primary))', fontWeight: 600
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <Plus size={16} /> Add new supplier
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const supplierCreateOverlay = showCreateSupplier && (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)',
+      zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }}>
+      <div className="card" style={{
+        width: '100%', maxWidth: '400px', padding: '1.5rem',
+        display: 'flex', flexDirection: 'column', gap: '1rem',
+        background: 'hsl(var(--background))', boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h4 style={{ margin: 0, fontSize: '1.1rem' }}>Create Supplier</h4>
+          <button type="button" className="ghost-btn" onClick={() => setShowCreateSupplier(false)} style={{ padding: '0.25rem' }}>
+            <X size={20} />
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <Input label="Name" value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} autoFocus />
+          <Input label="Phone" value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <button type="button" className="secondary" onClick={() => setShowCreateSupplier(false)}>Cancel</button>
+            <button type="button" className="primary"
+              disabled={creatingSupplier || !newSupplierName.trim()}
+              onClick={async () => {
+                setCreatingSupplier(true);
+                try {
+                  const newSupplier = await createSupplier(token, { name: newSupplierName.trim(), phone: newSupplierPhone.trim() });
+                  setSelectedSupplierId(newSupplier.id);
+                  setShowCreateSupplier(false);
+                  const data = await listSuppliers(token, { limit: 10 });
+                  setSuppliers(Array.isArray(data?.data) ? data.data : []);
+                } catch (err) {
+                } finally {
+                  setCreatingSupplier(false);
+                }
+              }}
+            >
+              {creatingSupplier ? 'Creating...' : 'Create'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'hsl(var(--background))',
-      zIndex: 1000,
-      padding: '1rem',
-      display: 'flex',
-      flexDirection: 'column'
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'hsl(var(--background))', zIndex: 1000, padding: '1rem',
+      display: 'flex', flexDirection: 'column'
     }}>
       <header style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingBottom: '0.5rem',
-        borderBottom: '1px solid hsl(var(--border))',
-        marginBottom: '1rem'
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        paddingBottom: '0.5rem', borderBottom: '1px solid hsl(var(--border))', marginBottom: '1rem'
       }}>
         <h3 style={{ margin: 0 }}>Create Spend</h3>
-        <button
-          type="button"
-          className="ghost-btn"
-          onClick={onClose}
-          aria-label="Close"
-          disabled={loading}
-          style={{ padding: '0.25rem' }}
-        >
+        <button type="button" className="ghost-btn" onClick={onClose} aria-label="Close" disabled={loading} style={{ padding: '0.25rem' }}>
           <X size={24} />
         </button>
       </header>
 
+      {supplierCreateOverlay}
+
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+        <button type="button" onClick={() => { setMode('single'); setError(''); }}
+          style={{
+            flex: 1, padding: '0.5rem', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer',
+            fontWeight: mode === 'single' ? 600 : 400,
+            background: mode === 'single' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
+            color: mode === 'single' ? 'hsl(var(--primary-foreground))' : 'inherit'
+          }}
+        >
+          Single Add
+        </button>
+        <button type="button" onClick={() => { setMode('bulk'); setError(''); }}
+          style={{
+            flex: 1, padding: '0.5rem', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer',
+            fontWeight: mode === 'bulk' ? 600 : 400,
+            background: mode === 'bulk' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
+            color: mode === 'bulk' ? 'hsl(var(--primary-foreground))' : 'inherit'
+          }}
+        >
+          Bulk Add
+        </button>
+      </div>
+
       <form
-        onSubmit={handleSubmit}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          overflow: 'hidden'
-        }}
+        onSubmit={mode === 'single' ? handleSingleSubmit : handleBulkSubmit}
+        style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
       >
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
           <div className="stack-form">
-            <div style={{ marginBottom: '0.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                Item
-              </label>
-              <div ref={itemDropdownRef} style={{ position: 'relative' }}>
-                <div
-                  onClick={() => { setShowItemDropdown(prev => !prev); if (!showItemDropdown) setItemSearchTerm(''); }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.5rem 0.75rem', border: '1px solid hsl(var(--border))',
-                    borderRadius: 'var(--radius)', cursor: 'pointer', minHeight: '38px',
-                    background: 'hsl(var(--background))'
-                  }}
-                >
-                  <span style={{ color: selectedItemId ? 'inherit' : 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                    {selectedItemId
-                      ? items.find(i => i.id === selectedItemId)?.name || formData.itemName || 'Unknown'
-                      : formData.itemName || 'Select item'}
-                  </span>
-                  <ChevronDown size={18} />
+            {mode === 'single' ? (
+              <>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>Item</label>
+                  <ItemSelect
+                    token={token}
+                    value={selectedItemId}
+                    onChange={handleItemSelect}
+                    placeholder="Select item"
+                  />
                 </div>
-                {showItemDropdown && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0,
-                    background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
-                    borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden'
-                  }}>
-                    <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <Search size={16} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
-                      <input
-                        type="text"
-                        placeholder="Search items..."
-                        value={itemSearchTerm}
-                        onChange={(e) => setItemSearchTerm(e.target.value)}
-                        autoFocus
-                        style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      {itemSearchTerm && (
-                        <X size={16} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setItemSearchTerm(''); }} />
-                      )}
-                    </div>
-                    <div style={{ maxHeight: '200px', overflow: 'auto' }}>
-                      {itemsLoading ? (
-                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Loading...</div>
-                      ) : items.length > 0 ? (
-                        items.map(item => (
-                          <div
-                            key={item.id}
-                            onClick={() => {
-                              setSelectedItemId(item.id);
-                              setFormData(prev => ({ ...prev, itemName: item.name, price: item.costPrice || '' }));
-                              setShowItemDropdown(false);
-                              setItemSearchTerm('');
-                            }}
-                            style={{
-                              padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
-                              background: selectedItemId === item.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
-                              fontWeight: selectedItemId === item.id ? 600 : 400
-                            }}
-                            onMouseEnter={(e) => { if (selectedItemId !== item.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
-                            onMouseLeave={(e) => { if (selectedItemId !== item.id) e.currentTarget.style.background = 'transparent'; }}
-                          >
-                            {item.name}
-                          </div>
-                        ))
-                      ) : null}
-                      {itemSearchTerm && !itemsLoading && (items.length === 0 || !items.some(i => i.name.toLowerCase() === itemSearchTerm.toLowerCase())) && (
-                        <div
-                          onClick={() => {
-                            setSelectedItemId(null);
-                            setFormData(prev => ({ ...prev, itemName: itemSearchTerm }));
-                            setNewItemCostPrice('');
-                            setNewItemBasePrice('');
-                            setShowCreateItem(true);
-                            setShowItemDropdown(false);
-                            setItemSearchTerm('');
-                          }}
-                          style={{
-                            padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
-                            borderTop: '1px solid hsl(var(--border))',
-                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            color: 'hsl(var(--primary))', fontWeight: 600
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <Plus size={16} /> Create "{itemSearchTerm}"
-                        </div>
-                      )}
-                      {!itemSearchTerm && !itemsLoading && items.length === 0 && (
-                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>No items found</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            {showCreateItem && (
-              <div style={{
-                padding: '1rem', background: 'hsl(var(--muted) / 0.3)',
-                borderRadius: 'var(--radius)', marginBottom: '1rem'
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <h4 style={{ margin: 0, fontSize: '1rem' }}>Create Item</h4>
-                  <Input
-                    label="Name"
-                    value={formData.itemName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, itemName: e.target.value }))}
-                  />
-                  <Input
-                    label="Cost Price"
-                    type="number"
-                    value={newItemCostPrice}
-                    onChange={(e) => setNewItemCostPrice(e.target.value)}
-                  />
-                  <Input
-                    label="Base Price"
-                    type="number"
-                    value={newItemBasePrice}
-                    onChange={(e) => setNewItemBasePrice(e.target.value)}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      className="ghost-btn"
-                      onClick={() => setShowCreateItem(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="primary"
-                      disabled={creatingItem || !formData.itemName.trim()}
-                      onClick={async () => {
-                        setCreatingItem(true);
-                        try {
-                          const newItem = await createItem(token, {
-                            name: formData.itemName.trim(),
-                            costPrice: parseFloat(newItemCostPrice) || 0,
-                            basePrice: parseFloat(newItemBasePrice) || 0
-                          });
-                          setSelectedItemId(newItem.id);
-                          setFormData(prev => ({ ...prev, price: newItem.costPrice || newItemCostPrice || '' }));
-                          setShowCreateItem(false);
-                          const data = await listItems(token, { limit: 10 });
-                          setItems(Array.isArray(data) ? data : []);
-                        } catch (err) {
-                          // creation error handled silently
-                        } finally {
-                          setCreatingItem(false);
-                        }
-                      }}
-                    >
-                      {creatingItem ? 'Creating...' : 'Create'}
-                    </button>
-                  </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <Input label="Date" type="date" value={formData.spendDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, spendDate: e.target.value }))} required />
                 </div>
-              </div>
+                <div className="split-2">
+                  <Input label="Price" type="number" value={formData.price}
+                    onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))} required step="0.01" />
+                  <Input label="Quantity" type="number" value={formData.quantity}
+                    onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))} required />
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>Date</label>
+                  <input type="date" value={bulkSpendDate} onChange={(e) => setBulkSpendDate(e.target.value)}
+                    style={{
+                      width: '100%', padding: '0.5rem 0.75rem',
+                      border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)',
+                      fontSize: '0.875rem', background: 'hsl(var(--background))', outline: 'none'
+                    }}
+                  />
+                </div>
+                {supplierDropdown}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '1rem' }}>
+                  <input type="checkbox" checked={updateStock} onChange={(e) => setUpdateStock(e.target.checked)} />
+                  Update stock automatically
+                </label>
+                {renderBulkRows()}
+              </>
             )}
-            <div style={{ marginBottom: '0.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                Supplier
+            {mode === 'single' && supplierDropdown}
+            {mode === 'single' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+                <input type="checkbox" checked={updateStock} onChange={(e) => setUpdateStock(e.target.checked)} />
+                Update stock automatically
               </label>
-              <div ref={supplierDropdownRef} style={{ position: 'relative' }}>
-                <div
-                  onClick={() => { setShowSupplierDropdown(prev => !prev); if (!showSupplierDropdown) setSupplierSearchTerm(''); }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.5rem 0.75rem', border: '1px solid hsl(var(--border))',
-                    borderRadius: 'var(--radius)', cursor: 'pointer', minHeight: '38px',
-                    background: 'hsl(var(--background))'
-                  }}
-                >
-                  <span style={{ color: selectedSupplierId ? 'inherit' : 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                    {selectedSupplierId
-                      ? suppliers.find(s => s.id === selectedSupplierId)?.name || 'Unknown'
-                      : 'Select supplier'}
-                  </span>
-                  <ChevronDown size={18} />
-                </div>
-                {showSupplierDropdown && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0,
-                    background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))',
-                    borderRadius: 'var(--radius)', zIndex: 70, marginTop: '0.25rem',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden'
-                  }}>
-                    <div style={{ padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <Search size={16} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
-                      <input
-                        type="text"
-                        placeholder="Search suppliers..."
-                        value={supplierSearchTerm}
-                        onChange={(e) => setSupplierSearchTerm(e.target.value)}
-                        autoFocus
-                        style={{ border: 'none', outline: 'none', flex: 1, background: 'transparent', fontSize: '0.875rem' }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      {supplierSearchTerm && (
-                        <X size={16} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setSupplierSearchTerm(''); }} />
-                      )}
-                    </div>
-                    <div style={{ maxHeight: '200px', overflow: 'auto' }}>
-                      {suppliersLoading ? (
-                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Loading...</div>
-                      ) : suppliers.length > 0 ? (
-                        suppliers.map(supplier => (
-                          <div
-                            key={supplier.id}
-                            onClick={() => { setSelectedSupplierId(supplier.id); setShowSupplierDropdown(false); setSupplierSearchTerm(''); }}
-                            style={{
-                              padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
-                              background: selectedSupplierId === supplier.id ? 'hsl(var(--primary) / 0.1)' : 'transparent',
-                              fontWeight: selectedSupplierId === supplier.id ? 600 : 400
-                            }}
-                            onMouseEnter={(e) => { if (selectedSupplierId !== supplier.id) e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'; }}
-                            onMouseLeave={(e) => { if (selectedSupplierId !== supplier.id) e.currentTarget.style.background = 'transparent'; }}
-                          >
-                            {supplier.name}
-                            {supplier.phone && <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.5rem' }}>{supplier.phone}</span>}
-                          </div>
-                        ))
-                      ) : null}
-                      {supplierSearchTerm && !suppliersLoading && (suppliers.length === 0 || !suppliers.some(s => s.name.toLowerCase() === supplierSearchTerm.toLowerCase())) && (
-                        <div
-                          onClick={() => {
-                            setNewSupplierName(supplierSearchTerm);
-                            setNewSupplierPhone('');
-                            setShowCreateSupplier(true);
-                            setShowSupplierDropdown(false);
-                            setSupplierSearchTerm('');
-                          }}
-                          style={{
-                            padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
-                            borderTop: '1px solid hsl(var(--border))',
-                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            color: 'hsl(var(--primary))', fontWeight: 600
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <Plus size={16} /> Create "{supplierSearchTerm}"
-                        </div>
-                      )}
-                      {!supplierSearchTerm && !suppliersLoading && suppliers.length === 0 && (
-                        <div style={{ padding: '0.75rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>No suppliers found</div>
-                      )}
-                      <div
-                        onClick={() => {
-                          setNewSupplierName(supplierSearchTerm);
-                          setNewSupplierPhone('');
-                          setShowCreateSupplier(true);
-                          setShowSupplierDropdown(false);
-                          setSupplierSearchTerm('');
-                        }}
-                        style={{
-                          padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
-                          borderTop: '1px solid hsl(var(--border))',
-                          display: 'flex', alignItems: 'center', gap: '0.5rem',
-                          color: 'hsl(var(--primary))', fontWeight: 600
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <Plus size={16} /> Add new supplier
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            {showCreateSupplier && (
-              <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'rgba(0, 0, 0, 0.5)',
-                backdropFilter: 'blur(4px)',
-                zIndex: 1100,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '1rem'
-              }}>
-                <div className="card" style={{ 
-                  width: '100%', 
-                  maxWidth: '400px', 
-                  padding: '1.5rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  background: 'hsl(var(--background))',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4 style={{ margin: 0, fontSize: '1.1rem' }}>Create Supplier</h4>
-                    <button 
-                      type="button" 
-                      className="ghost-btn" 
-                      onClick={() => setShowCreateSupplier(false)}
-                      style={{ padding: '0.25rem' }}
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <Input
-                      label="Name"
-                      value={newSupplierName}
-                      onChange={(e) => setNewSupplierName(e.target.value)}
-                      autoFocus
-                    />
-                    <Input
-                      label="Phone"
-                      value={newSupplierPhone}
-                      onChange={(e) => setNewSupplierPhone(e.target.value)}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => setShowCreateSupplier(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="primary"
-                        disabled={creatingSupplier || !newSupplierName.trim()}
-                        onClick={async () => {
-                          setCreatingSupplier(true);
-                          try {
-                            const newSupplier = await createSupplier(token, { name: newSupplierName.trim(), phone: newSupplierPhone.trim() });
-                            setSelectedSupplierId(newSupplier.id);
-                            setShowCreateSupplier(false);
-                            const data = await listSuppliers(token, { limit: 10 });
-                            setSuppliers(Array.isArray(data?.data) ? data.data : []);
-                          } catch (err) {
-                            // creation error handled silently
-                          } finally {
-                            setCreatingSupplier(false);
-                          }
-                        }}
-                      >
-                        {creatingSupplier ? 'Creating...' : 'Create'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
             )}
-            <div style={{ marginBottom: '1rem' }}>
-              <Input
-                label="Date"
-                type="date"
-                value={formData.spendDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, spendDate: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="split-2">
-              <Input
-                label="Price"
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                required
-                step="0.01"
-              />
-              <Input
-                label="Quantity"
-                type="number"
-                value={formData.quantity}
-                onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
-                required
-              />
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
-              <input
-                type="checkbox"
-                checked={updateStock}
-                onChange={(e) => setUpdateStock(e.target.checked)}
-              />
-              Update stock automatically
-            </label>
           </div>
         </div>
 
         <footer style={{
-          marginTop: 'auto',
-          paddingTop: '1rem',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '1rem',
+          marginTop: 'auto', paddingTop: '1rem',
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem',
           borderTop: '1px solid hsl(var(--border) / 0.5)'
         }}>
-          <button
-            type="button"
-            className="secondary"
-            onClick={onClose}
-            disabled={loading}
-            style={{ width: '100%', height: '2.75rem' }}
-          >
+          <button type="button" className="secondary" onClick={onClose} disabled={loading} style={{ width: '100%', height: '2.75rem' }}>
             Cancel
           </button>
-          <button
-            type="submit"
-            className="primary"
-            disabled={loading}
-            style={{ width: '100%', height: '2.75rem' }}
-          >
+          <button type="submit" className="primary" disabled={loading} style={{ width: '100%', height: '2.75rem' }}>
             {loading ? 'Creating...' : 'Create'}
           </button>
         </footer>

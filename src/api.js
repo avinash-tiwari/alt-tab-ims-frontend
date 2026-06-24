@@ -148,6 +148,14 @@ export async function createSpend(token, payload) {
   });
 }
 
+export async function createBulkSpends(token, payload) {
+  return request('/spends/bulk', {
+    method: 'POST',
+    token,
+    body: payload
+  });
+}
+
 export async function bulkMarkSpendsStatusTrue(token, payload) {
   return request('/spends/bulk-status-true', {
     method: 'PATCH',
