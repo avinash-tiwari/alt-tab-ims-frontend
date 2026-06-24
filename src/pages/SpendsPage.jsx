@@ -21,9 +21,9 @@ function StatCard({ icon: Icon, label, value, color, bgColor }) {
         <div>
           <p className="helper-text" style={{ margin: 0, fontSize: '0.75rem' }}>{label}</p>
           <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{value}</div>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -36,6 +36,7 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [updateStock, setUpdateStock] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
@@ -122,7 +123,8 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
         price: parseFloat(formData.price),
         quantity: parseInt(formData.quantity),
         spendDate: formData.spendDate,
-        status: true
+        status: true,
+        updateStock
       };
       if (selectedSupplierId) payload.supplierId = selectedSupplierId;
       await createSpend(token, payload);
@@ -562,6 +564,14 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
                 required
               />
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+              <input
+                type="checkbox"
+                checked={updateStock}
+                onChange={(e) => setUpdateStock(e.target.checked)}
+              />
+              Update stock automatically
+            </label>
           </div>
         </div>
 
@@ -600,6 +610,7 @@ function EditSpendModal({ token, spend, onClose, onSuccess }) {
   const [formData, setFormData] = useState({ itemName: spend.itemName || '', price: spend.price?.toString() || '', quantity: spend.quantity?.toString() || '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [updateStock, setUpdateStock] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
@@ -685,6 +696,7 @@ function EditSpendModal({ token, spend, onClose, onSuccess }) {
         itemName: formData.itemName,
         price: parseFloat(formData.price),
         quantity: parseInt(formData.quantity),
+        updateStock
       };
       if (selectedSupplierId) {
         payload.supplierId = selectedSupplierId;
@@ -1084,6 +1096,14 @@ function EditSpendModal({ token, spend, onClose, onSuccess }) {
                 required
               />
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+              <input
+                type="checkbox"
+                checked={updateStock}
+                onChange={(e) => setUpdateStock(e.target.checked)}
+              />
+              Update stock automatically
+            </label>
           </div>
         </div>
 
@@ -1196,6 +1216,10 @@ export default function SpendsPage({ token }) {
       verifiedCount: spends.filter(s => s.status).length,
       pendingCount: spends.filter(s => !s.status).length
     };
+  }, [spends]);
+
+  const sortedSpends = useMemo(() => {
+    return [...spends].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [spends]);
 
   const groupedColors = useMemo(() => {
@@ -1513,7 +1537,7 @@ export default function SpendsPage({ token }) {
                     <td colSpan={filters.status === 'pending' ? 7 : 6} className="text-center helper-text">No spends found</td>
                   </tr>
                 ) : (
-                  spends.map((spend) => (
+                  sortedSpends.map((spend) => (
                     <tr key={spend.id} style={{ backgroundColor: groupedColors[spend.id] }}>
                       {filters.status === 'pending' && (
                         <td>
