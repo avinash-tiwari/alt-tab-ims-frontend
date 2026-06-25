@@ -269,7 +269,8 @@ export default function ItemsPage({ token }) {
     setSpendsSuccess('');
     try {
       const data = await listSpends(token, { status: false });
-      setSpends(Array.isArray(data) ? data : []);
+      const spendsData = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      setSpends(spendsData);
     } catch (err) {
       setSpendsError(err.message);
       setSpends([]);
@@ -350,6 +351,7 @@ export default function ItemsPage({ token }) {
         />
       ) : (
         <div className="items-page-content">
+          {/* TAG UI */}
           <div className="sticky-header" style={{ paddingTop: '0.5rem', paddingBottom: '0.5rem' }}>
             <div
               style={{
