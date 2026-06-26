@@ -48,6 +48,11 @@ const formatOrderDate = (value) => {
 export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState('NEW');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

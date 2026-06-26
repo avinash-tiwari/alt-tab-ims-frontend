@@ -414,6 +414,11 @@ function TopPaidCustomersList({ analytics }) {
 
 export default function DashboardPage({ token }) {
   const [activeTab, setActiveTab] = useState('month');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   const [selectedMonth, setSelectedMonth] = useState(() => formatYearMonth(new Date()));
 
   const [monthAnalytics, setMonthAnalytics] = useState(null);

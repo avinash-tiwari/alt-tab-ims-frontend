@@ -53,6 +53,11 @@ export default function ItemsPage({ token }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('listing');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   const [stockInputs, setStockInputs] = useState({});
   const [costPriceInputs, setCostPriceInputs] = useState({});
   const [bulkUpdating, setBulkUpdating] = useState(false);

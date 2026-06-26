@@ -598,19 +598,39 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
                   />
                 </div>
                 {supplierDropdown}
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '1rem' }}>
-                  <input type="checkbox" checked={updateStock} onChange={(e) => setUpdateStock(e.target.checked)} />
-                  Update stock automatically
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={updateStock}
+                    onChange={(e) => setUpdateStock(e.target.checked)}
+                    style={{ margin: 0, padding: 0, width: 'auto' }}
+                  />
+                  <label 
+                    onClick={() => setUpdateStock(!updateStock)}
+                    style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', margin: 0, padding: 0 }}
+                  >
+                    Update stock automatically
+                  </label>
+                </div>
                 {renderBulkRows()}
               </>
             )}
             {mode === 'single' && supplierDropdown}
             {mode === 'single' && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
-                <input type="checkbox" checked={updateStock} onChange={(e) => setUpdateStock(e.target.checked)} />
-                Update stock automatically
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={updateStock}
+                  onChange={(e) => setUpdateStock(e.target.checked)}
+                  style={{ margin: 0, padding: 0, width: 'auto' }}
+                />
+                <label 
+                  onClick={() => setUpdateStock(!updateStock)}
+                  style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', margin: 0, padding: 0 }}
+                >
+                  Update stock automatically
+                </label>
+              </div>
             )}
           </div>
         </div>
@@ -1122,14 +1142,20 @@ function EditSpendModal({ token, spend, onClose, onSuccess }) {
                 required
               />
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <input
                 type="checkbox"
                 checked={updateStock}
                 onChange={(e) => setUpdateStock(e.target.checked)}
+                style={{ margin: 0, padding: 0, width: 'auto' }}
               />
-              Update stock automatically
-            </label>
+              <label 
+                onClick={() => setUpdateStock(!updateStock)}
+                style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', margin: 0, padding: 0 }}
+              >
+                Update stock automatically
+              </label>
+            </div>
           </div>
         </div>
 
@@ -1168,6 +1194,11 @@ export default function SpendsPage({ token }) {
   const [spends, setSpends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('spends'); // 'spends' or 'suppliers'
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   const [selectedSupplierForView, setSelectedSupplierForView] = useState(null);
   const [supplierSpends, setSupplierSpends] = useState([]);
   const [supplierSpendsLoading, setSupplierSpendsLoading] = useState(false);
@@ -1296,7 +1327,11 @@ export default function SpendsPage({ token }) {
   }, [spends]);
 
   const groupedSpendsByDate = useMemo(() => {
-    const sorted = [...spends].sort((a, b) => new Date(b.spendDate) - new Date(a.spendDate));
+    const sorted = [...spends].sort((a, b) => {
+      const dateDiff = new Date(b.spendDate) - new Date(a.spendDate);
+      if (dateDiff !== 0) return dateDiff;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
     const groups = [];
     let currentGroup = null;
 
@@ -1323,11 +1358,46 @@ export default function SpendsPage({ token }) {
     return groups;
   }, [spends]);
 
+  const groupedSupplierSpendsByDate = useMemo(() => {
+    const sorted = [...supplierSpends].sort((a, b) => {
+      const dateDiff = new Date(b.spendDate) - new Date(a.spendDate);
+      if (dateDiff !== 0) return dateDiff;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    const groups = [];
+    let currentGroup = null;
+
+    sorted.forEach(spend => {
+      const dateStr = new Date(spend.spendDate).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+      });
+
+      if (!currentGroup || currentGroup.date !== dateStr) {
+        currentGroup = {
+          date: dateStr,
+          spends: [],
+          total: 0
+        };
+        groups.push(currentGroup);
+      }
+
+      currentGroup.spends.push(spend);
+      currentGroup.total += Number(spend.total || 0);
+    });
+
+    return groups;
+  }, [supplierSpends]);
+
   const groupedColors = useMemo(() => {
     const sorted = [...spends].sort((a, b) => {
       const aDate = new Date(a.spendDate);
       const bDate = new Date(b.spendDate);
       if (bDate - aDate !== 0) return bDate - aDate;
+      const aCreatedAt = new Date(a.createdAt);
+      const bCreatedAt = new Date(b.createdAt);
+      if (bCreatedAt - aCreatedAt !== 0) return bCreatedAt - aCreatedAt;
       const aName = (a.Supplier?.name || '')?.toLowerCase();
       const bName = (b.Supplier?.name || '')?.toLowerCase();
       if (aName < bName) return -1;
@@ -1783,34 +1853,55 @@ export default function SpendsPage({ token }) {
                   />
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="chart-table">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th className="text-right">Qty</th>
-                        <th className="text-right">Total</th>
-                        <th className="text-right">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {supplierSpendsLoading ? (
-                        <tr><td colSpan="4" className="text-center">Loading...</td></tr>
-                      ) : supplierSpends.length === 0 ? (
-                        <tr><td colSpan="4" className="text-center">No spends found</td></tr>
-                      ) : (
-                        supplierSpends.map(spend => (
-                          <tr key={spend.id}>
-                            <td>{spend.itemName}</td>
-                            <td className="text-right">{spend.quantity}</td>
-                            <td className="text-right">{formatCurrency(spend.total)}</td>
-                            <td className="text-right">{new Date(spend.spendDate).toLocaleDateString('en-GB')}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                {supplierSpendsLoading ? (
+                  <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                    <p className="helper-text">Loading spends...</p>
+                  </div>
+                ) : supplierSpends.length === 0 ? (
+                  <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                    <p className="helper-text">No spends found</p>
+                  </div>
+                ) : (
+                  groupedSupplierSpendsByDate.map((group) => (
+                    <div key={group.date} className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1rem', border: '1px solid hsl(var(--border) / 0.5)' }}>
+                      <div style={{ 
+                        padding: '0.6rem 1rem', 
+                        background: 'hsl(var(--muted) / 0.3)', 
+                        borderBottom: '1px solid hsl(var(--border) / 0.5)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))' }}>
+                          {group.date}
+                        </span>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'hsl(var(--primary))' }}>
+                          {formatCurrency(group.total)}
+                        </span>
+                      </div>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table className="chart-table" style={{ margin: 0, border: 'none' }}>
+                          <thead>
+                            <tr>
+                              <th>Item</th>
+                              <th className="text-right">Qty</th>
+                              <th className="text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.spends.map((spend) => (
+                              <tr key={spend.id}>
+                                <td>{spend.itemName}</td>
+                                <td className="text-right">{spend.quantity}</td>
+                                <td className="text-right">{formatCurrency(spend.total)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', alignItems: 'center' }}>
                   <button 

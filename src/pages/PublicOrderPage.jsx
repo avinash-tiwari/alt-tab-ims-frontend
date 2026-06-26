@@ -24,6 +24,11 @@ export default function PublicOrderPage() {
   const [submitError, setSubmitError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [activeTab, setActiveTab] = useState('new-order');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   const [processingOrders, setProcessingOrders] = useState([]);
   const [processingOrdersLoading, setProcessingOrdersLoading] = useState(false);
   const [processingOrdersError, setProcessingOrdersError] = useState('');
