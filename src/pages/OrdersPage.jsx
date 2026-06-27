@@ -284,8 +284,8 @@ export default function OrdersPage({ token }) {
     if (moveToTab === 'PAID') {
       const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
       const totalToPay = selectedOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
-      setPaymentOnline(String(Math.trunc(totalToPay)));
-      setPaymentCash('0');
+      setPaymentOnline('0');
+      setPaymentCash(String(Math.trunc(totalToPay)));
       setPaymentSplitError('');
       setShowPaymentSplitModal(true);
       return;

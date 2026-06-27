@@ -170,13 +170,13 @@ export default function OrderDetailsPage({ token }) {
     }
 
     const totalAmount = orderDetail.totalAmount;
-    const defaultOnline =
+    const defaultCash =
       totalAmount !== undefined && totalAmount !== null && !Number.isNaN(Number(totalAmount))
         ? String(Math.trunc(Number(totalAmount)))
         : '';
 
-    setPaymentOnline(defaultOnline);
-    setPaymentCash('0');
+    setPaymentOnline('0');
+    setPaymentCash(defaultCash);
     setPaymentSplitError('');
     setPreviousStatusBeforeSplit(orderDetail.status ?? '');
     setShowPaymentSplitModal(true);
