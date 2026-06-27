@@ -88,6 +88,44 @@ function LowStockModal({ items, onClose }) {
   );
 }
 
+function PendingAmountModal({ udhaari, bakaya, onClose }) {
+  const total = parseFloat(udhaari) + parseFloat(bakaya);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 style={{ margin: 0 }}>Pending Amount Breakdown</h3>
+          <button className="ghost-btn" onClick={onClose} style={{ padding: '0.25rem' }}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="modal-body">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+              <div style={{ fontWeight: 600 }}>Bakaya (Unpaid Amount)</div>
+              <div style={{ fontWeight: 700 }}>{formatCurrency(bakaya)}</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+              <div style={{ fontWeight: 600 }}>Udhaari (Remaining Amount)</div>
+              <div style={{ fontWeight: 700 }}>{formatCurrency(udhaari)}</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', marginTop: '0.5rem' }}>
+              <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>Total Pending</div>
+              <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'hsl(var(--primary))' }}>{formatCurrency(total)}</div>
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="primary" onClick={onClose} style={{ width: '100%' }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChartCard({ title, data, type, currency = false }) {
   const [view, setView] = useState('chart');
 
@@ -325,11 +363,20 @@ function EarningsChart({ data }) {
 }
 
 function AnalyticsTotals({ totals, analytics, onShowLowStock }) {
+  const [showPendingModal, setShowPendingModal] = useState(false);
   const profit = parseFloat(totals?.profit || 0);
   const lowStockCount = analytics?.lowStockItems?.length || 0;
+  const pendingAmount = parseFloat(totals?.totalCredits || 0) + parseFloat(totals?.totalBakaya || 0);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+      {showPendingModal && (
+        <PendingAmountModal
+          udhaari={totals?.totalCredits || 0}
+          bakaya={totals?.totalBakaya || 0}
+          onClose={() => setShowPendingModal(false)}
+        />
+      )}
       <StatCard
         icon={Activity}
         label="Total Orders"
@@ -347,13 +394,10 @@ function AnalyticsTotals({ totals, analytics, onShowLowStock }) {
       />
       <StatCard
         icon={Users}
-        label="Total Udhaari"
-        value={formatCurrency(totals?.totalCredits)}
-      />
-      <StatCard
-        icon={Activity}
-        label="Total Bakaya"
-        value={formatCurrency(totals?.totalBakaya)}
+        label="Pending Amount"
+        value={formatCurrency(pendingAmount)}
+        labelIcon={Info}
+        onClick={() => setShowPendingModal(true)}
       />
       <StatCard
         icon={TrendingDown}
