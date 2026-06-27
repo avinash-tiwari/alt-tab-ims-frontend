@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, LayoutDashboard, IndianRupee, Activity, TrendingDown, Users, TrendingUp, X, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
 import EmptyState from '../components/EmptyState';
@@ -413,7 +414,15 @@ function TopPaidCustomersList({ analytics }) {
 }
 
 export default function DashboardPage({ token }) {
-  const [activeTab, setActiveTab] = useState('month');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'month';
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    });
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);

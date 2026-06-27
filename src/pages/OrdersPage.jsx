@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle, Store, Clock, Download, Share2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
 import {
   createOrder,
@@ -47,7 +47,15 @@ const formatOrderDate = (value) => {
 
 export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState('NEW');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'NEW';
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    });
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { Activity, Check, ChevronDown, Pencil, Plus, Search, Trash2, TrendingDown, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { listSpends, createSpend, createBulkSpends, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, updateSpend, deleteSpend, listItems, createItem } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
@@ -1193,7 +1194,15 @@ function EditSpendModal({ token, spend, onClose, onSuccess }) {
 export default function SpendsPage({ token }) {
   const [spends, setSpends] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('spends'); // 'spends' or 'suppliers'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'spends';
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    });
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);

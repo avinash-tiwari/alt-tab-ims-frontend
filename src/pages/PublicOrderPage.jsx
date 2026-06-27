@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { createPublicOrder, listItems, listPublicCustomerOrders } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
@@ -10,7 +10,6 @@ const DEFAULT_NOTES = 'Order from customer portal';
 
 export default function PublicOrderPage() {
   const { customerIdentifier } = useParams();
-  const location = useLocation();
   const identifierLabel = customerIdentifier?.trim();
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -23,7 +22,15 @@ export default function PublicOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [activeTab, setActiveTab] = useState('new-order');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'new-order';
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    });
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -41,10 +48,7 @@ export default function PublicOrderPage() {
         : [...prev, orderId]
     );
   };
-  const tenantToken = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    return (params.get('tenantToken') || '').trim();
-  }, [location.search]);
+  const tenantToken = (searchParams.get('tenantToken') || '').trim();
 
   useEffect(() => {
     let isActive = true;
