@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { Activity, Check, ChevronDown, Pencil, Plus, Search, Trash2, TrendingDown, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { listSpends, createSpend, createBulkSpends, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, updateSpend, deleteSpend, listItems, createItem } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
@@ -598,19 +599,39 @@ function CreateSpendModal({ token, onClose, onSuccess }) {
                   />
                 </div>
                 {supplierDropdown}
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '1rem' }}>
-                  <input type="checkbox" checked={updateStock} onChange={(e) => setUpdateStock(e.target.checked)} />
-                  Update stock automatically
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={updateStock}
+                    onChange={(e) => setUpdateStock(e.target.checked)}
+                    style={{ margin: 0, padding: 0, width: 'auto' }}
+                  />
+                  <label 
+                    onClick={() => setUpdateStock(!updateStock)}
+                    style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', margin: 0, padding: 0 }}
+                  >
+                    Update stock automatically
+                  </label>
+                </div>
                 {renderBulkRows()}
               </>
             )}
             {mode === 'single' && supplierDropdown}
             {mode === 'single' && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
-                <input type="checkbox" checked={updateStock} onChange={(e) => setUpdateStock(e.target.checked)} />
-                Update stock automatically
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={updateStock}
+                  onChange={(e) => setUpdateStock(e.target.checked)}
+                  style={{ margin: 0, padding: 0, width: 'auto' }}
+                />
+                <label 
+                  onClick={() => setUpdateStock(!updateStock)}
+                  style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', margin: 0, padding: 0 }}
+                >
+                  Update stock automatically
+                </label>
+              </div>
             )}
           </div>
         </div>
@@ -1122,14 +1143,20 @@ function EditSpendModal({ token, spend, onClose, onSuccess }) {
                 required
               />
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <input
                 type="checkbox"
                 checked={updateStock}
                 onChange={(e) => setUpdateStock(e.target.checked)}
+                style={{ margin: 0, padding: 0, width: 'auto' }}
               />
-              Update stock automatically
-            </label>
+              <label 
+                onClick={() => setUpdateStock(!updateStock)}
+                style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', margin: 0, padding: 0 }}
+              >
+                Update stock automatically
+              </label>
+            </div>
           </div>
         </div>
 
@@ -1167,6 +1194,28 @@ function EditSpendModal({ token, spend, onClose, onSuccess }) {
 export default function SpendsPage({ token }) {
   const [spends, setSpends] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'spends';
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
+  const [selectedSupplierForView, setSelectedSupplierForView] = useState(null);
+  const [supplierSpends, setSupplierSpends] = useState([]);
+  const [supplierSpendsLoading, setSupplierSpendsLoading] = useState(false);
+  const [supplierSpendsFilters, setSupplierSpendsFilters] = useState({ q: '', limit: 10, offset: 0 });
+  const [allSuppliers, setAllSuppliers] = useState([]);
+  const [allSuppliersLoading, setAllSuppliersLoading] = useState(false);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [supplierSpendsHasNext, setSupplierSpendsHasNext] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState('');
@@ -1180,6 +1229,47 @@ export default function SpendsPage({ token }) {
   const [supplierFilterId, setSupplierFilterId] = useState(null);
   const [editingSpend, setEditingSpend] = useState(null);
   const supplierDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (activeTab !== 'suppliers' || selectedSupplierForView) return;
+    const timer = setTimeout(async () => {
+      setAllSuppliersLoading(true);
+      try {
+        const data = await listSuppliers(token, { q: supplierSearch, limit: 100 });
+        setAllSuppliers(Array.isArray(data?.data) ? data.data : []);
+      } catch {
+        setAllSuppliers([]);
+      } finally {
+        setAllSuppliersLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [supplierSearch, activeTab, selectedSupplierForView, token]);
+
+  const fetchSupplierSpends = async () => {
+    if (!selectedSupplierForView) return;
+    setSupplierSpendsLoading(true);
+    try {
+      const query = {
+        supplierId: selectedSupplierForView.id,
+        q: supplierSpendsFilters.q,
+        limit: supplierSpendsFilters.limit,
+        offset: supplierSpendsFilters.offset
+      };
+      const data = await listSpends(token, query);
+      const spendsData = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      setSupplierSpends(spendsData);
+      setSupplierSpendsHasNext(data?.hasNext || spendsData.length === supplierSpendsFilters.limit);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSupplierSpendsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSupplierSpends();
+  }, [selectedSupplierForView, supplierSpendsFilters, token]);
 
   useEffect(() => {
     if (!showSupplierDropdown) return;
@@ -1222,7 +1312,8 @@ export default function SpendsPage({ token }) {
       }
       if (supplierFilterId) query.supplierId = supplierFilterId;
       const data = await listSpends(token, query);
-      setSpends(Array.isArray(data) ? data : []);
+      const spendsData = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      setSpends(spendsData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1244,15 +1335,78 @@ export default function SpendsPage({ token }) {
     };
   }, [spends]);
 
-  const sortedSpends = useMemo(() => {
-    return [...spends].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const groupedSpendsByDate = useMemo(() => {
+    const sorted = [...spends].sort((a, b) => {
+      const dateDiff = new Date(b.spendDate) - new Date(a.spendDate);
+      if (dateDiff !== 0) return dateDiff;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    const groups = [];
+    let currentGroup = null;
+
+    sorted.forEach(spend => {
+      const dateStr = new Date(spend.spendDate).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+      });
+
+      if (!currentGroup || currentGroup.date !== dateStr) {
+        currentGroup = {
+          date: dateStr,
+          spends: [],
+          total: 0
+        };
+        groups.push(currentGroup);
+      }
+
+      currentGroup.spends.push(spend);
+      currentGroup.total += Number(spend.total || 0);
+    });
+
+    return groups;
   }, [spends]);
+
+  const groupedSupplierSpendsByDate = useMemo(() => {
+    const sorted = [...supplierSpends].sort((a, b) => {
+      const dateDiff = new Date(b.spendDate) - new Date(a.spendDate);
+      if (dateDiff !== 0) return dateDiff;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    const groups = [];
+    let currentGroup = null;
+
+    sorted.forEach(spend => {
+      const dateStr = new Date(spend.spendDate).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+      });
+
+      if (!currentGroup || currentGroup.date !== dateStr) {
+        currentGroup = {
+          date: dateStr,
+          spends: [],
+          total: 0
+        };
+        groups.push(currentGroup);
+      }
+
+      currentGroup.spends.push(spend);
+      currentGroup.total += Number(spend.total || 0);
+    });
+
+    return groups;
+  }, [supplierSpends]);
 
   const groupedColors = useMemo(() => {
     const sorted = [...spends].sort((a, b) => {
-      const aDate = new Date(a.createdAt);
-      const bDate = new Date(b.createdAt);
-      if (aDate - bDate !== 0) return aDate - bDate;
+      const aDate = new Date(a.spendDate);
+      const bDate = new Date(b.spendDate);
+      if (bDate - aDate !== 0) return bDate - aDate;
+      const aCreatedAt = new Date(a.createdAt);
+      const bCreatedAt = new Date(b.createdAt);
+      if (bCreatedAt - aCreatedAt !== 0) return bCreatedAt - aCreatedAt;
       const aName = (a.Supplier?.name || '')?.toLowerCase();
       const bName = (b.Supplier?.name || '')?.toLowerCase();
       if (aName < bName) return -1;
@@ -1264,7 +1418,7 @@ export default function SpendsPage({ token }) {
     let prevKey = null;
     const palette = ['hsl(var(--secondary))', 'transparent'];
     for (const s of sorted) {
-      const dateStr = new Date(s.createdAt).toLocaleDateString('en-GB');
+      const dateStr = new Date(s.spendDate).toLocaleDateString('en-GB');
       const key = `${dateStr}|${s.supplierId || ''}`;
       if (prevKey !== null && key !== prevKey) {
         groupIndex++;
@@ -1318,8 +1472,8 @@ export default function SpendsPage({ token }) {
   };
 
   return (
-    <section className="page" style={{ position: 'relative', minHeight: 'calc(100vh - 8rem)', paddingTop: '1rem' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <section className="page" style={{ position: 'relative', minHeight: 'calc(100vh - 8rem)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {isModalOpen && (
           <CreateSpendModal
             token={token}
@@ -1341,28 +1495,58 @@ export default function SpendsPage({ token }) {
             }}
           />
         )}
-        {error && <p className="form-error">{error}</p>}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem' }}>
-          <StatCard
-            icon={TrendingDown}
-            label="Total Spent"
-            value={formatCurrency(stats.total)}
-          />
-          <StatCard
-            icon={Activity}
-            label="Total Spends"
-            value={stats.count}
-          />
+        {error && <p className="form-error" style={{ margin: '0.5rem 0' }}>{error}</p>}
+        
+        <div className="sticky-header" style={{ paddingTop: '0.75rem', paddingBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {['spends', 'suppliers'].map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab);
+                  if (tab === 'suppliers') setSelectedSupplierForView(null);
+                }}
+                className="card"
+                style={{
+                  flex: 1,
+                  padding: '0.75rem 1rem',
+                  cursor: 'pointer',
+                  margin: 0,
+                  border: tab === activeTab ? '1px solid hsl(var(--primary))' : '1px solid transparent',
+                  background: tab === activeTab ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--card))'
+                }}
+              >
+                <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                  {tab === 'spends' ? 'Spends' : 'Suppliers'}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="card" style={{ padding: '1.25rem', border: '1px solid hsl(var(--border) / 0.5)' }}>
-          <div style={{ 
-            display: 'flex', 
-            gap: '0.75rem', 
-            marginBottom: '1.25rem', 
-            alignItems: 'center',
-            flexWrap: 'wrap'
-          }}>
+        {activeTab === 'spends' ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '0.25rem' }}>
+              <StatCard
+                icon={TrendingDown}
+                label="Total Spent"
+                value={formatCurrency(stats.total)}
+              />
+              <StatCard
+                icon={Activity}
+                label="Total Spends"
+                value={stats.count}
+              />
+            </div>
+            <div className="card" style={{ padding: '1.25rem', border: '1px solid hsl(var(--border) / 0.5)', marginBottom: '1rem' }}>
+              <div style={{ 
+                display: 'flex', 
+                gap: '0.75rem', 
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                paddingBottom: '1rem'
+              }}>
             <div style={{ flex: '1', minWidth: '200px', position: 'relative' }}>
               <Search 
                 size={18} 
@@ -1532,97 +1716,280 @@ export default function SpendsPage({ token }) {
             </div>
           )}
 
-          <div style={{ overflowX: 'auto' }}>
-            <table className="chart-table">
-              <thead>
-                <tr>
-                  {filters.status === 'pending' && (
-                    <th style={{ width: '40px' }}>
-                      <input
-                        type="checkbox"
-                        checked={spends.length > 0 && selectedIds.length === spends.length}
-                        onChange={toggleSelectAll}
-                      />
-                    </th>
-                  )}
-                  <th>Item</th>
-                  <th>Supplier</th>
-                  <th className="text-right">Qty</th>
-                  <th className="text-right">Total</th>
-                  <th className="text-right">Date</th>
-                  <th style={{ width: '40px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={filters.status === 'pending' ? 7 : 6} className="text-center helper-text">Loading...</td>
-                  </tr>
-                ) : spends.length === 0 ? (
-                  <tr>
-                    <td colSpan={filters.status === 'pending' ? 7 : 6} className="text-center helper-text">No spends found</td>
-                  </tr>
+            {loading ? (
+              <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                <p className="helper-text">Loading spends...</p>
+              </div>
+            ) : spends.length === 0 ? (
+              <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                <p className="helper-text">No spends found</p>
+              </div>
+            ) : (
+              groupedSpendsByDate.map((group) => (
+                <div key={group.date} className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.25rem', border: '1px solid hsl(var(--border) / 0.5)' }}>
+                  <div style={{ 
+                    padding: '0.75rem 1rem', 
+                    background: 'hsl(var(--muted) / 0.3)', 
+                    borderBottom: '1px solid hsl(var(--border) / 0.5)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))' }}>
+                      {group.date}
+                    </span>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'hsl(var(--primary))' }}>
+                      {formatCurrency(group.total)}
+                    </span>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="chart-table" style={{ margin: 0, border: 'none' }}>
+                      <thead>
+                        <tr>
+                          {filters.status === 'pending' && <th style={{ width: '40px' }}>
+                            <input
+                              type="checkbox"
+                              checked={group.spends.every(s => selectedIds.includes(s.id))}
+                              onChange={() => {
+                                const groupIds = group.spends.map(s => s.id);
+                                if (groupIds.every(id => selectedIds.includes(id))) {
+                                  setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
+                                } else {
+                                  setSelectedIds(prev => [...new Set([...prev, ...groupIds])]);
+                                }
+                              }}
+                            />
+                          </th>}
+                          <th>Item</th>
+                          <th>Supplier</th>
+                          <th className="text-right">Qty</th>
+                          <th className="text-right">Total</th>
+                          <th style={{ width: '40px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.spends.map((spend) => (
+                          <tr key={spend.id} style={{ backgroundColor: groupedColors[spend.id] }}>
+                            {filters.status === 'pending' && (
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedIds.includes(spend.id)}
+                                  onChange={() => toggleSelect(spend.id)}
+                                />
+                              </td>
+                            )}
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{spend.itemName}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))' }}>
+                                {spend.Supplier?.name || '—'}
+                              </div>
+                            </td>
+                            <td className="text-right">{spend.quantity}</td>
+                            <td className="text-right">{formatCurrency(spend.total)}</td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                                <button
+                                  type="button"
+                                  className="ghost-btn"
+                                  onClick={() => setEditingSpend(spend)}
+                                  title="Edit"
+                                  style={{ padding: '0.25rem' }}
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ghost-btn"
+                                  onClick={() => handleDeleteSpend(spend.id)}
+                                  disabled={deletingId === spend.id}
+                                  title="Delete"
+                                  style={{ padding: '0.25rem', color: 'hsl(var(--destructive))' }}
+                                >
+                                  {deletingId === spend.id ? <span style={{ fontSize: '0.75rem' }}>...</span> : <Trash2 size={16} />}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))
+            )}
+        </div>
+        </>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {selectedSupplierForView ? (
+              <div className="card" style={{ padding: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <button className="ghost-btn" onClick={() => setSelectedSupplierForView(null)} style={{ padding: '0.25rem' }}>
+                    <ChevronDown size={24} style={{ transform: 'rotate(90deg)' }} />
+                  </button>
+                  <div>
+                    <h3 style={{ margin: 0 }}>{selectedSupplierForView.name}</h3>
+                    {selectedSupplierForView.phone && <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))' }}>{selectedSupplierForView.phone}</p>}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1rem', position: 'relative' }}>
+                  <Search 
+                    size={18} 
+                    style={{ 
+                      position: 'absolute', 
+                      left: '0.75rem', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)',
+                      color: 'hsl(var(--muted-foreground))'
+                    }} 
+                  />
+                  <input
+                    placeholder="Search spends..."
+                    value={supplierSpendsFilters.q}
+                    onChange={(e) => setSupplierSpendsFilters(prev => ({ ...prev, q: e.target.value, offset: 0 }))}
+                    style={{ 
+                      width: '100%',
+                      paddingLeft: '2.5rem',
+                      height: '40px',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--background))'
+                    }}
+                  />
+                </div>
+
+                {supplierSpendsLoading ? (
+                  <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                    <p className="helper-text">Loading spends...</p>
+                  </div>
+                ) : supplierSpends.length === 0 ? (
+                  <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                    <p className="helper-text">No spends found</p>
+                  </div>
                 ) : (
-                  sortedSpends.map((spend) => (
-                    <tr key={spend.id} style={{ backgroundColor: groupedColors[spend.id] }}>
-                      {filters.status === 'pending' && (
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(spend.id)}
-                            onChange={() => toggleSelect(spend.id)}
-                          />
-                        </td>
-                      )}
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{spend.itemName}</div>
-                      </td>
-                      <td>
-                        <div style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))' }}>
-                          {spend.Supplier?.name || '—'}
-                        </div>
-                      </td>
-                      <td className="text-right">{spend.quantity}</td>
-                      <td className="text-right">{formatCurrency(spend.total)}</td>
-                      <td className="text-right">
-                        <div style={{ fontSize: '0.875rem' }}>
-                          {new Date(spend.spendDate).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: '2-digit'
-                          })}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
-                          <button
-                            type="button"
-                            className="ghost-btn"
-                            onClick={() => setEditingSpend(spend)}
-                            title="Edit"
-                            style={{ padding: '0.25rem' }}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className="ghost-btn"
-                            onClick={() => handleDeleteSpend(spend.id)}
-                            disabled={deletingId === spend.id}
-                            title="Delete"
-                            style={{ padding: '0.25rem', color: 'hsl(var(--destructive))' }}
-                          >
-                            {deletingId === spend.id ? <span style={{ fontSize: '0.75rem' }}>...</span> : <Trash2 size={16} />}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                  groupedSupplierSpendsByDate.map((group) => (
+                    <div key={group.date} className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1rem', border: '1px solid hsl(var(--border) / 0.5)' }}>
+                      <div style={{ 
+                        padding: '0.6rem 1rem', 
+                        background: 'hsl(var(--muted) / 0.3)', 
+                        borderBottom: '1px solid hsl(var(--border) / 0.5)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))' }}>
+                          {group.date}
+                        </span>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'hsl(var(--primary))' }}>
+                          {formatCurrency(group.total)}
+                        </span>
+                      </div>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table className="chart-table" style={{ margin: 0, border: 'none' }}>
+                          <thead>
+                            <tr>
+                              <th>Item</th>
+                              <th className="text-right">Qty</th>
+                              <th className="text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.spends.map((spend) => (
+                              <tr key={spend.id}>
+                                <td>{spend.itemName}</td>
+                                <td className="text-right">{spend.quantity}</td>
+                                <td className="text-right">{formatCurrency(spend.total)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   ))
                 )}
-              </tbody>
-            </table>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', alignItems: 'center' }}>
+                  <button 
+                    className="secondary" 
+                    disabled={supplierSpendsFilters.offset === 0}
+                    onClick={() => setSupplierSpendsFilters(prev => ({ ...prev, offset: Math.max(0, prev.offset - prev.limit) }))}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontSize: '0.875rem' }}>
+                    Page {Math.floor(supplierSpendsFilters.offset / supplierSpendsFilters.limit) + 1}
+                  </span>
+                  <button 
+                    className="secondary" 
+                    disabled={!supplierSpendsHasNext}
+                    onClick={() => setSupplierSpendsFilters(prev => ({ ...prev, offset: prev.offset + prev.limit }))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="stack-form">
+                <div style={{ position: 'relative' }}>
+                  <Search 
+                    size={18} 
+                    style={{ 
+                      position: 'absolute', 
+                      left: '0.75rem', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)',
+                      color: 'hsl(var(--muted-foreground))'
+                    }} 
+                  />
+                  <input
+                    placeholder="Search suppliers..."
+                    value={supplierSearch}
+                    onChange={(e) => setSupplierSearch(e.target.value)}
+                    style={{ 
+                      width: '100%',
+                      paddingLeft: '2.5rem',
+                      height: '40px',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--background))'
+                    }}
+                  />
+                </div>
+
+                {allSuppliersLoading ? (
+                  <div className="text-center" style={{ padding: '2rem' }}>Loading suppliers...</div>
+                ) : allSuppliers.length === 0 ? (
+                  <div className="text-center" style={{ padding: '2rem' }}>No suppliers found</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.5rem' }}>
+                    {allSuppliers.map(supplier => (
+                      <div 
+                        key={supplier.id} 
+                        className="card" 
+                        onClick={() => setSelectedSupplierForView(supplier)}
+                        style={{ padding: '1.25rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid hsl(var(--border) / 0.5)', margin: 0 }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <h4 style={{ margin: 0 }}>{supplier.name}</h4>
+                            {supplier.phone && <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))' }}>{supplier.phone}</p>}
+                          </div>
+                          <ChevronDown size={20} style={{ transform: 'rotate(-90deg)', color: 'hsl(var(--muted-foreground))' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         <button
           type="button"

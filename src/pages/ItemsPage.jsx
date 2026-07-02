@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, X, Package, Search, ChevronDown } from 'lucide-react';
 import {
   bulkMarkSpendsStatusTrue,
@@ -52,7 +52,20 @@ export default function ItemsPage({ token }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('listing');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'listing';
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   const [stockInputs, setStockInputs] = useState({});
   const [costPriceInputs, setCostPriceInputs] = useState({});
   const [bulkUpdating, setBulkUpdating] = useState(false);
@@ -269,7 +282,8 @@ export default function ItemsPage({ token }) {
     setSpendsSuccess('');
     try {
       const data = await listSpends(token, { status: false });
-      setSpends(Array.isArray(data) ? data : []);
+      const spendsData = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      setSpends(spendsData);
     } catch (err) {
       setSpendsError(err.message);
       setSpends([]);
@@ -350,6 +364,7 @@ export default function ItemsPage({ token }) {
         />
       ) : (
         <div className="items-page-content">
+          {/* TAG UI */}
           <div className="sticky-header" style={{ paddingTop: '0.5rem', paddingBottom: '0.5rem' }}>
             <div
               style={{
