@@ -243,7 +243,7 @@ export default function PublicOrderPage() {
             className={`page-tab-btn ${activeTab === tab ? 'active' : ''}`}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === 'new-order' ? 'New Order' : 'Processing Orders'}
+            {tab === 'new-order' ? 'New Order' : 'Past Orders'}
           </button>
         ))}
       </div>
@@ -374,10 +374,7 @@ export default function PublicOrderPage() {
       {activeTab === 'processing-orders' && (
         <article className="card stack-form" style={{ gap: '1rem' }}>
           <div>
-            <h2 style={{ marginBottom: '0.25rem' }}>Processing Orders</h2>
-            <p className="helper-text">
-              Orders that are currently being processed.
-            </p>
+            <h2 style={{ marginBottom: '0.25rem' }}>Past Orders</h2>
           </div>
 
           {!tenantToken && (
@@ -396,7 +393,7 @@ export default function PublicOrderPage() {
               textAlign: 'center',
               opacity: 0.7
             }}>
-              <p className="helper-text">No processing orders found.</p>
+              <p className="helper-text">No past orders found.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
