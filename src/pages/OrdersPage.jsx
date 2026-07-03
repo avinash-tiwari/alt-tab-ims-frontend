@@ -9,7 +9,8 @@ import {
   listOrders,
   getCustomerPrices,
   updateOrderStatus,
-  getCustomerDeliveredOrdersInvoiceData
+  getCustomerDeliveredOrdersInvoiceData,
+  getStoredTenant
 } from '../api';
 import { formatCurrency, getDisplayCustomerName, getStatusLabel } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
@@ -55,6 +56,14 @@ export default function OrdersPage({ token }) {
       next.set('tab', tab);
       return next;
     });
+    setIsBulkActionActive(false);
+    setIsInvoiceMode(false);
+    setSelectedOrderIds([]);
+    setMoveToTab('');
+    setFilterCustomerId('');
+    setDateFilterType('all');
+    setCustomStartDate('');
+    setCustomEndDate('');
   };
 
   useEffect(() => {
@@ -69,11 +78,17 @@ export default function OrdersPage({ token }) {
   const [customers, setCustomers] = useState([]);
   const [items, setItems] = useState([]);
   const [customerId, setCustomerId] = useState('');
+  const [orderStatus, setOrderStatus] = useState('NEW');
   const [customerPrices, setCustomerPrices] = useState([]);
   const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState([{ itemId: '', quantity: 1, unitPrice: 0 }]);
   const [orderDate, setOrderDate] = useState('');
+  const [filterCustomerId, setFilterCustomerId] = useState('');
+  const [dateFilterType, setDateFilterType] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [isBulkActionActive, setIsBulkActionActive] = useState(false);
+  const [isInvoiceMode, setIsInvoiceMode] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const [moveToTab, setMoveToTab] = useState('');
   const [snackbar, setSnackbar] = useState({ show: false, message: '' });
@@ -145,6 +160,7 @@ export default function OrdersPage({ token }) {
   const resetCreateOrderForm = () => {
     setCreateOrderError('');
     setCustomerId('');
+    setOrderStatus('NEW');
     setCustomerPrices([]);
     setNotes('');
     setLineItems([{ itemId: '', quantity: 1, unitPrice: 0 }]);
@@ -227,6 +243,10 @@ export default function OrdersPage({ token }) {
       customerId,
       customerName: customerLabel,
       totalAmount: orderTotal,
+      status: orderStatus,
+      // Default full amount to cash if PAID is selected at creation
+      online: 0,
+      cash: orderStatus === 'PAID' ? orderTotal : 0,
       // Keep date at local midnight without converting to UTC (avoid 18:30:00Z shifts)
       orderDate: orderDate ? `${orderDate}T00:00:00` : undefined,
       items: validItems.map(({ itemId, quantity, unitPrice }) => {
@@ -252,6 +272,14 @@ export default function OrdersPage({ token }) {
 
   const handleToggleBulkAction = () => {
     setIsBulkActionActive(!isBulkActionActive);
+    setIsInvoiceMode(false);
+    setSelectedOrderIds([]);
+    setMoveToTab('');
+  };
+
+  const handleToggleInvoiceMode = () => {
+    setIsBulkActionActive(!isBulkActionActive);
+    setIsInvoiceMode(true);
     setSelectedOrderIds([]);
     setMoveToTab('');
   };
@@ -278,6 +306,58 @@ export default function OrdersPage({ token }) {
     setTimeout(() => setSnackbar({ show: false, message: '' }), 3000);
   };
 
+  const handleGenerateInvoice = async () => {
+    if (selectedOrderIds.length === 0) return;
+
+    setIsProcessingBulk(true);
+    setError('');
+    try {
+      const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
+      const customerId = selectedOrders[0].customerId;
+      const customer = customers.find(c => String(c.id) === String(customerId));
+      const tenant = getStoredTenant();
+
+      const orderRecords = selectedOrders.map(order => ({
+        order,
+        items: (order.items || []).map(oi => {
+          const itemInfo = items.find(it => String(it.id) === String(oi.itemId));
+          return {
+            ...oi,
+            itemName: itemInfo ? getItemLabel(itemInfo) : 'Unknown Item'
+          };
+        })
+      }));
+
+      const today = new Date().toISOString().split('T')[0];
+      const customerName = getDisplayCustomerName(selectedOrders[0]);
+      const fileName = `${customerId}-${customerName.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}-invoice-${today}.pdf`;
+
+      const blob = await generateInvoicePDF({
+        customer,
+        tenant,
+        orders: orderRecords
+      }, fileName);
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      showSnackbar(`Invoice generated for ${customerName}`);
+      setIsBulkActionActive(false);
+      setIsInvoiceMode(false);
+      setSelectedOrderIds([]);
+    } catch (err) {
+      setError(`Failed to generate invoice: ${err.message}`);
+    } finally {
+      setIsProcessingBulk(false);
+    }
+  };
+
   const handleBulkMove = async () => {
     if (!moveToTab || selectedOrderIds.length === 0) return;
 
@@ -300,6 +380,7 @@ export default function OrdersPage({ token }) {
       await loadOrders();
       const count = selectedOrderIds.length;
       setIsBulkActionActive(false);
+      setIsInvoiceMode(false);
       setSelectedOrderIds([]);
       setActiveTab(moveToTab);
       setMoveToTab('');
@@ -350,6 +431,7 @@ export default function OrdersPage({ token }) {
       await loadOrders();
       const count = selectedOrderIds.length;
       setIsBulkActionActive(false);
+      setIsInvoiceMode(false);
       setSelectedOrderIds([]);
       setActiveTab('PAID');
       setMoveToTab('');
@@ -425,10 +507,62 @@ export default function OrdersPage({ token }) {
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const status = order.status?.toUpperCase();
-      if (activeTab === 'NEW') return status === 'NEW' || !status;
-      return status === activeTab;
+      let matchesTab = false;
+      if (activeTab === 'NEW') {
+        matchesTab = status === 'NEW' || !status;
+      } else {
+        matchesTab = status === activeTab;
+      }
+
+      if (!matchesTab) return false;
+
+      // Customer Filter
+      if (filterCustomerId && String(order.customerId) !== String(filterCustomerId)) {
+        return false;
+      }
+
+      // Date Filter
+      if (dateFilterType !== 'all') {
+        const orderDateVal = new Date(order.orderDate || order.createdAt);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        if (dateFilterType === 'today') {
+          if (orderDateVal < today) return false;
+        } else if (dateFilterType === 'yesterday') {
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          if (orderDateVal < yesterday || orderDateVal >= today) return false;
+        } else if (dateFilterType === 'thisWeek') {
+          const day = today.getDay(); // 0 is Sunday
+          const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
+          const monday = new Date(today.setDate(diff));
+          monday.setHours(0, 0, 0, 0);
+          if (orderDateVal < monday) return false;
+        } else if (dateFilterType === 'thisMonth') {
+          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+          if (orderDateVal < firstDay) return false;
+        } else if (dateFilterType === 'lastMonth') {
+          const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+          if (orderDateVal < firstDayLastMonth || orderDateVal > lastDayLastMonth) return false;
+        } else if (dateFilterType === 'custom') {
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (orderDateVal < start) return false;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            if (orderDateVal > end) return false;
+          }
+        }
+      }
+
+      return true;
     });
-  }, [orders, activeTab]);
+  }, [orders, activeTab, filterCustomerId, dateFilterType, customStartDate, customEndDate]);
 
   const groupedOrders = useMemo(() => {
     const groups = {};
@@ -481,6 +615,57 @@ export default function OrdersPage({ token }) {
               {tab}
             </button>
           ))}
+        </div>
+        
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          padding: '0.5rem 0',
+          marginTop: '0.25rem'
+        }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <select
+              value={filterCustomerId}
+              onChange={(e) => setFilterCustomerId(e.target.value)}
+              style={{ flex: 1, height: '2.25rem', fontSize: '0.875rem' }}
+            >
+              <option value="">All Customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{getCustomerLabel(c)}</option>
+              ))}
+            </select>
+            <select
+              value={dateFilterType}
+              onChange={(e) => setDateFilterType(e.target.value)}
+              style={{ flex: 1, height: '2.25rem', fontSize: '0.875rem' }}
+            >
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="thisWeek">This Week</option>
+              <option value="thisMonth">This Month</option>
+              <option value="lastMonth">Last Month</option>
+              <option value="custom">Date Range</option>
+            </select>
+          </div>
+          {dateFilterType === 'custom' && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                style={{ flex: 1, height: '2rem', fontSize: '0.75rem', padding: '0 0.5rem' }}
+              />
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                style={{ flex: 1, height: '2rem', fontSize: '0.75rem', padding: '0 0.5rem' }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -713,40 +898,63 @@ export default function OrdersPage({ token }) {
         }}>
           {isBulkActionActive ? (
             <>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                 <span style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{selectedOrderIds.length} Selected</span>
-                 <select 
-                   value={moveToTab} 
-                   onChange={(e) => setMoveToTab(e.target.value)}
-                   className="flex-1"
-                   style={{ height: '2.5rem', flex: 1 }}
-                 >
-                   <option value="">Move to...</option>
-                   {['NEW', 'DELIVERED', 'PAID']
-                     .filter(t => t !== activeTab)
-                     .map(t => (
-                       <option key={t} value={t}>{t}</option>
-                     ))
-                   }
-                 </select>
-              </div>
+              {isInvoiceMode ? (
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{selectedOrderIds.length} Selected</span>
+                  <div style={{ flex: 1, height: '2.5rem' }}></div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{selectedOrderIds.length} Selected</span>
+                  <select 
+                    value={moveToTab} 
+                    onChange={(e) => setMoveToTab(e.target.value)}
+                    className="flex-1"
+                    style={{ height: '2.5rem', flex: 1 }}
+                  >
+                    <option value="">Move to...</option>
+                    {['NEW', 'DELIVERED', 'PAID']
+                      .filter(t => t !== activeTab)
+                      .map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))
+                    }
+                  </select>
+                </div>
+              )}
               <div className="split-2" style={{ gap: '1rem' }}>
                 <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>Cancel</button>
-                <button
-                  type="button"
-                  className="primary"
-                  style={{ height: '2.5rem' }}
-                  disabled={!moveToTab || selectedOrderIds.length === 0 || isProcessingBulk}
-                  onClick={handleBulkMove}
-                >
-                  {isProcessingBulk ? 'Moving...' : 'Move Orders'}
-                </button>
+                {isInvoiceMode ? (
+                   <button
+                   type="button"
+                   className="primary"
+                   style={{ height: '2.5rem' }}
+                   disabled={selectedOrderIds.length === 0 || isProcessingBulk}
+                   onClick={handleGenerateInvoice}
+                 >
+                   {isProcessingBulk ? 'Generating...' : 'Generate Invoice'}
+                 </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="primary"
+                    style={{ height: '2.5rem' }}
+                    disabled={!moveToTab || selectedOrderIds.length === 0 || isProcessingBulk}
+                    onClick={handleBulkMove}
+                  >
+                    {isProcessingBulk ? 'Moving...' : 'Move Orders'}
+                  </button>
+                )}
               </div>
             </>
           ) : (
-            <div className={(activeTab === 'PAID' || filteredOrders.length === 0) ? "" : "split-2"} style={{ gap: '1rem', display: (activeTab === 'PAID' || filteredOrders.length === 0) ? 'block' : 'grid' }}>
-              {(activeTab !== 'PAID' && filteredOrders.length > 0) && (
-                <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>BULK ACTION</button>
+            <div className={filteredOrders.length === 0 ? "" : "split-2"} style={{ gap: '1rem' }}>
+              {filteredOrders.length > 0 && (
+                activeTab === 'PAID' ? (
+                  <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleInvoiceMode}>Add INVOICE</button>
+                ) : (
+                  <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>BULK ACTION</button>
+                )
               )}
               <button type="button" className="primary" style={{ height: '2.5rem', width: '100%' }} onClick={openCreateModal}>CREATE ORDER</button>
             </div>
@@ -874,6 +1082,7 @@ export default function OrdersPage({ token }) {
           >
             <div style={{ paddingBottom: '1rem', background: 'hsl(var(--background))', zIndex: 10 }}>
               {createOrderError && <p className="form-error" style={{ marginBottom: '1rem' }}>{createOrderError}</p>}
+              <label style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Customer</label>
               <div className="form-group">
                 <SearchableSelect
                   value={customerId}
@@ -887,15 +1096,35 @@ export default function OrdersPage({ token }) {
                   required
                 />
               </div>
-              <div className="form-group">
-                <Input
-                  id="order-date"
-                  label="Order date"
-                  type="date"
-                  value={orderDate}
-                  onChange={(e) => setOrderDate(e.target.value)}
-                  disabled={creatingOrder}
-                />
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Order date</label>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <Input
+                      id="order-date"
+                      type="date"
+                      value={orderDate}
+                      onChange={(e) => setOrderDate(e.target.value)}
+                      disabled={creatingOrder}
+                      style={{ height: '2.5rem' }}
+                    />
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Order Status</label>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <select
+                      value={orderStatus}
+                      onChange={(e) => setOrderStatus(e.target.value)}
+                      style={{ width: '100%', height: '2.5rem' }}
+                      disabled={creatingOrder}
+                    >
+                      <option value="NEW">NEW</option>
+                      <option value="DELIVERED">DELIVERED</option>
+                      <option value="PAID">PAID</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 
