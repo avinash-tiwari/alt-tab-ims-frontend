@@ -17,11 +17,14 @@ import {
   STATUS_OPTIONS,
   formatCurrency,
   getDisplayCustomerName,
-  getStatusLabel
+  getStatusLabel,
+  formatOrderDate,
+  formatOnlyDate
 } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
 import { generateInvoicePDF } from '../utils/pdfGenerator';
 import Input from '../components/ui/Input';
+import SearchableSelect from '../components/ui/SearchableSelect';
 
 export default function OrderDetailsPage({ token }) {
   const { id: orderId } = useParams();
@@ -542,8 +545,12 @@ export default function OrderDetailsPage({ token }) {
             <ArrowLeft size={20} />
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 'bolder', color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
-               Order details{orderDetail ? ` - ${customerName}` : ''}
+            <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 'bolder', color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+               {orderDetail ? (
+                 <>
+                   {customerName} <span style={{ fontSize: '0.875rem', fontWeight: 400, opacity: 0.8, marginLeft: '0.25rem' }}>{formatOnlyDate(orderDetail.orderDate || orderDetail.createdAt)}</span>
+                 </>
+               ) : 'Order details'}
             </h2>
             <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>
               {formatCurrency(calculatedTotal)}
@@ -715,7 +722,7 @@ export default function OrderDetailsPage({ token }) {
                     return (
                       <>
                         <div className="form-group" style={{ marginBottom: '1rem' }}>
-                          <select
+                          <SearchableSelect
                             value={selectedItemId}
                             onChange={(event) => {
                               const val = event.target.value;
@@ -727,16 +734,13 @@ export default function OrderDetailsPage({ token }) {
                                 setNewItemPrice('0');
                               }
                             }}
+                            options={availableItems.map((item) => ({
+                              value: item.id,
+                              label: getItemLabel(item)
+                            }))}
+                            placeholder="Search item..."
                             disabled={addingItem}
-                            style={{ width: '100%', height: '2.5rem' }}
-                          >
-                            <option value="">Search item...</option>
-                            {availableItems.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {getItemLabel(item)}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
                         <div className="split-2" style={{ marginBottom: '1rem', gap: '1rem' }}>
                           <Input

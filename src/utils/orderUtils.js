@@ -34,3 +34,36 @@ export const getDisplayCustomerName = (order) => {
     'Customer'
   );
 };
+
+export const formatOrderDate = (value) => {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return date.toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata'
+  });
+};
+
+export const formatOnlyDate = (value) => {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return date.toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeZone: 'Asia/Kolkata'
+  });
+};

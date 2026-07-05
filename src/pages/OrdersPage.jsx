@@ -12,7 +12,7 @@ import {
   getCustomerDeliveredOrdersInvoiceData,
   getStoredTenant
 } from '../api';
-import { formatCurrency, getDisplayCustomerName, getStatusLabel } from '../utils/orderUtils';
+import { formatCurrency, getDisplayCustomerName, getStatusLabel, formatOrderDate } from '../utils/orderUtils';
 import { getItemLabel, getItemUnitPrice } from '../utils/itemUtils';
 import { generateInvoicePDF } from '../utils/pdfGenerator';
 import Input from '../components/ui/Input';
@@ -27,24 +27,6 @@ const getCustomerLabel = (customer) =>
   customer?.email ||
   customer?.id ||
   'Customer';
-
-const formatOrderDate = (value) => {
-  if (!value) {
-    return '—';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '—';
-  }
-
-  return date.toLocaleString('en-IN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Kolkata'
-  });
-};
-
 
 export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([]);
