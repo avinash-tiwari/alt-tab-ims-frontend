@@ -4,6 +4,7 @@ import { HelpCircle } from 'lucide-react';
 import LoginScreen from './components/LoginScreen';
 import BottomTabs from './components/BottomTabs';
 import Input from './components/ui/Input';
+import NotificationToast from './components/NotificationToast';
 import {
   clearSession,
   changePassword,
@@ -23,9 +24,11 @@ import DashboardPage from './pages/DashboardPage';
 import SpendsPage from './pages/SpendsPage';
 import OrderDetailsPage from './pages/OrderDetailsPage';
 import PublicOrderPage from './pages/PublicOrderPage';
+import useNotifications from './hooks/useNotifications';
 
 function AppContent({ token, tenant, logout }) {
   const location = useLocation();
+  const { currentNotification, dismiss } = useNotifications(true);
 
   const helpUrl = useMemo(() => {
     const path = location.pathname;
@@ -100,6 +103,7 @@ function AppContent({ token, tenant, logout }) {
 
   return (
     <div className="mobile-app">
+      <NotificationToast notification={currentNotification} onDismiss={dismiss} />
       <header className="app-header">
         <div className="header-logo-container">
           <div className="tenant-logo">{initials}</div>

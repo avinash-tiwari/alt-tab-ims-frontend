@@ -234,8 +234,8 @@ export async function getCustomerPrices(token, customerId) {
   return request(`/customers/${customerId}/prices`, { token });
 }
 
-export async function listOrders(token) {
-  return request('/orders', { token });
+export async function listOrders(token, query) {
+  return request('/orders', { token, query });
 }
 
 export async function createOrder(token, payload) {
