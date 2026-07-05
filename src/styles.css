@@ -1872,6 +1872,137 @@ button.danger:hover {
   }
 }
 
+.notification-toast {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  z-index: 2000;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) * 1.25);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow: hidden;
+  animation: toast-in 0.3s ease-out;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.notification-toast--exit {
+  animation: toast-out 0.3s ease-in forwards;
+}
+
+.notification-toast-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.notification-toast-icon {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.notification-toast-icon .lucide-alert-triangle {
+  color: hsl(var(--destructive));
+}
+
+.notification-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-toast-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.1rem;
+}
+
+.notification-toast-message {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-toast-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-shrink: 0;
+  border-left: 1px solid hsl(var(--border));
+}
+
+.notification-toast-cta {
+  background: transparent;
+  border: none;
+  padding: 0.75rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+  letter-spacing: 0.02em;
+}
+
+.notification-toast-cta:hover {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.notification-toast-close {
+  background: transparent;
+  border: none;
+  padding: 0.75rem 0.5rem;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.notification-toast-close:hover {
+  color: hsl(var(--foreground));
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-1rem) scale(0.96);
+  }
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
