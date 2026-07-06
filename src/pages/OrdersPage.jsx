@@ -271,7 +271,7 @@ export default function OrdersPage({ token }) {
     if (!orderToSelect) return;
     const customerToSelect = getDisplayCustomerName(orderToSelect);
 
-    if (currentSelectedCustomer && currentSelectedCustomer !== customerToSelect && !selectedOrderIds.includes(orderId)) {
+    if (!isMultiCustomerAllowed && currentSelectedCustomer && currentSelectedCustomer !== customerToSelect && !selectedOrderIds.includes(orderId)) {
       showSnackbar(`Unselect orders from ${currentSelectedCustomer} first`);
       return;
     }
@@ -564,6 +564,13 @@ export default function OrdersPage({ token }) {
     return firstOrder ? getDisplayCustomerName(firstOrder) : null;
   }, [selectedOrderIds, orders]);
 
+  const isMultiCustomerAllowed = useMemo(() => {
+    if (isInvoiceMode) return false;
+    // Enable for NEW -> DELIVERED transition only
+    if (activeTab === 'NEW' && (moveToTab === 'DELIVERED' || moveToTab === '')) return true;
+    return false;
+  }, [activeTab, moveToTab, isInvoiceMode]);
+
   const handleToggleCustomerSelection = (ordersInGroup) => {
     if (ordersInGroup.length === 0) return;
     const customerNameInGroup = getDisplayCustomerName(ordersInGroup[0]);
@@ -575,7 +582,7 @@ export default function OrdersPage({ token }) {
     if (allSelected) {
       setSelectedOrderIds(prev => prev.filter(id => !orderIdsInGroup.includes(id)));
     } else {
-      if (currentSelectedCustomer && currentSelectedCustomer !== customerNameInGroup) {
+      if (!isMultiCustomerAllowed && currentSelectedCustomer && currentSelectedCustomer !== customerNameInGroup) {
         showSnackbar(`Unselect orders from ${currentSelectedCustomer} first`);
         return;
       }
@@ -662,7 +669,7 @@ export default function OrdersPage({ token }) {
                 const orderIdsInGroup = ordersInGroup.map(o => o.id);
                 const selectedInGroup = orderIdsInGroup.filter(id => selectedOrderIds.includes(id));
                 const allSelected = selectedInGroup.length === orderIdsInGroup.length && orderIdsInGroup.length > 0;
-                const isOtherCustomer = currentSelectedCustomer && currentSelectedCustomer !== customerName;
+                const isOtherCustomer = !isMultiCustomerAllowed && currentSelectedCustomer && currentSelectedCustomer !== customerName;
 
                 return (
                   <div key={customerName} style={{ marginBottom: '1rem', opacity: isOtherCustomer ? 0.5 : 1 }}>
@@ -890,13 +897,27 @@ export default function OrdersPage({ token }) {
                   <span style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{selectedOrderIds.length} Selected</span>
                   <select 
                     value={moveToTab} 
-                    onChange={(e) => setMoveToTab(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'PAID') {
+                        const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
+                        const customerIds = new Set(selectedOrders.map(o => o.customerId));
+                        if (customerIds.size > 1) {
+                          showSnackbar("Multiple customers cannot be moved to PAID together");
+                          return;
+                        }
+                      }
+                      setMoveToTab(val);
+                    }}
                     className="flex-1"
                     style={{ height: '2.5rem', flex: 1 }}
                   >
                     <option value="">Move to...</option>
                     {['NEW', 'DELIVERED', 'PAID']
-                      .filter(t => t !== activeTab)
+                      .filter(t => {
+                        if (activeTab === 'DELIVERED' && t === 'NEW') return false;
+                        return t !== activeTab;
+                      })
                       .map(t => (
                         <option key={t} value={t}>{t}</option>
                       ))

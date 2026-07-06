@@ -191,6 +191,13 @@ export async function createSupplier(token, payload) {
   });
 }
 
+export async function deleteSupplier(token, id) {
+  return request(`/suppliers/${id}`, {
+    method: 'DELETE',
+    token
+  });
+}
+
 export async function listCustomers(token) {
   return request('/customers', { token });
 }
