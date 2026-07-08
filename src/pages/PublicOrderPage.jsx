@@ -452,7 +452,7 @@ export default function PublicOrderPage() {
                               <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.9rem' }}>
                                 <span>{item.item?.name || `Item #${item.itemId}`}</span>
                                 <span style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                  {item.quantity} × {formatCurrency(item.unitPrice)}
+                                  {item.quantity} × {formatCurrency(item.unitPrice)} = {formatCurrency(item.quantity * item.unitPrice)}
                                 </span>
                               </div>
                             ))}
