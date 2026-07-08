@@ -360,7 +360,7 @@ export default function OrderDetailsPage({ token }) {
         itemId: selectedItemId,
         quantity: parsedQuantity,
         unitPrice: effectiveUnitPrice,
-        label: getItemLabel(selectedItem),
+        item: selectedItem, // Include the full item for getItemLabel
         lineTotal: effectiveUnitPrice * parsedQuantity
       };
 

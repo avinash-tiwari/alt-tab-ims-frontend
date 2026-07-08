@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { Activity, Check, ChevronDown, Pencil, Plus, Search, Trash2, TrendingDown, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { listSpends, createSpend, createBulkSpends, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, updateSpend, deleteSpend, listItems, createItem } from '../api';
+import { listSpends, createSpend, createBulkSpends, bulkMarkSpendsStatusTrue, listSuppliers, createSupplier, updateSpend, deleteSpend, listItems, createItem, deleteSupplier } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
 
@@ -1471,6 +1471,25 @@ export default function SpendsPage({ token }) {
     }
   };
 
+  const handleDeleteSupplier = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete supplier "${name}"? This will not affect existing spend records.`)) return;
+    setDeletingId(id);
+    setError('');
+    try {
+      await deleteSupplier(token, id);
+      if (selectedSupplierForView && selectedSupplierForView.id === id) {
+        setSelectedSupplierForView(null);
+      }
+      // Refresh suppliers list
+      const data = await listSuppliers(token, { q: supplierSearch, limit: 100 });
+      setAllSuppliers(Array.isArray(data?.data) ? data.data : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <section className="page" style={{ position: 'relative', minHeight: 'calc(100vh - 8rem)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1830,8 +1849,20 @@ export default function SpendsPage({ token }) {
                   <button className="ghost-btn" onClick={() => setSelectedSupplierForView(null)} style={{ padding: '0.25rem' }}>
                     <ChevronDown size={24} style={{ transform: 'rotate(90deg)' }} />
                   </button>
-                  <div>
-                    <h3 style={{ margin: 0 }}>{selectedSupplierForView.name}</h3>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <h3 style={{ margin: 0 }}>{selectedSupplierForView.name}</h3>
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => handleDeleteSupplier(selectedSupplierForView.id, selectedSupplierForView.name)}
+                        disabled={deletingId === selectedSupplierForView.id}
+                        style={{ padding: '0.25rem', color: 'hsl(var(--destructive))' }}
+                        title="Delete Supplier"
+                      >
+                        {deletingId === selectedSupplierForView.id ? <span style={{ fontSize: '0.75rem' }}>...</span> : <Trash2 size={18} />}
+                      </button>
+                    </div>
                     {selectedSupplierForView.phone && <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))' }}>{selectedSupplierForView.phone}</p>}
                   </div>
                 </div>
@@ -1980,7 +2011,22 @@ export default function SpendsPage({ token }) {
                             <h4 style={{ margin: 0 }}>{supplier.name}</h4>
                             {supplier.phone && <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))' }}>{supplier.phone}</p>}
                           </div>
-                          <ChevronDown size={20} style={{ transform: 'rotate(-90deg)', color: 'hsl(var(--muted-foreground))' }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <button
+                              type="button"
+                              className="ghost-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSupplier(supplier.id, supplier.name);
+                              }}
+                              disabled={deletingId === supplier.id}
+                              style={{ padding: '0.25rem', color: 'hsl(var(--destructive))' }}
+                              title="Delete Supplier"
+                            >
+                              {deletingId === supplier.id ? <span style={{ fontSize: '0.75rem' }}>...</span> : <Trash2 size={18} />}
+                            </button>
+                            <ChevronDown size={20} style={{ transform: 'rotate(-90deg)', color: 'hsl(var(--muted-foreground))' }} />
+                          </div>
                         </div>
                       </div>
                     ))}
