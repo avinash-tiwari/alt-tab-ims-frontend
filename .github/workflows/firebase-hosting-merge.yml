@@ -23,8 +23,8 @@ jobs:
           VITE_HELP_URL_ORDERS: ${{ secrets.VITE_HELP_URL_ORDERS }}
           VITE_HELP_URL_ITEMS: ${{ secrets.VITE_HELP_URL_ITEMS }}
           VITE_HELP_URL_CUSTOMERS: ${{ secrets.VITE_HELP_URL_CUSTOMERS }}
-          VITE_POLL_NEW_ORDER: ${{ VITE_POLL_NEW_ORDER }}
-          VITE_POLL_LOW_STOCK: ${{ VITE_POLL_LOW_STOCK }}
+          VITE_POLL_NEW_ORDER: ${{ secrets.VITE_POLL_NEW_ORDER }}
+          VITE_POLL_LOW_STOCK: ${{ secrets.VITE_POLL_LOW_STOCK }}
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
