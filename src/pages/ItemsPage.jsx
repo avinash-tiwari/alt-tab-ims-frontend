@@ -723,10 +723,10 @@ export default function ItemsPage({ token }) {
                       </div>
                     ))
                   ) : null}
-                  {supplierSearchTerm && !suppliersLoading && (suppliers.length === 0 || !suppliers.some(s => s.name.toLowerCase() === supplierSearchTerm.toLowerCase())) && (
+                  {supplierSearchTerm && !suppliersLoading && (suppliers.length === 0 || !suppliers.some(s => s.name.toLowerCase() === supplierSearchTerm.trim().toLowerCase())) && (
                     <div
                       onClick={() => {
-                        setNewSupplierName(supplierSearchTerm);
+                        setNewSupplierName(supplierSearchTerm.trim());
                         setNewSupplierPhone('');
                         setShowCreateSupplier(true);
                         setShowSupplierDropdown(false);
@@ -741,7 +741,7 @@ export default function ItemsPage({ token }) {
                       onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
-                      <Plus size={16} /> Create "{supplierSearchTerm}"
+                      <Plus size={16} /> Create "{supplierSearchTerm.trim()}"
                     </div>
                   )}
                   {!supplierSearchTerm && !suppliersLoading && suppliers.length === 0 && (

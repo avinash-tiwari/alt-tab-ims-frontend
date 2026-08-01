@@ -3,13 +3,26 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000
 const TOKEN_KEY = 'ims_tenant_token';
 const TENANT_KEY = 'ims_tenant_info';
 
+function deepTrim(obj) {
+  if (obj === null || typeof obj !== 'object') {
+    return typeof obj === 'string' ? obj.trim() : obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(deepTrim);
+  }
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [key, deepTrim(value)])
+  );
+}
+
 function buildQuery(query = {}) {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
-    if (value === '' || value === undefined || value === null) {
+    const trimmedValue = typeof value === 'string' ? value.trim() : value;
+    if (trimmedValue === '' || trimmedValue === undefined || trimmedValue === null) {
       return;
     }
-    params.set(key, String(value));
+    params.set(key, String(trimmedValue));
   });
   const queryString = params.toString();
   return queryString ? `?${queryString}` : '';
@@ -25,10 +38,12 @@ async function request(path, { method = 'GET', body, token, query } = {}) {
     headers['x-tenant-token'] = token;
   }
 
+  const trimmedBody = body !== undefined ? deepTrim(body) : undefined;
+
   const response = await fetch(`${API_BASE_URL}${path}${buildQuery(query)}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined
+    body: trimmedBody !== undefined ? JSON.stringify(trimmedBody) : undefined
   });
 
   if (response.status === 204) {

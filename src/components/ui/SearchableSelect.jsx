@@ -19,7 +19,7 @@ export default function SearchableSelect({
   const selectedOption = options.find(opt => String(opt.value) === String(value));
 
   const filteredOptions = options.filter(opt => 
-    String(opt.label).toLowerCase().includes(searchTerm.toLowerCase())
+    String(opt.label).toLowerCase().includes(searchTerm.trim().toLowerCase())
   );
 
   useEffect(() => {

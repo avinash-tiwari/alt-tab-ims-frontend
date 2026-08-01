@@ -156,9 +156,9 @@ function ItemSelect({ token, value, onChange, placeholder = 'Select item' }) {
                 </div>
               ))
             ) : null}
-            {searchTerm && !itemsLoading && (items.length === 0 || !items.some(i => i.name.toLowerCase() === searchTerm.toLowerCase())) && (
+            {searchTerm && !itemsLoading && (items.length === 0 || !items.some(i => i.name.toLowerCase() === searchTerm.trim().toLowerCase())) && (
               <div
-                onClick={() => { setCreateName(searchTerm); setShowCreate(true); }}
+                onClick={() => { setCreateName(searchTerm.trim()); setShowCreate(true); }}
                 style={{
                   padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.875rem',
                   borderTop: '1px solid hsl(var(--border))',
@@ -168,7 +168,7 @@ function ItemSelect({ token, value, onChange, placeholder = 'Select item' }) {
                 onMouseEnter={(e) => e.currentTarget.style.background = 'hsl(var(--muted) / 0.3)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                <Plus size={16} /> Create &ldquo;{searchTerm}&rdquo;
+                <Plus size={16} /> Create &ldquo;{searchTerm.trim()}&rdquo;
               </div>
             )}
             {!searchTerm && !itemsLoading && items.length === 0 && (
