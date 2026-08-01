@@ -62,9 +62,9 @@ export default function ItemsPage({ token }) {
     });
   };
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [activeTab]);
+  // useEffect(() => {
+  //   window.scrollTo(0, 0);
+  // }, [activeTab]);
 
   const [stockInputs, setStockInputs] = useState({});
   const [costPriceInputs, setCostPriceInputs] = useState({});

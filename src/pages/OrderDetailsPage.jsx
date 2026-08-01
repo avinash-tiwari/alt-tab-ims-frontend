@@ -548,7 +548,9 @@ export default function OrderDetailsPage({ token }) {
             <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 'bolder', color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
                {orderDetail ? (
                  <>
-                   {customerName} <span style={{ fontSize: '0.875rem', fontWeight: 400, opacity: 0.8, marginLeft: '0.25rem' }}>{formatOnlyDate(orderDetail.orderDate || orderDetail.createdAt)}</span>
+                   {customerName} <span style={{ fontSize: '0.875rem', fontWeight: 400, opacity: 0.8, marginLeft: '0.25rem' }}>
+                     {formatOnlyDate(orderDetail.orderDate || orderDetail.createdAt)}
+                   </span>
                  </>
                ) : 'Order details'}
             </h2>
@@ -571,52 +573,76 @@ export default function OrderDetailsPage({ token }) {
         </div>
 
         {!loading && orderDetail && (
-          // UPDATE STATUS
-          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-            <select
-              id="order-status"
-              value={statusInput}
-              onChange={(event) => setStatusInput(event.target.value)}
-              style={{ 
-                flex: 7, 
-                height: '2.4rem', 
-                fontSize: '0.875rem', 
-                padding: '0 0.5rem',
-                minWidth: 0
-              }}
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="primary"
-              onClick={handleStatusSave}
-              disabled={!statusChanged || updatingStatus || showPaymentSplitModal}
-              title="Update Status"
-              style={{ 
-                flex: 3, 
-                height: '2.4rem', 
-                padding: '0 0.25rem', 
-                borderRadius: 'var(--radius)',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                whiteSpace: 'nowrap',
-                minWidth: 'fit-content'
-              }}
-            >
-              {updatingStatus ? (
-                <RefreshCw size={14} className="animate-spin" />
-              ) : (
-                'Update'
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginBottom: '0.25rem' }}>
+              {orderDetail.status === 'DELIVERED' && orderDetail.deliveredAt && (
+                <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
+                  Delivered: {formatOrderDate(orderDetail.deliveredAt)}
+                </div>
               )}
-            </button>
+              {orderDetail.status === 'PAID' && (
+                <>
+                  {orderDetail.deliveredAt && (
+                    <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
+                      Delivered: {formatOrderDate(orderDetail.deliveredAt)}
+                    </div>
+                  )}
+                  {orderDetail.paidAt && (
+                    <div style={{ background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
+                      Paid: {formatOrderDate(orderDetail.paidAt)}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            
+            {/* UPDATE STATUS */}
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <select
+                id="order-status"
+                value={statusInput}
+                onChange={(event) => setStatusInput(event.target.value)}
+                style={{ 
+                  flex: 7, 
+                  height: '2.4rem', 
+                  fontSize: '0.875rem', 
+                  padding: '0 0.5rem',
+                  minWidth: 0
+                }}
+              >
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleStatusSave}
+                disabled={!statusChanged || updatingStatus || showPaymentSplitModal}
+                title="Update Status"
+                style={{ 
+                  flex: 3, 
+                  height: '2.4rem', 
+                  padding: '0 0.25rem', 
+                  borderRadius: 'var(--radius)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  whiteSpace: 'nowrap',
+                  minWidth: 'fit-content'
+                }}
+              >
+                {updatingStatus ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  'Update'
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>

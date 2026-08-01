@@ -1204,9 +1204,9 @@ export default function SpendsPage({ token }) {
     });
   };
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [activeTab]);
+  // useEffect(() => {
+  //   window.scrollTo(0, 0);
+  // }, [activeTab]);
 
   const [selectedSupplierForView, setSelectedSupplierForView] = useState(null);
   const [supplierSpends, setSupplierSpends] = useState([]);

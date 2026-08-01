@@ -468,9 +468,9 @@ export default function DashboardPage({ token }) {
     });
   };
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [activeTab]);
+  // useEffect(() => {
+  //   window.scrollTo(0, 0);
+  // }, [activeTab]);
 
   const [selectedMonth, setSelectedMonth] = useState(() => formatYearMonth(new Date()));
 

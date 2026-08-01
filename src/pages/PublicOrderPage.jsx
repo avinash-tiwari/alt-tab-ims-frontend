@@ -32,9 +32,9 @@ export default function PublicOrderPage() {
     });
   };
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [activeTab]);
+  // useEffect(() => {
+  //   window.scrollTo(0, 0);
+  // }, [activeTab]);
 
   const [processingOrders, setProcessingOrders] = useState([]);
   const [processingOrdersLoading, setProcessingOrdersLoading] = useState(false);
@@ -419,7 +419,15 @@ export default function PublicOrderPage() {
                           Order #{String(order.id).slice(-6).toUpperCase()}
                         </span>
                         <p className="helper-text" style={{ marginTop: '0.25rem', marginBottom: 0 }}>
-                          {formatOrderDate(order.orderDate)}
+                          {(() => {
+                            let displayDate = order.orderDate || order.createdAt;
+                            if (order.status === 'DELIVERED' && order.deliveredAt) {
+                              displayDate = order.deliveredAt;
+                            } else if (order.status === 'PAID' && order.paidAt) {
+                              displayDate = order.paidAt;
+                            }
+                            return formatOrderDate(displayDate);
+                          })()}
                         </p>
                       </div>
                       <div style={{ textAlign: 'right' }}>

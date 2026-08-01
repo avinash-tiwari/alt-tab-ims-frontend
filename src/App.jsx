@@ -282,15 +282,15 @@ function AppContent({ token, tenant, logout }) {
   );
 }
 
-function ScrollToTop() {
-  const { pathname } = useLocation();
+// function ScrollToTop() {
+//   const { pathname } = useLocation();
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+//   useEffect(() => {
+//     window.scrollTo(0, 0);
+//   }, [pathname]);
 
-  return null;
-}
+//   return null;
+// }
 
 export default function App() {
   const [token, setToken] = useState(getStoredToken());
@@ -321,7 +321,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <ScrollToTop />
+      {/* <ScrollToTop /> */}
       <Routes>
         <Route path="/public/orders/:customerIdentifier" element={<PublicOrderPage />} />
         <Route

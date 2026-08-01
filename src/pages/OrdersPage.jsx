@@ -48,9 +48,9 @@ export default function OrdersPage({ token }) {
     setCustomEndDate('');
   };
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [activeTab]);
+  // useEffect(() => {
+  //   window.scrollTo(0, 0);
+  // }, [activeTab]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -752,7 +752,15 @@ export default function OrdersPage({ token }) {
                       {ordersInGroup.map((order) => {
                         const orderIdLabel = String(order.id ?? '');
                         const clickableLabel = `${customerName} (${orderIdLabel})`;
-                        const orderDateLabel = formatOrderDate(order.orderDate ?? order.createdAt);
+                        
+                        let displayDate = order.orderDate ?? order.createdAt;
+                        if (order.status === 'DELIVERED' && order.deliveredAt) {
+                          displayDate = order.deliveredAt;
+                        } else if (order.status === 'PAID' && order.paidAt) {
+                          displayDate = order.paidAt;
+                        }
+                        const orderDateLabel = formatOrderDate(displayDate);
+                        
                         const totalItems = Array.isArray(order.items) ? order.items.length : 0;
                         const statusClass = order.status?.toLowerCase() ?? 'unknown';
                         const isSelected = selectedOrderIds.includes(order.id);
@@ -803,9 +811,32 @@ export default function OrdersPage({ token }) {
                                     Order #{orderIdLabel.slice(-6).toUpperCase()}
                                   </span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem' }}>
-                                  <Clock size={14} />
-                                  <span>{orderDateLabel}</span>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.4rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem' }}>
+                                    <Clock size={14} />
+                                    <span>{formatOrderDate(order.orderDate ?? order.createdAt)}</span>
+                                  </div>
+                                  
+                                  {order.status === 'DELIVERED' && order.deliveredAt && (
+                                    <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                      D: {formatOrderDate(order.deliveredAt)}
+                                    </div>
+                                  )}
+                                  
+                                  {order.status === 'PAID' && (
+                                    <>
+                                      {order.deliveredAt && (
+                                        <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                          D: {formatOrderDate(order.deliveredAt)}
+                                        </div>
+                                      )}
+                                      {order.paidAt && (
+                                        <div style={{ background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                          P: {formatOrderDate(order.paidAt)}
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <div className="order-card-right" style={{ textAlign: 'right' }}>
