@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Plus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle, Store, Clock, Download, Share2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
@@ -30,6 +30,8 @@ const getCustomerLabel = (customer) =>
 
 export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([]);
+  const headerRef = useRef(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'NEW';
   const setActiveTab = (tab) => {
@@ -83,6 +85,23 @@ export default function OrdersPage({ token }) {
   const [invoiceDownloading, setInvoiceDownloading] = useState(null); // stores customerId being downloaded
   const [shareProcessing, setShareProcessing] = useState(null); // stores customerId being shared
   const navigate = useNavigate();
+
+  useLayoutEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(Math.round(headerRef.current.getBoundingClientRect().height));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setHeaderHeight(Math.round(entry.target.getBoundingClientRect().height));
+      }
+    });
+    observer.observe(headerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const shareSupported = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
@@ -592,7 +611,7 @@ export default function OrdersPage({ token }) {
 
   return (
     <section className="page" style={{ paddingBottom: orders.length > 0 ? '12rem' : '8rem' }}>
-      <div className="sticky-header" style={{ paddingTop: '0.5rem' }}>
+      <div ref={headerRef} className="sticky-header" style={{ paddingTop: '0.5rem' }}>
         <div className="page-tabs" style={{ marginBottom: '0.5rem', whiteSpace: 'nowrap', marginTop: '0' }}>
           {['NEW', 'DELIVERED', 'PAID'].map((tab) => (
             <button
@@ -663,7 +682,7 @@ export default function OrdersPage({ token }) {
           {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
           {loading && !orders.length && <p className="helper-text">Loading orders…</p>}
 
-          <div className="orders-list">
+          <div className="orders-list" style={{ gap: 0 }}>
             {groupedOrders.length > 0 ? (
               groupedOrders.map(([customerName, ordersInGroup]) => {
                 const orderIdsInGroup = ordersInGroup.map(o => o.id);
@@ -672,19 +691,26 @@ export default function OrdersPage({ token }) {
                 const isOtherCustomer = !isMultiCustomerAllowed && currentSelectedCustomer && currentSelectedCustomer !== customerName;
 
                 return (
-                  <div key={customerName} style={{ marginBottom: '1rem', opacity: isOtherCustomer ? 0.5 : 1 }}>
+                  <div key={customerName} style={{ paddingTop: '0.75rem', paddingBottom: 0, opacity: isOtherCustomer ? 0.5 : 1 }}>
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.75rem',
-                        padding: '0.75rem 1rem',
+                        padding: '0.85rem 1.25rem',
                         marginBottom: '0.75rem',
                         cursor: isBulkActionActive ? 'pointer' : 'default',
-                        background: 'hsl(var(--primary) / 0.05)',
+                        background: 'hsl(var(--card))',
                         borderRadius: 'var(--radius)',
                         borderLeft: '4px solid hsl(var(--primary))',
-                        boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)'
+                        borderBottom: '1px solid hsl(var(--border))',
+                        boxShadow: '0 2px 4px 0 rgb(0 0 0 / 0.05)',
+                        position: 'sticky',
+                        top: `calc(3.5rem + ${headerHeight}px)`,
+                        zIndex: 10,
+                        willChange: 'top',
+                        backfaceVisibility: 'hidden',
+                        WebkitBackfaceVisibility: 'hidden'
                       }}
                       onClick={() => isBulkActionActive && handleToggleCustomerSelection(ordersInGroup)}
                     >
@@ -710,21 +736,6 @@ export default function OrdersPage({ token }) {
                       </h3>
                       {activeTab === 'DELIVERED' && !isBulkActionActive && (
                         <div style={{ display: 'flex', gap: '0.25rem' }}>
-                          {/* DOWNLOAD INVOICE BUTTON */}
-                          {/* <button
-                            type="button"
-                            className="ghost-btn"
-                            style={{ padding: '4px', marginLeft: '0.5rem', display: 'flex', alignItems: 'center', color: 'hsl(var(--primary))' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const customerId = ordersInGroup[0]?.customerId;
-                              handleDownloadDeliveredOrdersInvoice(customerId, customerName);
-                            }}
-                            disabled={invoiceDownloading === ordersInGroup[0]?.customerId}
-                            title="Download Delivered Orders Invoice"
-                          >
-                            <Download size={18} />
-                          </button> */}
                           {shareSupported && (
                             <button
                               type="button"
@@ -748,7 +759,7 @@ export default function OrdersPage({ token }) {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingLeft: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingLeft: '0.5rem', paddingTop: '0.75rem', paddingBottom: '1.5rem' }}>
                       {ordersInGroup.map((order) => {
                         const orderIdLabel = String(order.id ?? '');
                         const clickableLabel = `${customerName} (${orderIdLabel})`;
@@ -985,9 +996,9 @@ export default function OrdersPage({ token }) {
             <div className={filteredOrders.length === 0 ? "" : "split-2"} style={{ gap: '1rem' }}>
               {filteredOrders.length > 0 && (
                 activeTab === 'PAID' ? (
-                  <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleInvoiceMode}>Add INVOICE</button>
+                  <button type="button" style={{ height: '2.5rem', backgroundColor: 'white' }} onClick={handleToggleInvoiceMode}>Add INVOICE</button>
                 ) : (
-                  <button type="button" style={{ height: '2.5rem' }} onClick={handleToggleBulkAction}>BULK ACTION</button>
+                  <button type="button" style={{ height: '2.5rem', backgroundColor: 'white' }} onClick={handleToggleBulkAction}>BULK ACTION</button>
                 )
               )}
               <button type="button" className="primary" style={{ height: '2.5rem', width: '100%' }} onClick={openCreateModal}>CREATE ORDER</button>

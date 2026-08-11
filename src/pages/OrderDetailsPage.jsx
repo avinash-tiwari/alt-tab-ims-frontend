@@ -789,7 +789,7 @@ export default function OrderDetailsPage({ token }) {
                       className="ghost-btn" 
                       onClick={closeAddItemModal} 
                       disabled={addingItem}
-                      style={{ height: '34px', border: '1px solid hsl(var(--border))', fontWeight: 800, width: '100%' }}
+                      style={{ height: '34px', border: '1px solid hsl(var(--border))', fontWeight: 800, width: '100%', backgroundColor: 'white' }}
                     >
                       Cancel
                     </button>
