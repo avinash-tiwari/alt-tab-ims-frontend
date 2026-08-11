@@ -63,8 +63,8 @@ select,
 textarea {
   width: 100%;
   border: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-  border-radius: var(--radius);
+  background: #ffffff !important;
+  border-radius: 12px !important;
   padding: 0.6rem 0.75rem;
   font-size: 0.875rem;
   transition: all 0.2s;
@@ -622,7 +622,7 @@ button.danger:hover {
   width: 100%;
   padding: 0.6rem 0.75rem;
   font-size: 0.875rem;
-  background: hsl(var(--background));
+  background: white;
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   cursor: pointer;
@@ -1110,7 +1110,7 @@ button.danger:hover {
 .public-link-card {
   display: flex;
   flex-direction: column;
-  background-color: hsl(195 85% 95%);
+  background-color: hsl(var(--primary) / 0.1);
 }
 
 .public-link-row {
@@ -1142,7 +1142,7 @@ button.danger:hover {
 }
 
 .items-data-container {
-  background-color: hsl(195 85% 95%);
+  background-color: hsl(var(--primary) / 0.1);
   border-radius: var(--radius);
   padding: 1rem;
   color: hsl(195 85% 20%);

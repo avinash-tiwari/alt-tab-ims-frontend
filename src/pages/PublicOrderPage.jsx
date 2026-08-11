@@ -235,24 +235,39 @@ export default function PublicOrderPage() {
 
   return (
     <main className="page" style={{ minHeight: '100vh', paddingTop: '1rem' }}>
-      <div className="page-tabs" style={{ marginBottom: '1rem', whiteSpace: 'nowrap', marginTop: '0' }}>
+      <div className="page-tabs" style={{ marginBottom: '1rem', whiteSpace: 'nowrap', marginTop: '0', display: 'flex', gap: '0.5rem' }}>
         {['new-order', 'processing-orders'].map((tab) => (
           <button
             key={tab}
             type="button"
-            className={`page-tab-btn ${activeTab === tab ? 'active' : ''}`}
+            className="card"
+            style={{
+              flex: 1,
+              padding: '0.75rem 0.25rem',
+              cursor: 'pointer',
+              margin: 0,
+              border: tab === activeTab ? '1px solid hsl(var(--primary))' : '1px solid transparent',
+              background: tab === activeTab ? 'hsl(var(--primary))' : 'white',
+              color: tab === activeTab ? 'white' : 'inherit'
+            }}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === 'new-order' ? 'New Order' : 'Past Orders'}
+            <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>
+              {tab === 'new-order' ? 'New Order' : 'Past Orders'}
+            </span>
           </button>
         ))}
       </div>
 
       {activeTab === 'new-order' && (
-        <article className="card stack-form" style={{ gap: '1rem' }}>
+        <article className="card stack-form" style={{ 
+          gap: '1rem', 
+          background: 'hsl(var(--primary) / 0.05)',
+          borderColor: 'hsl(var(--primary) / 0.1)'
+        }}>
           <div>
-            <h2 style={{ marginBottom: '0.25rem' }}>Place an order</h2>
-            <p className="helper-text">
+            <h2 style={{ marginBottom: '0.25rem', color: 'hsl(var(--primary))', fontWeight: 800 }}>Place an order</h2>
+            <p className="helper-text" style={{ color: 'hsl(var(--primary))', opacity: 0.8 }}>
               Use the secure customer portal to submit an order.
             </p>
           </div>
@@ -303,20 +318,21 @@ export default function PublicOrderPage() {
                 className="primary"
                 onClick={handleAddLineItem}
                 disabled={loadingItems || submitting || !selectedItemId}
+                style={{ height: '34px', fontWeight: 800 }}
               >
                 Add item
               </button>
             </div>
 
             {lineItems.length > 0 && (
-              <div className="orders-items-table-wrap">
-                <table className="orders-items-table">
-                  <thead>
+              <div className="orders-items-table-wrap" style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid hsl(var(--primary) / 0.1)' }}>
+                <table className="orders-items-table" style={{ background: 'white' }}>
+                  <thead style={{ background: 'hsl(var(--primary))' }}>
                     <tr>
-                      <th>Item</th>
-                      <th>Quantity</th>
-                      <th>Unit price</th>
-                      <th>Line total</th>
+                      <th style={{ color: 'white' }}>Item</th>
+                      <th style={{ color: 'white' }}>Quantity</th>
+                      <th style={{ color: 'white' }}>Unit price</th>
+                      <th style={{ color: 'white' }}>Line total</th>
                       <th />
                     </tr>
                   </thead>
@@ -325,7 +341,6 @@ export default function PublicOrderPage() {
                       <tr key={`${line.itemId}-${index}`}>
                         <td>
                           <strong>{line.name}</strong>
-                          <p className="helper-text">ID {line.itemId}</p>
                         </td>
                         <td>{line.quantity}</td>
                         <td>{formatCurrency(line.unitPrice)}</td>
@@ -335,6 +350,7 @@ export default function PublicOrderPage() {
                             type="button"
                             className="ghost-btn"
                             onClick={() => handleRemoveLineItem(index)}
+                            style={{ color: 'hsl(var(--destructive))', fontWeight: 800 }}
                           >
                             Remove
                           </button>
@@ -357,13 +373,13 @@ export default function PublicOrderPage() {
 
             <div
               className="row-actions"
-              style={{ justifyContent: 'space-between', alignItems: 'center' }}
+              style={{ justifyContent: 'space-between', alignItems: 'center', background: 'hsl(var(--primary) / 0.05)', padding: '1rem', margin: '0 -1rem -1rem -1rem', borderTop: '1px solid hsl(var(--primary) / 0.1)' }}
             >
               <div>
-                <p className="small-label">Order total</p>
-                <strong>{formatCurrency(orderTotal)}</strong>
+                <p className="small-label" style={{ color: 'hsl(var(--primary))', fontWeight: 800 }}>Order total</p>
+                <strong style={{ color: 'hsl(var(--primary))', fontSize: '1.25rem' }}>{formatCurrency(orderTotal)}</strong>
               </div>
-              <button type="submit" className="primary" disabled={isSubmitDisabled}>
+              <button type="submit" className="primary" disabled={isSubmitDisabled} style={{ height: '34px', fontWeight: 800 }}>
                 {submitting ? 'Placing order…' : 'Place order'}
               </button>
             </div>
@@ -372,9 +388,13 @@ export default function PublicOrderPage() {
       )}
 
       {activeTab === 'processing-orders' && (
-        <article className="card stack-form" style={{ gap: '1rem' }}>
+        <article className="card stack-form" style={{ 
+          gap: '1rem', 
+          background: 'hsl(var(--primary) / 0.05)',
+          borderColor: 'hsl(var(--primary) / 0.1)'
+        }}>
           <div>
-            <h2 style={{ marginBottom: '0.25rem' }}>Past Orders</h2>
+            <h2 style={{ marginBottom: '0.25rem', color: 'hsl(var(--primary))', fontWeight: 800 }}>Past Orders</h2>
           </div>
 
           {!tenantToken && (

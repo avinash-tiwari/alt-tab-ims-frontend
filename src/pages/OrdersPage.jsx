@@ -1089,17 +1089,20 @@ export default function OrdersPage({ token }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingBottom: '0.5rem',
-            borderBottom: '1px solid hsl(var(--border))',
-            marginBottom: '1rem'
+            padding: '1rem',
+            borderBottom: '1px solid hsl(var(--primary) / 0.1)',
+            marginBottom: '1rem',
+            background: 'hsl(var(--primary) / 0.05)',
+            margin: '-1rem -1rem 1rem -1rem'
           }}>
-            <h2 style={{ margin: 0 }}>Add Order Items</h2>
+            <h2 style={{ margin: 0, color: 'hsl(var(--primary))', fontWeight: 800 }}>Add Order Items</h2>
             <button
               type="button"
               className="ghost-btn"
               onClick={closeCreateModal}
               aria-label="Close"
               disabled={creatingOrder}
+              style={{ color: 'hsl(var(--primary))' }}
             >
               <X size={24} />
             </button>
@@ -1175,15 +1178,21 @@ export default function OrdersPage({ token }) {
               {/* ITEM LIST  */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {lineItems.map((line, index) => (
-                  <div key={index} className="card" style={{ padding: '1rem', margin: 0, position: 'relative' }}>
+                  <div key={index} className="card" style={{ 
+                    padding: '1rem', 
+                    margin: 0, 
+                    position: 'relative',
+                    background: 'hsl(var(--primary) / 0.05)',
+                    borderColor: 'hsl(var(--primary) / 0.1)'
+                  }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Item {index + 1}</span>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'hsl(var(--primary))' }}>Item {index + 1}</span>
                       {lineItems.length > 1 && (
                         <button
                           type="button"
                           className="ghost-btn"
                           onClick={() => handleRemoveLineItem(index)}
-                          style={{ padding: '4px', color: 'hsl(var(--muted-foreground))' }}
+                          style={{ padding: '4px', color: 'hsl(var(--primary))' }}
                         >
                           <Trash2 size={18} />
                         </button>
@@ -1211,6 +1220,7 @@ export default function OrdersPage({ token }) {
                         value={line.quantity}
                         onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)}
                         disabled={creatingOrder}
+                        labelStyle={{ fontWeight: 800, color: 'hsl(var(--primary))' }}
                       />
                       <Input
                         type="number"
@@ -1220,6 +1230,7 @@ export default function OrdersPage({ token }) {
                         value={line.unitPrice}
                         onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)}
                         disabled={creatingOrder}
+                        labelStyle={{ fontWeight: 800, color: 'hsl(var(--primary))' }}
                       />
                     </div>
                   </div>
@@ -1229,17 +1240,15 @@ export default function OrdersPage({ token }) {
               <button
                 type="button"
                 onClick={handleAddLineItem}
-                className="ghost-btn"
+                className="primary"
                 style={{
                   width: '100%',
-                  border: '1px solid hsl(var(--border))',
-                  background: 'hsl(var(--card))',
-                  padding: '0.75rem',
+                  height: '34px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '0.5rem',
-                  fontWeight: 600
+                  fontWeight: 800
                 }}
               >
                 <Plus size={18} /> Add Another Item
@@ -1258,8 +1267,8 @@ export default function OrdersPage({ token }) {
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span style={{ fontSize: '1.125rem', fontWeight: 700 }}>Total Amount</span>
-                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>{formatCurrency(orderTotal)}</span>
+                <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'hsl(var(--primary))' }}>Total Amount</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'hsl(var(--primary))' }}>{formatCurrency(orderTotal)}</span>
               </div>
 
               <footer className="split-2" style={{ gap: '1rem' }}>
@@ -1267,7 +1276,7 @@ export default function OrdersPage({ token }) {
                   type="button"
                   onClick={closeCreateModal}
                   disabled={creatingOrder}
-                  style={{ width: '100%', height: '2.5rem' }}
+                  style={{ width: '100%', height: '34px', fontWeight: 800 }}
                 >
                   Cancel
                 </button>
@@ -1275,7 +1284,7 @@ export default function OrdersPage({ token }) {
                   type="submit"
                   className="primary"
                   disabled={creatingOrder}
-                  style={{ width: '100%', height: '2.5rem', fontSize: '1rem' }}
+                  style={{ width: '100%', height: '34px', fontSize: '1rem', fontWeight: 800 }}
                 >
                   {creatingOrder ? 'Saving...' : 'Save Order'}
                 </button>

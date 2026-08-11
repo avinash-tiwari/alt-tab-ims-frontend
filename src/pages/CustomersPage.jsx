@@ -173,7 +173,7 @@ export default function CustomersPage({ token }) {
                   gap: '0.4rem',
                   fontSize: '0.875rem',
                   border: showOnlyUnpaid ? '1px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
-                  background: showOnlyUnpaid ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                  background: showOnlyUnpaid ? 'hsl(var(--primary) / 0.1)' : 'white',
                   color: showOnlyUnpaid ? 'hsl(var(--primary))' : 'inherit'
                 }}
               >
@@ -212,14 +212,19 @@ export default function CustomersPage({ token }) {
                 className="card customer-card"
                 onClick={() => navigate(`/customer/${customer.id}`)}
                 style={{
-                  background: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--card))',
-                  borderColor: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.2)' : 'hsl(var(--border))'
+                  background: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.05)' : 'hsl(var(--primary) / 0.05)',
+                  borderColor: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.2)' : 'hsl(var(--primary) / 0.1)'
                 }}
               >
                 <div className="customer-card-main">
                   <div className="customer-content">
                     <header className="customer-card-header">
-                      <h3 className="customer-name-heading">{customer.name}</h3>
+                      <h3 
+                        className="customer-name-heading"
+                        style={{ color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))' }}
+                      >
+                        {customer.name}
+                      </h3>
                       <div className="col-actions" onClick={(e) => e.stopPropagation()}>
                         <button 
                           type="button" 
@@ -243,24 +248,34 @@ export default function CustomersPage({ token }) {
                     <div className="customer-details">
                       {customer.phone && (
                         <div className="detail-item">
-                          <Phone size={14} className="detail-icon" />
+                          <Phone 
+                            size={14} 
+                            className="detail-icon" 
+                            style={{ color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))' }}
+                          />
                           <a 
                             href={`tel:${customer.phone}`} 
                             className="detail-link"
                             onClick={(e) => e.stopPropagation()}
+                            style={{ color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))', opacity: 0.9 }}
                           >
                             {customer.phone}
                           </a>
                         </div>
                       )}
                       <div className="detail-item">
-                        <MapPin size={14} className="detail-icon" />
+                        <MapPin 
+                          size={14} 
+                          className="detail-icon" 
+                          style={{ color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))' }}
+                        />
                         <a 
                           href={customer.locationLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([customer.addressLine1, customer.city, customer.postalCode].filter(Boolean).join(', '))}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="detail-link truncate"
                           onClick={(e) => e.stopPropagation()}
+                          style={{ color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))', opacity: 0.9 }}
                         >
                           {[customer.addressLine1, customer.city, customer.postalCode].filter(Boolean).join(', ') || 'No address provided'}
                         </a>
@@ -272,20 +287,72 @@ export default function CustomersPage({ token }) {
                 <div 
                   className="customer-stats-bar"
                   style={{
-                    background: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.15)' : undefined
+                    background: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--primary) / 0.1)'
                   }}
                 >
                   <div className="stat-pill">
-                    <span className="stat-label">Spent</span>
-                    <span className="stat-value">{formatCurrency(customer?.totalSpent ?? '0')}</span>
+                    <span 
+                      className="stat-label"
+                      style={{ 
+                        color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))',
+                        fontSize: '0.75rem',
+                        opacity: 0.8
+                      }}
+                    >
+                      Spent
+                    </span>
+                    <span 
+                      className="stat-value"
+                      style={{ 
+                        fontSize: '1.1rem',
+                        color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'
+                      }}
+                    >
+                      {formatCurrency(customer?.totalSpent ?? '0')}
+                    </span>
                   </div>
                   <div className="stat-pill">
-                    <span className="stat-label">NOT PAID</span>
-                    <span className="stat-value destructive">{formatCurrency(customer?.unSpentAmount ?? '0')}</span>
+                    <span 
+                      className="stat-label"
+                      style={{ 
+                        color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))',
+                        fontSize: '0.75rem',
+                        opacity: 0.8
+                      }}
+                    >
+                      NOT PAID
+                    </span>
+                    <span 
+                      className="stat-value"
+                      style={{ 
+                        fontSize: '1.1rem',
+                        color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))',
+                        fontWeight: 800
+                      }}
+                    >
+                      {formatCurrency(customer?.unSpentAmount ?? '0')}
+                    </span>
                   </div>
                   <div className="stat-pill">
-                    <span className="stat-label">Orders</span>
-                    <span className="stat-value">{customer?.totalOrders ?? 0}</span>
+                    <span 
+                      className="stat-label"
+                      style={{ 
+                        color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))',
+                        fontSize: '0.75rem',
+                        opacity: 0.8
+                      }}
+                    >
+                      Orders
+                    </span>
+                    <span 
+                      className="stat-value"
+                      style={{ 
+                        fontSize: '1.1rem',
+                        color: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'
+                      }}
+                    >
+                      {customer?.totalOrders ?? 0}
+                    </span>
                   </div>
                 </div>
               </article>

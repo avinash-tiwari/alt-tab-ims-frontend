@@ -1533,10 +1533,11 @@ export default function SpendsPage({ token }) {
                   cursor: 'pointer',
                   margin: 0,
                   border: tab === activeTab ? '1px solid hsl(var(--primary))' : '1px solid transparent',
-                  background: tab === activeTab ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--card))'
+                  background: tab === activeTab ? 'hsl(var(--primary))' : 'white',
+                  color: tab === activeTab ? 'white' : 'inherit'
                 }}
               >
-                <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>
                   {tab === 'spends' ? 'Spends' : 'Suppliers'}
                 </span>
               </button>
@@ -1763,7 +1764,7 @@ export default function SpendsPage({ token }) {
                   </div>
                   <div style={{ overflowX: 'auto' }}>
                     <table className="chart-table" style={{ margin: 0, border: 'none' }}>
-                      <thead style={{ backgroundColor: '#1976D2', color: 'white' }}>
+                      <thead style={{ backgroundColor: 'hsl(var(--primary))', color: 'white' }}>
                         <tr>
                           {filters.status === 'pending' && <th style={{ width: '40px', color: 'white' }}>
                             <input
@@ -1844,14 +1845,25 @@ export default function SpendsPage({ token }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {selectedSupplierForView ? (
-              <div className="card" style={{ padding: '1.25rem' }}>
+              <div 
+                className="card" 
+                style={{ 
+                  padding: '1.25rem',
+                  background: 'hsl(var(--primary) / 0.05)',
+                  borderColor: 'hsl(var(--primary) / 0.1)'
+                }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <button className="ghost-btn" onClick={() => setSelectedSupplierForView(null)} style={{ padding: '0.25rem' }}>
+                  <button 
+                    className="ghost-btn" 
+                    onClick={() => setSelectedSupplierForView(null)} 
+                    style={{ padding: '0.25rem', color: 'hsl(var(--primary))' }}
+                  >
                     <ChevronDown size={24} style={{ transform: 'rotate(90deg)' }} />
                   </button>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <h3 style={{ margin: 0 }}>{selectedSupplierForView.name}</h3>
+                      <h3 style={{ margin: 0, color: 'hsl(var(--primary))', fontWeight: 700 }}>{selectedSupplierForView.name}</h3>
                       <button
                         type="button"
                         className="ghost-btn"
@@ -1863,7 +1875,11 @@ export default function SpendsPage({ token }) {
                         {deletingId === selectedSupplierForView.id ? <span style={{ fontSize: '0.75rem' }}>...</span> : <Trash2 size={18} />}
                       </button>
                     </div>
-                    {selectedSupplierForView.phone && <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))' }}>{selectedSupplierForView.phone}</p>}
+                    {selectedSupplierForView.phone && (
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--primary))', opacity: 0.8 }}>
+                        {selectedSupplierForView.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1920,7 +1936,7 @@ export default function SpendsPage({ token }) {
                         </span>
                       </div>
                       <div style={{ overflowX: 'auto' }}>
-                        <table className="chart-table" style={{ margin: 0, border: 'none' }}>
+                        <table className="chart-table" style={{ margin: 0, border: 'none', width: '100%' }}>
                           <thead style={{ backgroundColor: '#1976D2', color: 'white' }}>
                             <tr>
                               <th style={{ color: 'white' }}>Item</th>
@@ -1943,23 +1959,25 @@ export default function SpendsPage({ token }) {
                   ))
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', alignItems: 'center', gap: '1rem' }}>
                   <button 
-                    className="secondary" 
+                    className="primary" 
                     disabled={supplierSpendsFilters.offset === 0}
                     onClick={() => setSupplierSpendsFilters(prev => ({ ...prev, offset: Math.max(0, prev.offset - prev.limit) }))}
+                    style={{ flex: 1, height: '2.5rem', fontWeight: 700 }}
                   >
-                    Previous
+                    PREVIOUS
                   </button>
-                  <span style={{ fontSize: '0.875rem' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'hsl(var(--primary))' }}>
                     Page {Math.floor(supplierSpendsFilters.offset / supplierSpendsFilters.limit) + 1}
                   </span>
                   <button 
-                    className="secondary" 
+                    className="primary" 
                     disabled={!supplierSpendsHasNext}
                     onClick={() => setSupplierSpendsFilters(prev => ({ ...prev, offset: prev.offset + prev.limit }))}
+                    style={{ flex: 1, height: '2.5rem', fontWeight: 700 }}
                   >
-                    Next
+                    NEXT
                   </button>
                 </div>
               </div>
@@ -2002,14 +2020,21 @@ export default function SpendsPage({ token }) {
                         key={supplier.id} 
                         className="card" 
                         onClick={() => setSelectedSupplierForView(supplier)}
-                        style={{ padding: '1.25rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid hsl(var(--border) / 0.5)', margin: 0 }}
+                        style={{ 
+                          padding: '1.25rem', 
+                          cursor: 'pointer', 
+                          transition: 'transform 0.2s', 
+                          background: 'hsl(var(--primary) / 0.05)',
+                          borderColor: 'hsl(var(--primary) / 0.1)',
+                          margin: 0 
+                        }}
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <h4 style={{ margin: 0 }}>{supplier.name}</h4>
-                            {supplier.phone && <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))' }}>{supplier.phone}</p>}
+                            <h4 style={{ margin: 0, color: 'hsl(var(--primary))', fontWeight: 700 }}>{supplier.name}</h4>
+                            {supplier.phone && <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'hsl(var(--primary))', opacity: 0.8 }}>{supplier.phone}</p>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <button
@@ -2025,7 +2050,7 @@ export default function SpendsPage({ token }) {
                             >
                               {deletingId === supplier.id ? <span style={{ fontSize: '0.75rem' }}>...</span> : <Trash2 size={18} />}
                             </button>
-                            <ChevronDown size={20} style={{ transform: 'rotate(-90deg)', color: 'hsl(var(--muted-foreground))' }} />
+                            <ChevronDown size={20} style={{ transform: 'rotate(-90deg)', color: 'hsl(var(--primary))', opacity: 0.6 }} />
                           </div>
                         </div>
                       </div>

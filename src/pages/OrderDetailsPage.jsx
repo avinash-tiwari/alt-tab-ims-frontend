@@ -314,6 +314,9 @@ export default function OrderDetailsPage({ token }) {
   const openAddItemModal = () => {
     setModalError('');
     setAddItemModalOpen(true);
+    setTimeout(() => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 100);
   };
 
   const closeAddItemModal = () => {
@@ -348,19 +351,17 @@ export default function OrderDetailsPage({ token }) {
     setModalError('');
     setAddingItem(true);
     
-    // Find the item being added to get its details (like label)
     const selectedItem = availableItems.find(i => String(i.id) === String(selectedItemId));
     const effectiveUnitPrice = parsedPrice;
     
     try {
-      // Optimistic update: we add the item locally first so the header updates "suddenly"
       const tempId = `temp-${Date.now()}`;
       const optimisticItem = {
         id: tempId,
         itemId: selectedItemId,
         quantity: parsedQuantity,
         unitPrice: effectiveUnitPrice,
-        item: selectedItem, // Include the full item for getItemLabel
+        item: selectedItem,
         lineTotal: effectiveUnitPrice * parsedQuantity
       };
 
@@ -372,7 +373,6 @@ export default function OrderDetailsPage({ token }) {
         };
       });
       
-      // Update inputs for the temp item so useMemo picks it up
       setQuantityInputs(prev => ({ ...prev, [tempId]: String(parsedQuantity) }));
       setPriceInputs(prev => ({ ...prev, [tempId]: String(effectiveUnitPrice) }));
       closeAddItemModal();
@@ -383,14 +383,12 @@ export default function OrderDetailsPage({ token }) {
         unitPrice: effectiveUnitPrice
       });
 
-      // Replace optimistic item with the actual item from the server
       setOrderDetail((prev) => {
         if (!prev) return prev;
         const items = (prev.items || []).map(item => item.id === tempId ? orderItem : item);
         return { ...prev, ...(order || {}), items };
       });
       
-      // Update inputs for the real item ID
       if (orderItem.id) {
         setQuantityInputs(prev => {
           const next = { ...prev, [orderItem.id]: String(orderItem.quantity) };
@@ -405,9 +403,8 @@ export default function OrderDetailsPage({ token }) {
       }
       showSnackbar('Item added to order');
     } catch (err) {
-      // Revert if API fails
       setError(err.message);
-      loadDetail(); // Reload to be safe
+      loadDetail();
     } finally {
       setAddingItem(false);
     }
@@ -533,7 +530,6 @@ export default function OrderDetailsPage({ token }) {
 
   return (
     <section className="page" style={{ padding: 0 }}>
-      {/* STICKY CONTAINER */}
       <div className="sticky-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
           <button
@@ -596,7 +592,6 @@ export default function OrderDetailsPage({ token }) {
               )}
             </div>
             
-            {/* UPDATE STATUS */}
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
               <select
                 id="order-status"
@@ -647,7 +642,7 @@ export default function OrderDetailsPage({ token }) {
         )}
       </div>
 
-      <div style={{ paddingTop: '1rem' }}>
+      <div style={{ paddingTop: '1rem', paddingBottom: '5rem' }}>
         {error && <p className="form-error" style={{ marginBottom: '1rem' }}>{error}</p>}
         {loading && !orderDetail && <p className="helper-text">Loading order…</p>}
 
@@ -658,28 +653,20 @@ export default function OrderDetailsPage({ token }) {
         {!loading && orderDetail && (
           <>
             <section className="orders-items-section" style={{ 
-              background: 'hsl(var(--card))', 
-              padding: '1rem', 
+              background: 'transparent', 
+              padding: 0, 
               borderRadius: 'var(--radius)', 
-              border: '1px solid hsl(var(--border))' 
+              border: 'none'
             }}>
               {orderItems.length ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {orderItems.map((item, index) => {
                     const orderItemId = item.id ?? item.itemId ?? `order-item-${index}`;
                     const quantityValue = quantityInputs[orderItemId] ?? '';
                     const priceValue = priceInputs[orderItemId] ?? '';
-                    const parsedInputQty = Number(quantityValue);
-                    const parsedInputPrice = Number(priceValue);
-                    const lineTotal = !Number.isNaN(parsedInputQty) && quantityValue !== '' && !Number.isNaN(parsedInputPrice) && priceValue !== ''
-                      ? parsedInputQty * parsedInputPrice
-                      : item.lineTotal
-                      ? Number(item.lineTotal)
-                      : Number(item.unitPrice || 0) * Number(item.quantity || 0);
-
+                    
                     const displayId = item.itemId ?? orderItemId;
                     const itemLabel = getItemLabel({ ...item, id: displayId });
-                    const showProductId = Boolean(item.itemId && itemLabel !== item.itemId);
                     const currentQuantity = String(item.quantity ?? '');
                     const currentPrice = String(item.unitPrice ?? '');
                     const changed = Boolean((quantityValue && quantityValue !== currentQuantity) || (priceValue && priceValue !== currentPrice));
@@ -687,7 +674,13 @@ export default function OrderDetailsPage({ token }) {
                     const isDeletingItem = deletingOrderItemId === orderItemId;
                     
                     return (
-                      <div key={`${orderItemId}-${itemLabel}-${index}`} className="card" style={{ padding: '1rem', margin: 0, position: 'relative', background: 'hsl(var(--background) / 0.3)' }}>
+                      <div key={`${orderItemId}-${itemLabel}-${index}`} className="card" style={{ 
+                        padding: '1rem', 
+                        margin: 0, 
+                        position: 'relative', 
+                        background: 'hsl(var(--primary) / 0.05)',
+                        border: '1px solid hsl(var(--border) / 0.5)'
+                      }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ fontSize: '1rem', fontWeight: 700, display: 'block', marginBottom: '0.15rem' }}>{itemLabel}</span>
@@ -739,12 +732,9 @@ export default function OrderDetailsPage({ token }) {
                 <p className="helper-text">No items in this order.</p>
               )}
 
-              {addItemModalOpen ? (
+              {addItemModalOpen && (
                 <div className="card" style={{ padding: '1rem', border: '1px solid hsl(var(--primary))', background: 'hsl(var(--primary) / 0.03)', marginTop: '1rem' }}>
                   {(() => {
-                    const unitPrice = Number(newItemPrice || 0);
-                    const totalForNewItem = unitPrice * Number(newItemQuantity || 0);
-
                     return (
                       <>
                         <div className="form-group" style={{ marginBottom: '1rem' }}>
@@ -798,7 +788,8 @@ export default function OrderDetailsPage({ token }) {
                       type="button" 
                       className="ghost-btn" 
                       onClick={closeAddItemModal} 
-                      style={{ width: '100%', height: '2.5rem', border: '1px solid hsl(var(--border))' }}
+                      disabled={addingItem}
+                      style={{ height: '34px', border: '1px solid hsl(var(--border))', fontWeight: 800, width: '100%' }}
                     >
                       Cancel
                     </button>
@@ -807,34 +798,51 @@ export default function OrderDetailsPage({ token }) {
                       className="primary" 
                       onClick={handleAddItemToOrder} 
                       disabled={addingItem || !selectedItemId} 
-                      style={{ width: '100%', height: '2.5rem' }}
+                      style={{ height: '34px', fontWeight: 800, width: '100%' }}
                     >
                       {addingItem ? 'Adding...' : 'Add Item'}
                     </button>
                   </div>
                 </div>
-              ) : (
+              )}
+            </section>
+
+            {!addItemModalOpen && (
+              <div style={{ 
+                position: 'fixed', 
+                bottom: '3.5rem', 
+                left: 0,
+                right: 0,
+                background: 'hsl(var(--background) / 0.8)', 
+                backdropFilter: 'blur(8px)',
+                padding: '0.75rem 1rem', 
+                zIndex: 30,
+                borderTop: '1px solid hsl(var(--border) / 0.5)',
+                display: 'flex',
+                justifyContent: 'center'
+              }}>
                 <button 
                   type="button" 
-                  className="ghost-btn" 
+                  className="primary" 
                   onClick={openAddItemModal}
                   style={{ 
                     width: '100%', 
-                    border: '1px dashed hsl(var(--border))', 
-                    background: 'hsl(var(--card))',
-                    padding: '0.75rem',
+                    minWidth: '200px',
+                    height: '2.5rem',
+                    padding: '0 1.5rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
-                    fontWeight: 600,
-                    marginTop: '1rem'
+                    fontWeight: 800,
+                    fontSize: '0.8125rem',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                   }}
                 >
-                  <Plus size={18} /> Add Another Item
+                  <Plus size={16} /> ADD ANOTHER ITEM
                 </button>
-              )}
-            </section>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -881,6 +889,7 @@ export default function OrderDetailsPage({ token }) {
                 type="button"
                 className="ghost-btn"
                 onClick={() => closePaymentSplitModal()}
+                style={{ height: '34px', fontWeight: 800 }}
               >
                 Cancel
               </button>
@@ -889,6 +898,7 @@ export default function OrderDetailsPage({ token }) {
                 className="primary"
                 onClick={handleConfirmPaymentSplit}
                 disabled={paymentSplitSubmitting}
+                style={{ height: '34px', fontWeight: 800 }}
               >
                 {paymentSplitSubmitting ? 'Saving…' : 'Confirm split'}
               </button>

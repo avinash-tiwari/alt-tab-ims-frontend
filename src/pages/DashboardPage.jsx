@@ -633,8 +633,8 @@ export default function DashboardPage({ token }) {
             style={{
               flex: 1,
               padding: '0.5rem',
-              background: activeTab === 'month' ? 'hsl(var(--primary) / 0.15)' : 'transparent',
-              color: activeTab === 'month' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+              background: activeTab === 'month' ? 'hsl(var(--primary))' : 'transparent',
+              color: activeTab === 'month' ? 'white' : 'hsl(var(--muted-foreground))',
               fontWeight: activeTab === 'month' ? 700 : 500,
               boxShadow: activeTab === 'month' ? 'none' : 'none'
             }}
@@ -648,8 +648,8 @@ export default function DashboardPage({ token }) {
             style={{
               flex: 1,
               padding: '0.5rem',
-              background: activeTab === 'lifetime' ? 'hsl(var(--primary) / 0.15)' : 'transparent',
-              color: activeTab === 'lifetime' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+              background: activeTab === 'lifetime' ? 'hsl(var(--primary))' : 'transparent',
+              color: activeTab === 'lifetime' ? 'white' : 'hsl(var(--muted-foreground))',
               fontWeight: activeTab === 'lifetime' ? 700 : 500,
               boxShadow: activeTab === 'lifetime' ? 'none' : 'none'
             }}

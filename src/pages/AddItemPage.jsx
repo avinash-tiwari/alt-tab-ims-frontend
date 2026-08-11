@@ -111,7 +111,15 @@ export default function AddItemPage({ token }) {
 
       <div>
         {error && <p className="error-text">{error}</p>}
-        <form className="card stack-form" onSubmit={saveItem}>
+        <form 
+          className="card stack-form" 
+          onSubmit={saveItem}
+          style={{
+            background: 'hsl(var(--primary) / 0.05)',
+            borderColor: 'hsl(var(--primary) / 0.1)',
+            padding: '1.25rem'
+          }}
+        >
           <Input name="name" placeholder="Name" value={form.name} onChange={onFormChange} required />
           <Input
             name="costPrice"
@@ -142,26 +150,58 @@ export default function AddItemPage({ token }) {
             onChange={onFormChange}
             required
           />
-          <button type="submit" className="primary">{id ? 'Update Item' : 'Create Item'}</button>
+          <button 
+            type="submit" 
+            className="primary"
+            style={{ width: '100%', height: '2.5rem', fontSize: '0.9rem', fontWeight: 700 }}
+          >
+            {id ? 'UPDATE ITEM' : 'CREATE ITEM'}
+          </button>
           {id && (
-            <button type="button" className="secondary" onClick={handleDelete} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-              <Trash2 size={16} /> Delete Item
+            <button 
+              type="button" 
+              className="danger" 
+              onClick={handleDelete} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '0.5rem',
+                width: '100%',
+                height: '2.5rem',
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                color: 'white',
+                background: 'hsl(var(--destructive))',
+                borderColor: 'hsl(var(--destructive))'
+              }}
+            >
+              <Trash2 size={16} /> DELETE ITEM
             </button>
           )}
         </form>
       </div>
 
       {id && (
-        <div className="card" style={{ padding: '1rem', marginTop: '1.5rem' }}>
-          <h3 style={{ marginBottom: '0.75rem' }}>Past Batches</h3>
+        <div 
+          className="card" 
+          style={{ 
+            padding: '0', 
+            marginTop: '1.5rem',
+            background: 'hsl(var(--primary) / 0.05)',
+            borderColor: 'hsl(var(--primary) / 0.1)',
+            overflow: 'hidden'
+          }}
+        >
+          <h3 style={{ padding: '1rem', margin: 0, color: 'hsl(var(--primary))' }}>Past Batches</h3>
           <div style={{ overflowX: 'auto' }}>
-            <table className="chart-table">
-              <thead>
+            <table className="chart-table" style={{ background: 'white', margin: 0, width: '100%' }}>
+              <thead style={{ backgroundColor: 'hsl(var(--primary))', color: 'white' }}>
                 <tr>
-                  <th>#</th>
-                  <th>Quantity</th>
-                  <th className="text-right">Cost Price</th>
-                  <th className="text-right">Received At</th>
+                  <th style={{ color: 'white' }}>#</th>
+                  <th style={{ color: 'white' }}>Quantity</th>
+                  <th className="text-right" style={{ color: 'white' }}>Cost Price</th>
+                  <th className="text-right" style={{ color: 'white' }}>Received At</th>
                 </tr>
               </thead>
               <tbody>

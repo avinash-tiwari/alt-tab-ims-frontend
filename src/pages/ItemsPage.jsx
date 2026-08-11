@@ -386,10 +386,11 @@ export default function ItemsPage({ token }) {
                     cursor: 'pointer',
                     margin: 0,
                     border: tab === activeTab ? '1px solid hsl(var(--primary))' : '1px solid transparent',
-                    background: tab === activeTab ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--card))'
+                    background: tab === activeTab ? 'hsl(var(--primary))' : 'white',
+                    color: tab === activeTab ? 'white' : 'inherit'
                   }}
                 >
-                  <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                  <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>
                     {tab === 'listing' ? 'Items List' : 'Stock Update'}
                   </span>
                 </button>
@@ -445,7 +446,7 @@ export default function ItemsPage({ token }) {
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         border: filters.lowStock ? '1px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
-                        background: filters.lowStock ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                        background: filters.lowStock ? 'hsl(var(--primary) / 0.1)' : 'white',
                         color: filters.lowStock ? 'hsl(var(--primary))' : 'inherit',
                         padding: '0'
                       }}
@@ -492,25 +493,100 @@ export default function ItemsPage({ token }) {
                           alignItems: 'center', 
                           justifyContent: 'space-between', 
                           padding: '1rem',
-                          background: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--card))',
-                          borderColor: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.2)' : 'hsl(var(--border))'
+                          background: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.05)' : 'hsl(var(--primary) / 0.05)',
+                          borderColor: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.2)' : 'hsl(var(--primary) / 0.1)'
                         }}
                       >
                         <div>
-                          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{item.name}</h3>
+                          <h3 
+                            style={{ 
+                              margin: 0, 
+                              fontSize: '1rem', 
+                              fontWeight: 700,
+                              color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'
+                            }}
+                          >
+                            {item.name}
+                          </h3>
                         </div>
-                        <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cost</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 500 }}>{formatCurrency(item.costPrice)}</div>
+                        <div 
+                          style={{ 
+                            display: 'flex', 
+                            gap: '1.25rem', 
+                            alignItems: 'center',
+                            background: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--primary) / 0.1)',
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: 'var(--radius)'
+                          }}
+                        >
+                          <div style={{ textAlign: 'left' }}>
+                            <div 
+                              style={{ 
+                                fontSize: '0.75rem', 
+                                fontWeight: 600, 
+                                color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'hsl(var(--primary))', 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '0.04em',
+                                opacity: 0.8
+                              }}
+                            >
+                              Cost
+                            </div>
+                            <div 
+                              style={{ 
+                                fontSize: '1.1rem', 
+                                fontWeight: 700,
+                                color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'hsl(var(--primary))' 
+                              }}
+                            >
+                              {formatCurrency(item.costPrice)}
+                            </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Base</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 500 }}>{formatCurrency(item.basePrice)}</div>
+                          <div style={{ textAlign: 'left' }}>
+                            <div 
+                              style={{ 
+                                fontSize: '0.75rem', 
+                                fontWeight: 600, 
+                                color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'hsl(var(--primary))', 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '0.04em',
+                                opacity: 0.8
+                              }}
+                            >
+                              Base
+                            </div>
+                            <div 
+                              style={{ 
+                                fontSize: '1.1rem', 
+                                fontWeight: 700,
+                                color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'
+                              }}
+                            >
+                              {formatCurrency(item.basePrice)}
+                            </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 500, color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'inherit' }}>{item.stock}</div>
+                          <div style={{ textAlign: 'left' }}>
+                            <div 
+                              style={{ 
+                                fontSize: '0.75rem', 
+                                fontWeight: 600, 
+                                color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'hsl(var(--primary))', 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '0.04em',
+                                opacity: 0.8
+                              }}
+                            >
+                              Stock
+                            </div>
+                            <div 
+                              style={{ 
+                                fontSize: '1.1rem', 
+                                fontWeight: 800, 
+                                color: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive))' : 'hsl(var(--primary))' 
+                              }}
+                            >
+                              {item.stock}
+                            </div>
                           </div>
                         </div>
                       </article>
@@ -534,7 +610,7 @@ export default function ItemsPage({ token }) {
                         style={{
                           width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem',
                           border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)',
-                          fontSize: '0.875rem', background: 'hsl(var(--background))', outline: 'none'
+                          fontSize: '0.875rem', background: 'white', outline: 'none'
                         }}
                       />
                       {stockSearchQuery && (
@@ -574,15 +650,32 @@ export default function ItemsPage({ token }) {
                         className="card"
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: 0,
-                          border: isPinned ? '1px solid hsl(var(--primary) / 0.3)' : (Number(item.stock) <= Number(item.threshold) ? '1px solid hsl(var(--destructive) / 0.3)' : undefined),
+                          border: isPinned ? '1px solid hsl(var(--primary) / 0.3)' : (isChanged ? '1px solid hsl(var(--primary) / 0.4)' : (Number(item.stock) <= Number(item.threshold) ? '1px solid hsl(var(--destructive) / 0.2)' : '1px solid hsl(var(--primary) / 0.1)')),
                           background: isChanged 
-                            ? 'hsl(var(--primary) / 0.15)' 
-                            : (Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--card))')
+                            ? 'hsl(var(--primary) / 0.1)' 
+                            : (Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.05)' : 'hsl(var(--primary) / 0.05)'),
+                          padding: '1rem'
                         }}
                       >
                         <div>
-                          <h3 style={{ margin: 0, fontSize: '1rem' }}>{item.name}</h3>
-                          <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
+                          <h3 
+                            style={{ 
+                              margin: 0, 
+                              fontSize: '1rem',
+                              fontWeight: 700,
+                              color: isChanged || !(Number(item.stock) <= Number(item.threshold)) ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'
+                            }}
+                          >
+                            {item.name}
+                          </h3>
+                          <p 
+                            style={{ 
+                              margin: '0.25rem 0 0', 
+                              fontSize: '0.85rem', 
+                              color: isChanged || !(Number(item.stock) <= Number(item.threshold)) ? 'hsl(var(--primary))' : 'hsl(var(--destructive))',
+                              opacity: 0.8
+                            }}
+                          >
                             Minimum Limit: {item.threshold}
                           </p>
                         </div>
@@ -625,9 +718,9 @@ export default function ItemsPage({ token }) {
                     className="primary"
                     onClick={handleBulkUpdate}
                     disabled={bulkUpdating || stockDisplayedItems.length === 0}
-                    style={{ width: '100%', padding: '0.75rem', fontWeight: 600 }}
+                    style={{ width: '100%', height: '2.5rem', fontSize: '0.9rem', fontWeight: 700 }}
                   >
-                    {bulkUpdating ? 'Updating...' : 'Update All Stocks'}
+                    {bulkUpdating ? 'UPDATING...' : 'UPDATE ALL STOCKS'}
                   </button>
                 </div>
               </div>
@@ -862,38 +955,79 @@ export default function ItemsPage({ token }) {
               <p className="muted card" style={{ textAlign: 'center', padding: '2rem' }}>No pending spends.</p>
             ) : (
               spends.map((spend, index) => (
-                <div key={`spend-${spend?.id ?? index}`} className="card" style={{ padding: '1rem' }}>
+                <div 
+                  key={`spend-${spend?.id ?? index}`} 
+                  className="card" 
+                  style={{ 
+                    padding: '1rem',
+                    background: 'hsl(var(--primary) / 0.05)',
+                    borderColor: 'hsl(var(--primary) / 0.1)'
+                  }}
+                >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'hsl(var(--foreground))' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>
                           {spend.itemName || 'Spend'}
                         </h3>
                         {spend.supplier?.name && (
-                          <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))' }}>
+                          <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'hsl(var(--primary))', opacity: 0.8 }}>
                             {spend.supplier.name}
                           </p>
                         )}
                       </div>
                       {spend.updatedAt && (
-                        <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'hsl(var(--primary))', opacity: 0.6 }}>
                           {new Date(spend.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                         </span>
                       )}
                     </div>
                     
-                    <div className="customer-stats-bar">
+                    <div 
+                      className="customer-stats-bar"
+                      style={{
+                        background: 'hsl(var(--primary) / 0.1)'
+                      }}
+                    >
                       <div className="stat-pill">
-                        <span className="stat-label">Price</span>
-                        <span className="stat-value">{formatCurrency(spend.price)}</span>
+                        <span 
+                          className="stat-label"
+                          style={{ color: 'hsl(var(--primary))', fontSize: '0.75rem', opacity: 0.8 }}
+                        >
+                          Price
+                        </span>
+                        <span 
+                          className="stat-value"
+                          style={{ fontSize: '1.1rem', color: 'hsl(var(--primary))' }}
+                        >
+                          {formatCurrency(spend.price)}
+                        </span>
                       </div>
                       <div className="stat-pill">
-                        <span className="stat-label">Qty</span>
-                        <span className="stat-value">{spend.quantity}</span>
+                        <span 
+                          className="stat-label"
+                          style={{ color: 'hsl(var(--primary))', fontSize: '0.75rem', opacity: 0.8 }}
+                        >
+                          Qty
+                        </span>
+                        <span 
+                          className="stat-value"
+                          style={{ fontSize: '1.1rem', color: 'hsl(var(--primary))' }}
+                        >
+                          {spend.quantity}
+                        </span>
                       </div>
                       <div className="stat-pill">
-                        <span className="stat-label" style={{ fontWeight: 600 }}>Total</span>
-                        <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontWeight: 700 }}>
+                        <span 
+                          className="stat-label"
+                          style={{ color: 'hsl(var(--primary))', fontSize: '0.75rem', opacity: 0.9, fontWeight: 700 }}
+                        >
+                          Total
+                        </span>
+                        <span 
+                          className="stat-value"
+                          style={{ color: 'hsl(var(--primary))', fontWeight: 800, fontSize: '1.1rem' }}
+                        >
                           {formatCurrency(spend.total)}
                         </span>
                       </div>
@@ -910,31 +1044,34 @@ export default function ItemsPage({ token }) {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
-                marginBottom: '0.5rem',
-                padding: '0.5rem 0.75rem',
-                background: 'hsl(var(--muted) / 0.3)',
-                borderRadius: 'var(--radius)'
+                marginBottom: '1rem',
+                padding: '0.75rem 1rem',
+                background: 'hsl(var(--primary) / 0.1)',
+                borderRadius: 'var(--radius)',
+                border: '1px solid hsl(var(--primary) / 0.2)'
               }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>Total Spent</span>
-                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>{formatCurrency(totalSpendMoney)}</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>TOTAL SPENT</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'hsl(var(--primary))' }}>{formatCurrency(totalSpendMoney)}</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button
                 type="button"
                 className="ghost-btn"
                 onClick={() => setSpendsModalOpen(false)}
                 disabled={spendsLoading || spendsVerifying}
+                style={{ flex: 1, height: '2.5rem', fontWeight: 700 }}
               >
-                Cancel
+                CANCEL
               </button>
               <button
                 type="button"
                 className="primary"
                 onClick={handleVerifyAllSpends}
                 disabled={spendsLoading || spendsVerifying || spends.length === 0}
+                style={{ flex: 2, height: '2.5rem', fontWeight: 700 }}
               >
-                {spendsVerifying ? 'Verifying...' : 'Verified'}
+                {spendsVerifying ? 'VERIFYING...' : 'VERIFY ALL'}
               </button>
             </div>
           </footer>

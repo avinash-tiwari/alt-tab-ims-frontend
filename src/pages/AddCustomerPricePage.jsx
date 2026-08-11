@@ -167,9 +167,19 @@ export default function AddCustomerPricePage({ token }) {
               const selectedItem = items.find(it => String(it.id) === String(entry.itemId));
 
               return (
-                <div key={index} className="card" style={{ padding: '1rem', margin: 0, position: 'relative' }}>
+                <div 
+                  key={index} 
+                  className="card" 
+                  style={{ 
+                    padding: '1rem', 
+                    margin: 0, 
+                    position: 'relative',
+                    background: 'hsl(var(--primary) / 0.05)',
+                    borderColor: 'hsl(var(--primary) / 0.1)'
+                  }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Entry {index + 1}</span>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>Entry {index + 1}</span>
                     {priceEntries.length > 1 && (
                       <button 
                         type="button" 
@@ -234,20 +244,20 @@ export default function AddCustomerPricePage({ token }) {
             <button
               type="button"
               onClick={handleAddEntry}
-              className="ghost-btn"
+              className="primary"
               style={{ 
                 width: '100%', 
-                border: '1px dashed hsl(var(--border))', 
-                background: 'hsl(var(--card))',
-                padding: '0.75rem',
+                height: '2.5rem', 
+                fontSize: '0.9rem', 
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
-                fontWeight: 600
+                marginTop: '0.5rem'
               }}
             >
-              <Plus size={18} /> Add Another Item
+              <Plus size={18} /> ADD ANOTHER ITEM
             </button>
           )}
         </div>

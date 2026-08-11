@@ -315,25 +315,90 @@ export default function CustomerDetailPage({ token }) {
         </div>
         
       <div className="customer-detail-content">
-        <div className="card" style={{ padding: '1rem' }}>
-          <div className="customer-stats-bar">
-            <div className="stat-pill">
-              <span className="stat-label">Spent</span>
-              <span className="stat-value">{formatCurrency(customer?.totalSpent ?? '0')}</span>
-            </div>
-            <div className="stat-pill">
-              <span className="stat-label">NOT PAID</span>
-              <span className="stat-value destructive">{formatCurrency(customer?.unSpentAmount ?? '0')}</span>
-            </div>
-            <div className="stat-pill">
-              <span className="stat-label">Orders</span>
-              <span className="stat-value">{customer?.totalOrders ?? 0}</span>
-            </div>
+        <div 
+          className="customer-stats-bar"
+          style={{
+            background: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--primary) / 0.1)',
+            borderColor: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.2)' : 'hsl(var(--primary) / 0.1)',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            marginBottom: '1rem'
+          }}
+        >
+          <div className="stat-pill">
+            <span 
+              className="stat-label"
+              style={{ 
+                color: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))',
+                fontSize: '0.75rem',
+                opacity: 0.8
+              }}
+            >
+              Spent
+            </span>
+            <span 
+              className="stat-value"
+              style={{ 
+                fontSize: '1.1rem',
+                color: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'
+              }}
+            >
+              {formatCurrency(customer?.totalSpent ?? '0')}
+            </span>
+          </div>
+          <div className="stat-pill">
+            <span 
+              className="stat-label"
+              style={{ 
+                color: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))',
+                fontSize: '0.75rem',
+                opacity: 0.8
+              }}
+            >
+              NOT PAID
+            </span>
+            <span 
+              className="stat-value"
+              style={{ 
+                fontSize: '1.1rem',
+                color: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))',
+                fontWeight: 800
+              }}
+            >
+              {formatCurrency(customer?.unSpentAmount ?? '0')}
+            </span>
+          </div>
+          <div className="stat-pill">
+            <span 
+              className="stat-label"
+              style={{ 
+                color: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))',
+                fontSize: '0.75rem',
+                opacity: 0.8
+              }}
+            >
+              Orders
+            </span>
+            <span 
+              className="stat-value"
+              style={{ 
+                fontSize: '1.1rem',
+                color: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'
+              }}
+            >
+              {customer?.totalOrders ?? 0}
+            </span>
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            padding: '1rem',
+            borderBottom: '1px solid hsl(var(--border) / 0.5)'
+          }}>
             <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{customer?.name} Price</h4>
             {priceList.length > 0 && (
               <button 
@@ -342,29 +407,29 @@ export default function CustomerDetailPage({ token }) {
                 onClick={() => navigate(`/customer/${id}/add`)}
                 style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.4rem 0.75rem', height: 'auto', width: 'auto' }}
               >
-                ADD/EDIT ITEM
+                ADD / EDIT ITEM
               </button>
             )}
           </div>
-          <div className="items-data-container">
+          <div className="items-data-container" style={{ overflowX: 'auto' }}>
             {priceList.length > 0 ? (
-              <table className="price-table">
-                <thead>
+              <table className="chart-table" style={{ margin: 0, border: 'none' }}>
+                <thead style={{ backgroundColor: 'hsl(var(--primary))', color: 'white' }}>
                   <tr>
-                    <th>Item Name</th>
-                    <th style={{ textAlign: 'right' }}>Base / Custom</th>
+                    <th style={{ color: 'white', textAlign: 'left', padding: '0.75rem 1rem' }}>ITEM NAME</th>
+                    <th className="text-right" style={{ color: 'white', padding: '0.75rem 1rem' }}>BASE</th>
+                    <th className="text-right" style={{ color: 'white', padding: '0.75rem 1rem' }}>CUSTOM</th>
                   </tr>
                 </thead>
                 <tbody>
                   {priceList.map((price) => {
                     const item = price.item || items.find((it) => it.id === price.itemId);
                     return (
-                      <tr key={price.itemId}>
-                        <td style={{ fontWeight: 500 }}>{item?.name || price.itemId}</td>
-                        <td style={{ textAlign: 'right' }}>
-                          <span className="muted" style={{ fontSize: '0.8rem' }}>{formatCurrency(item?.basePrice || 0)}</span>
-                          <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>/</span>
-                          <strong style={{ color: 'hsl(var(--primary))' }}>{formatCurrency(price.customPrice)}</strong>
+                      <tr key={price.itemId} style={{ backgroundColor: '#ffffff', color: '#000000', borderBottom: '1px solid hsl(var(--border) / 0.3)' }}>
+                        <td style={{ fontWeight: 500, padding: '0.75rem 1rem' }}>{item?.name || price.itemId}</td>
+                        <td className="text-right" style={{ padding: '0.75rem 1rem' }}>{formatCurrency(item?.basePrice || 0)}</td>
+                        <td className="text-right" style={{ fontWeight: 700, color: 'hsl(var(--primary))', padding: '0.75rem 1rem' }}>
+                          {formatCurrency(price.customPrice)}
                         </td>
                       </tr>
                     );
