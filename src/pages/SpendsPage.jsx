@@ -1754,7 +1754,7 @@ export default function SpendsPage({ token }) {
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))' }}>
+                    <span style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--primary))' }}>
                       {group.date}
                     </span>
                     <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'hsl(var(--primary))' }}>
@@ -1763,9 +1763,9 @@ export default function SpendsPage({ token }) {
                   </div>
                   <div style={{ overflowX: 'auto' }}>
                     <table className="chart-table" style={{ margin: 0, border: 'none' }}>
-                      <thead>
+                      <thead style={{ backgroundColor: '#1976D2', color: 'white' }}>
                         <tr>
-                          {filters.status === 'pending' && <th style={{ width: '40px' }}>
+                          {filters.status === 'pending' && <th style={{ width: '40px', color: 'white' }}>
                             <input
                               type="checkbox"
                               checked={group.spends.every(s => selectedIds.includes(s.id))}
@@ -1779,16 +1779,16 @@ export default function SpendsPage({ token }) {
                               }}
                             />
                           </th>}
-                          <th>Item</th>
-                          <th>Supplier</th>
-                          <th className="text-right">Qty</th>
-                          <th className="text-right">Total</th>
+                          <th style={{ color: 'white' }}>Item</th>
+                          <th style={{ color: 'white' }}>Supplier</th>
+                          <th className="text-right" style={{ color: 'white' }}>Qty</th>
+                          <th className="text-right" style={{ color: 'white' }}>Total</th>
                           <th style={{ width: '40px' }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {group.spends.map((spend) => (
-                          <tr key={spend.id} style={{ backgroundColor: groupedColors[spend.id] }}>
+                          <tr key={spend.id} style={{ backgroundColor: '#ffffff', color: '#000000' }}>
                             {filters.status === 'pending' && (
                               <td>
                                 <input
@@ -1921,16 +1921,16 @@ export default function SpendsPage({ token }) {
                       </div>
                       <div style={{ overflowX: 'auto' }}>
                         <table className="chart-table" style={{ margin: 0, border: 'none' }}>
-                          <thead>
+                          <thead style={{ backgroundColor: '#1976D2', color: 'white' }}>
                             <tr>
-                              <th>Item</th>
-                              <th className="text-right">Qty</th>
-                              <th className="text-right">Total</th>
+                              <th style={{ color: 'white' }}>Item</th>
+                              <th className="text-right" style={{ color: 'white' }}>Qty</th>
+                              <th className="text-right" style={{ color: 'white' }}>Total</th>
                             </tr>
                           </thead>
                           <tbody>
                             {group.spends.map((spend) => (
-                              <tr key={spend.id}>
+                              <tr key={spend.id} style={{ backgroundColor: '#ffffff', color: '#000000' }}>
                                 <td>{spend.itemName}</td>
                                 <td className="text-right">{spend.quantity}</td>
                                 <td className="text-right">{formatCurrency(spend.total)}</td>
