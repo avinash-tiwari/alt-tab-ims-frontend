@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, X, Package, Search, ChevronDown } from 'lucide-react';
+import { Plus, X, Package, Search, ChevronDown, Filter } from 'lucide-react';
 import {
   bulkMarkSpendsStatusTrue,
   listItems,
@@ -430,23 +430,29 @@ export default function ItemsPage({ token }) {
                       className="compact-input"
                     />
                   </div>
-                  <div style={{ 
-                    flex: 1,
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.4rem', 
-                    whiteSpace: 'nowrap', 
-                    height: '38px' 
-                  }}>
-                    <input
-                      id="lowStock"
-                      name="lowStock"
-                      type="checkbox"
-                      checked={filters.lowStock}
-                      onChange={onFilterChange}
-                      style={{ width: '1rem', height: '1rem' }}
-                    />
-                    <label htmlFor="lowStock" style={{ fontSize: '0.75rem', fontWeight: 600 }}>LOW STOCK</label>
+                  <div style={{ flex: 1 }}>
+                    <button
+                      type="button"
+                      className={`ghost-btn ${filters.lowStock ? 'primary' : ''}`}
+                      onClick={() => onFilterChange({ target: { name: 'lowStock', type: 'checkbox', checked: !filters.lowStock } })}
+                      style={{ 
+                        height: '34px', 
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        border: filters.lowStock ? '1px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
+                        background: filters.lowStock ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                        color: filters.lowStock ? 'hsl(var(--primary))' : 'inherit',
+                        padding: '0'
+                      }}
+                    >
+                      <Filter size={14} />
+                      LOW STOCK
+                    </button>
                   </div>
                 </div>
               </div>
@@ -480,7 +486,15 @@ export default function ItemsPage({ token }) {
                         key={item.id}
                         className="card"
                         onClick={() => editItem(item)}
-                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}
+                        style={{ 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between', 
+                          padding: '1rem',
+                          background: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--card))',
+                          borderColor: Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.2)' : 'hsl(var(--border))'
+                        }}
                       >
                         <div>
                           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{item.name}</h3>
@@ -560,8 +574,10 @@ export default function ItemsPage({ token }) {
                         className="card"
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: 0,
-                          border: isPinned ? '1px solid hsl(var(--primary) / 0.3)' : undefined,
-                          ...(isChanged ? { background: 'hsl(var(--primary) / 0.15)' } : {})
+                          border: isPinned ? '1px solid hsl(var(--primary) / 0.3)' : (Number(item.stock) <= Number(item.threshold) ? '1px solid hsl(var(--destructive) / 0.3)' : undefined),
+                          background: isChanged 
+                            ? 'hsl(var(--primary) / 0.15)' 
+                            : (Number(item.stock) <= Number(item.threshold) ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--card))')
                         }}
                       >
                         <div>

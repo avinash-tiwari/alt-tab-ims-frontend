@@ -211,6 +211,10 @@ export default function CustomersPage({ token }) {
                 key={customer.id} 
                 className="card customer-card"
                 onClick={() => navigate(`/customer/${customer.id}`)}
+                style={{
+                  background: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--card))',
+                  borderColor: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.2)' : 'hsl(var(--border))'
+                }}
               >
                 <div className="customer-card-main">
                   <div className="customer-content">
@@ -265,7 +269,12 @@ export default function CustomersPage({ token }) {
                   </div>
                 </div>
 
-                <div className="customer-stats-bar">
+                <div 
+                  className="customer-stats-bar"
+                  style={{
+                    background: Number(customer.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.15)' : undefined
+                  }}
+                >
                   <div className="stat-pill">
                     <span className="stat-label">Spent</span>
                     <span className="stat-value">{formatCurrency(customer?.totalSpent ?? '0')}</span>

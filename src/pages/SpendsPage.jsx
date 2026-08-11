@@ -1558,7 +1558,7 @@ export default function SpendsPage({ token }) {
                 value={stats.count}
               />
             </div>
-            <div className="card" style={{ padding: '1.25rem', border: '1px solid hsl(var(--border) / 0.5)', marginBottom: '1rem' }}>
+            <div>
               <div style={{ 
                 display: 'flex', 
                 gap: '0.75rem', 
@@ -1590,7 +1590,7 @@ export default function SpendsPage({ token }) {
                   borderRadius: 'var(--radius)',
                   border: '1px solid hsl(var(--border))',
                   fontSize: '0.875rem',
-                  background: 'hsl(var(--background))',
+                  background: 'white',
                   outline: 'none',
                   transition: 'border-color 0.2s',
                 }}
@@ -1609,7 +1609,7 @@ export default function SpendsPage({ token }) {
                   borderRadius: 'var(--radius)',
                   border: '1px solid hsl(var(--border))',
                   fontSize: '0.875rem',
-                  background: 'hsl(var(--background))',
+                  background: 'white',
                   minWidth: '110px',
                   cursor: 'pointer',
                   outline: 'none'
@@ -1633,7 +1633,7 @@ export default function SpendsPage({ token }) {
                     borderRadius: 'var(--radius)', 
                     cursor: 'pointer', 
                     fontSize: '0.875rem',
-                    background: 'hsl(var(--background))', 
+                    background: 'white', 
                     whiteSpace: 'nowrap'
                   }}
                 >
