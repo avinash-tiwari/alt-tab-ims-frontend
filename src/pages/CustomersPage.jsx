@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Plus, Users, Phone, MapPin } from 'lucide-react';
+import { Pencil, Trash2, Plus, Users, Phone, MapPin, Search, Filter } from 'lucide-react';
 import {
   deleteCustomer,
   listCustomers
@@ -47,6 +47,45 @@ export default function CustomersPage({ token }) {
   const [customers, setCustomers] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showOnlyUnpaid, setShowOnlyUnpaid] = useState(false);
+  const [sortBy, setSortBy] = useState('spent_desc');
+
+  const filteredAndSortedCustomers = useMemo(() => {
+    let result = [...customers];
+
+    // Search filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      result = result.filter(c => 
+        (c.name || '').toLowerCase().includes(term) ||
+        (c.phone || '').includes(term) ||
+        (c.addressLine1 || '').toLowerCase().includes(term) ||
+        (c.city || '').toLowerCase().includes(term)
+      );
+    }
+
+    // Unpaid filter
+    if (showOnlyUnpaid) {
+      result = result.filter(c => Number(c.unSpentAmount || 0) > 0);
+    }
+
+    // Sorting
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'spent_desc':
+          return Number(b.totalSpent || 0) - Number(a.totalSpent || 0);
+        case 'spent_asc':
+          return Number(a.totalSpent || 0) - Number(b.totalSpent || 0);
+        case 'unpaid_desc':
+          return Number(b.unSpentAmount || 0) - Number(a.unSpentAmount || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [customers, searchTerm, showOnlyUnpaid, sortBy]);
 
   const loadData = async () => {
     setLoading(true);
@@ -89,7 +128,63 @@ export default function CustomersPage({ token }) {
         />
       ) : (
         <>
-        <div className="customers-list-container" style={{paddingTop: '1rem'}}>
+        <div className="sticky-header" style={{ paddingBottom: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div className="input-group" style={{ position: 'relative' }}>
+              <Search 
+                size={18} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '0.75rem', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: 'hsl(var(--muted-foreground))'
+                }} 
+              />
+              <input
+                type="text"
+                placeholder="Search by name, phone or address..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ paddingLeft: '2.5rem' }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                style={{ flex: 1, height: '2.25rem', fontSize: '0.875rem' }}
+              >
+                <option value="spent_desc">Highest Spent</option>
+                <option value="spent_asc">Lowest Spent</option>
+                <option value="unpaid_desc">Highest Unpaid</option>
+              </select>
+
+              <button
+                type="button"
+                className={`ghost-btn ${showOnlyUnpaid ? 'primary' : ''}`}
+                onClick={() => setShowOnlyUnpaid(!showOnlyUnpaid)}
+                style={{ 
+                  height: '2.25rem', 
+                  padding: '0 0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontSize: '0.875rem',
+                  border: showOnlyUnpaid ? '1px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
+                  background: showOnlyUnpaid ? 'hsl(var(--primary) / 0.1)' : 'transparent',
+                  color: showOnlyUnpaid ? 'hsl(var(--primary))' : 'inherit'
+                }}
+              >
+                <Filter size={14} />
+                Not Paid
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="customers-list-container">
           {error ? <p className="error-text" style={{ marginBottom: '1rem' }}>{error}</p> : null}
           
           {loading ? (
@@ -98,8 +193,20 @@ export default function CustomersPage({ token }) {
               <CustomerSkeleton />
               <CustomerSkeleton />
             </>
+          ) : filteredAndSortedCustomers.length === 0 ? (
+            <div style={{ padding: '3rem 1rem', textAlign: 'center', opacity: 0.6 }}>
+              <p>No customers found matching your filters.</p>
+              <button 
+                type="button" 
+                className="ghost-btn" 
+                onClick={() => { setSearchTerm(''); setShowOnlyUnpaid(false); setSortBy('spent_desc'); }}
+                style={{ marginTop: '0.5rem', color: 'hsl(var(--primary))' }}
+              >
+                Clear all filters
+              </button>
+            </div>
           ) : (
-            customers.map((customer) => (
+            filteredAndSortedCustomers.map((customer) => (
               <article 
                 key={customer.id} 
                 className="card customer-card"
@@ -173,8 +280,9 @@ export default function CustomersPage({ token }) {
                   </div>
                 </div>
               </article>
-        )))}
-      </div>
+            ))
+          )}
+        </div>
 
       {customers.length > 0 && (
         <button 
