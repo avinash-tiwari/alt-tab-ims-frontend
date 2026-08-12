@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Trash2 } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import { createItem, updateItem, deleteItem, getItem, getItemBatches } from '../api';
 import { formatCurrency } from '../utils/orderUtils';
 import Input from '../components/ui/Input';
@@ -99,15 +99,42 @@ export default function AddItemPage({ token }) {
   if (loading) return <div className="page"><p className="muted">Loading...</p></div>;
 
   return (
-    <section className="page">
-      <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem'}}>
-          <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
-            <ChevronLeft size={24} />
-          </button>
-          <h2 style={{ margin: 0 }}>{id ? 'EDIT ITEM' : 'ADD ITEM'}</h2>
-        </div>
-      </div>
+    <section 
+      className="page"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'hsl(var(--background))',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '1rem'
+      }}
+    >
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '1rem',
+        borderBottom: '1px solid hsl(var(--primary) / 0.1)',
+        marginBottom: '1rem',
+        background: 'hsl(var(--primary) / 0.05)',
+        margin: '-1rem -1rem 1rem -1rem'
+      }}>
+        <h2 style={{ margin: 0, color: 'hsl(var(--primary))', fontWeight: 800 }}>{id ? 'EDIT ITEM' : 'ADD ITEM'}</h2>
+        <button
+          type="button"
+          className="ghost-btn"
+          onClick={() => navigate(-1)}
+          aria-label="Close"
+          style={{ color: 'hsl(var(--primary))' }}
+        >
+          <X size={24} />
+        </button>
+      </header>
 
       <div>
         {error && <p className="error-text">{error}</p>}

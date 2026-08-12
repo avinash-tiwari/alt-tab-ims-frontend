@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Copy, Download, Pencil, Plus, Share2, Phone, MapPin, ExternalLink } from 'lucide-react';
+import { Copy, Download, Pencil, Plus, Share2, Phone, MapPin, ExternalLink, X } from 'lucide-react';
 import {
   getCustomer,
   listItems,
@@ -11,16 +11,23 @@ import { formatCurrency } from '../utils/orderUtils';
 import { generateInvoicePDF } from '../utils/pdfGenerator';
 
 const CustomerDetailSkeleton = () => (
-  <div className="page">
-    <div className="sticky-header">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div className="skeleton" style={{ width: '24px', height: '24px', borderRadius: '4px' }}></div>
-        <div style={{ flex: 1 }}>
-          <div className="skeleton skeleton-title" style={{ width: '50%', marginBottom: '4px' }}></div>
-          <div className="skeleton skeleton-text" style={{ width: '30%', height: '12px' }}></div>
-        </div>
+  <div className="page" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'hsl(var(--background))', zIndex: 1000, display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+    <header style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '1rem',
+      borderBottom: '1px solid hsl(var(--primary) / 0.1)',
+      marginBottom: '1rem',
+      background: 'hsl(var(--primary) / 0.05)',
+      margin: '-1rem -1rem 1rem -1rem'
+    }}>
+      <div style={{ flex: 1 }}>
+        <div className="skeleton skeleton-title" style={{ width: '50%', marginBottom: '4px' }}></div>
+        <div className="skeleton skeleton-text" style={{ width: '30%', height: '12px' }}></div>
       </div>
-    </div>
+      <div className="skeleton" style={{ width: '24px', height: '24px', borderRadius: '4px' }}></div>
+    </header>
     <div className="customers-list-container" style={{ paddingTop: '1rem' }}>
       <div className="card" style={{ padding: '1rem' }}>
         <div className="customer-stats-bar">
@@ -210,42 +217,63 @@ export default function CustomerDetailPage({ token }) {
   };
 
   return (
-    <section className="page">
-      <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
-            <ChevronLeft size={24} />
-          </button>
-          <div style={{ flex: 1 }}>
-            <h3 className="customer-name-heading" style={{ fontSize: '1.25rem' }}>{customer?.name}</h3>
-            <div className="customer-details" style={{ marginTop: '0.25rem' }}>
-               {customer?.phone && (
-                 <div className="detail-item">
-                   <Phone size={12} className="detail-icon" />
-                   <a href={`tel:${customer.phone}`} className="detail-link" onClick={(e) => e.stopPropagation()}>{customer.phone}</a>
-                 </div>
-               )}
+    <section 
+      className="page"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'hsl(var(--background))',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '1rem'
+      }}
+    >
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '1rem',
+        borderBottom: '1px solid hsl(var(--primary) / 0.1)',
+        marginBottom: '1rem',
+        background: 'hsl(var(--primary) / 0.05)',
+        margin: '-1rem -1rem 1rem -1rem'
+      }}>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ margin: 0, color: 'hsl(var(--primary))', fontWeight: 800 }}>{customer?.name}</h2>
+          <div className="customer-details" style={{ marginTop: '0.25rem' }}>
+             {customer?.phone && (
                <div className="detail-item">
-                 <MapPin size={12} className="detail-icon" />
-                 <a 
-                   href={customer?.locationLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([customer?.addressLine1, customer?.city, customer?.postalCode].filter(Boolean).join(', '))}`}
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   className="detail-link"
-                   onClick={(e) => e.stopPropagation()}
-                 >
-                   {[customer?.city, customer?.postalCode].filter(Boolean).join(', ') || 'No location'}
-                 </a>
+                 <Phone size={12} className="detail-icon" />
+                 <a href={`tel:${customer.phone}`} className="detail-link" onClick={(e) => e.stopPropagation()}>{customer.phone}</a>
                </div>
-            </div>
+             )}
+             <div className="detail-item">
+               <MapPin size={12} className="detail-icon" />
+               <a 
+                 href={customer?.locationLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([customer?.addressLine1, customer?.city, customer?.postalCode].filter(Boolean).join(', '))}`}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="detail-link"
+                 onClick={(e) => e.stopPropagation()}
+               >
+                 {[customer?.city, customer?.postalCode].filter(Boolean).join(', ') || 'No location'}
+               </a>
+             </div>
           </div>
-          <div className="col-actions">
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="col-actions" style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               type="button"
               className="ghost-btn"
               onClick={handleDownloadDeliveredOrdersInvoice}
               disabled={invoiceDownloading}
               title="Download Invoice"
+              style={{ color: 'hsl(var(--primary))', padding: '0.25rem' }}
             >
               <Download size={18} />
             </button>
@@ -256,6 +284,7 @@ export default function CustomerDetailPage({ token }) {
                 onClick={handleShareDeliveredOrdersInvoice}
                 disabled={shareProcessing}
                 title="Share Invoice"
+                style={{ color: 'hsl(var(--primary))', padding: '0.25rem' }}
               >
                 <Share2 size={18} />
               </button>
@@ -265,12 +294,22 @@ export default function CustomerDetailPage({ token }) {
               className="ghost-btn"
               onClick={() => navigate(`/customers/actions/${id}`)}
               title="Edit Customer"
+              style={{ color: 'hsl(var(--primary))', padding: '0.25rem' }}
             >
               <Pencil size={18} />
             </button>
           </div>
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={() => navigate(-1)}
+            aria-label="Close"
+            style={{ color: 'hsl(var(--primary))' }}
+          >
+            <X size={24} />
+          </button>
         </div>
-      </div>
+      </header>
       {error ? (
         <p className="error-text" style={{ margin: '1rem 0 0' }}>
           {error}

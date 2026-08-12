@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import {
   getCustomer,
   listItems,
@@ -133,17 +133,30 @@ export default function AddCustomerPricePage({ token }) {
         padding: '1rem'
       }}
     >
-      <div className="add-customer-sticky-header" style={{ paddingBottom: '1rem', flexShrink: 0, position: 'relative', top: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0' }}>
-          <button type="button" className="ghost-btn" onClick={() => navigate(-1)} style={{ padding: 0 }}>
-            <ChevronLeft size={24} />
-          </button>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>ADD CUSTOM PRICE</h3>
-            <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>For {customer?.name}</p>
-          </div>
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '1rem',
+        borderBottom: '1px solid hsl(var(--primary) / 0.1)',
+        marginBottom: '1rem',
+        background: 'hsl(var(--primary) / 0.05)',
+        margin: '-1rem -1rem 1rem -1rem'
+      }}>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ margin: 0, color: 'hsl(var(--primary))', fontWeight: 800 }}>ADD CUSTOM PRICE</h2>
+          <p className="muted" style={{ margin: 0, fontSize: '0.875rem' }}>For {customer?.name}</p>
         </div>
-      </div>
+        <button
+          type="button"
+          className="ghost-btn"
+          onClick={() => navigate(-1)}
+          aria-label="Close"
+          style={{ color: 'hsl(var(--primary))' }}
+        >
+          <X size={24} />
+        </button>
+      </header>
 
       <form onSubmit={savePriceList} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         <div style={{ 
