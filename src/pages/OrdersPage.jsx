@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Plus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle, Store, Clock, Download, Share2 } from 'lucide-react';
+import { Plus, Minus, RefreshCw, ShoppingBag, X, Trash2, CheckCircle2, Circle, Store, Clock, Download, Share2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
 import {
@@ -1223,7 +1223,7 @@ export default function OrdersPage({ token }) {
                     background: 'hsl(var(--primary) / 0.05)',
                     borderColor: 'hsl(var(--primary) / 0.1)'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'hsl(var(--primary))' }}>Item {index + 1}</span>
                       {lineItems.length > 1 && (
                         <button
@@ -1237,7 +1237,7 @@ export default function OrdersPage({ token }) {
                       )}
                     </div>
 
-                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                    <div className="form-group" >
                       <SearchableSelect
                         value={line.itemId}
                         onChange={(e) => handleLineItemChange(index, 'itemId', e.target.value)}
@@ -1250,26 +1250,86 @@ export default function OrdersPage({ token }) {
                       />
                     </div>
 
-                    <div className="split-2">
-                      <Input
-                        type="number"
-                        label="QTY"
-                        min="1"
-                        value={line.quantity}
-                        onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)}
-                        disabled={creatingOrder}
-                        labelStyle={{ fontWeight: 800, color: 'hsl(var(--primary))' }}
-                      />
-                      <Input
-                        type="number"
-                        label="PRICE"
-                        min="0"
-                        step="1"
-                        value={line.unitPrice}
-                        onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)}
-                        disabled={creatingOrder}
-                        labelStyle={{ fontWeight: 800, color: 'hsl(var(--primary))' }}
-                      />
+                    <div className="split-2" style={{ alignItems: 'flex-start', gap: '1rem' }}>
+                      <div className="form-group" style={{ marginBottom: '1rem', flex: 1 }}>
+                        <label style={{ fontWeight: 800, color: 'hsl(var(--primary))', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>QTY</label>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between', 
+                          background: 'white',
+                          border: '1px solid hsl(var(--primary) / 0.2)',
+                          borderRadius: '8px',
+                          height: '42px',
+                          padding: '0 6px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => handleLineItemChange(index, 'quantity', Math.max(1, (Number(line.quantity) || 1) - 1))}
+                            disabled={creatingOrder || (Number(line.quantity) || 1) <= 1}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '30px',
+                              height: '30px',
+                              borderRadius: '6px',
+                              background: 'hsl(var(--primary))',
+                              cursor: (Number(line.quantity) || 1) <= 1 ? 'not-allowed' : 'pointer',
+                              opacity: (Number(line.quantity) || 1) <= 1 ? 0.3 : 1,
+                              border: 'none',
+                              padding: 0,
+                              flexShrink: 0
+                            }}
+                          >
+                            <Minus size={16} stroke="white" strokeWidth={4} />
+                          </button>
+                          <span style={{ 
+                            fontWeight: 800, 
+                            fontSize: '1rem', 
+                            color: 'hsl(var(--primary))',
+                            flex: 1,
+                            textAlign: 'center',
+                            userSelect: 'none'
+                          }}>
+                            {line.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleLineItemChange(index, 'quantity', (Number(line.quantity) || 0) + 1)}
+                            disabled={creatingOrder}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '30px',
+                              height: '30px',
+                              borderRadius: '6px',
+                              background: 'hsl(var(--primary))',
+                              cursor: 'pointer',
+                              border: 'none',
+                              padding: 0,
+                              flexShrink: 0
+                            }}
+                          >
+                            <Plus size={16} stroke="white" strokeWidth={4} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '1rem', flex: 1 }}>
+                        <label style={{ fontWeight: 800, color: 'hsl(var(--primary))', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>PRICE</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={line.unitPrice}
+                          onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)}
+                          disabled={creatingOrder}
+                          style={{ height: '42px', marginTop: 0 }}
+                          className="no-floating-label"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1312,21 +1372,11 @@ export default function OrdersPage({ token }) {
                 <button
                   type="button"
                   onClick={handleAddLineItem}
+                  style={{ width: '100%', height: '34px', fontSize: '1rem', fontWeight: 800 }}
+                  className="primary"
                   disabled={creatingOrder || !customerId}
-                  style={{ 
-                    width: '100%', 
-                    height: '34px', 
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    background: 'hsl(var(--primary) / 0.05)',
-                    color: 'hsl(var(--primary))',
-                    border: '1px solid hsl(var(--primary) / 0.1)'
-                  }}
                 >
-                  <Plus size={18} /> ADD ITEM
+                  Add Item
                 </button>
                 <button
                   type="submit"

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Download, Edit3, FileText, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Download, Edit3, FileText, Plus, Minus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   addOrderItem,
@@ -429,19 +429,19 @@ export default function OrderDetailsPage({ token }) {
     }));
   };
 
-  const handleUpdateOrderItem = async (orderItemId) => {
+  const handleUpdateOrderItem = async (orderItemId, newQty, newPrice) => {
     if (!orderDetail || !orderItemId) {
       return;
     }
 
-    const rawQty = quantityInputs[orderItemId];
+    const rawQty = newQty !== undefined ? newQty : quantityInputs[orderItemId];
     const parsedQuantity = Number(rawQty);
     if (!rawQty || Number.isNaN(parsedQuantity) || parsedQuantity < 1) {
       setError('Quantity must be at least 1.');
       return;
     }
 
-    const rawPrice = priceInputs[orderItemId];
+    const rawPrice = newPrice !== undefined ? newPrice : priceInputs[orderItemId];
     const parsedPrice = Number(rawPrice);
     if (rawPrice === '' || Number.isNaN(parsedPrice) || parsedPrice < 0) {
       setError('Unit price must be a non-negative number.');
@@ -721,31 +721,100 @@ export default function OrderDetailsPage({ token }) {
                           </div>
                         </div>
 
-                        <div className="split-2">
-                          <Input
-                            type="number"
-                            label="QTY"
-                            min={1}
-                            value={quantityValue}
-                            onChange={(event) =>
-                              handleLineItemQuantityChange(orderItemId, event.target.value)
-                            }
-                            onBlur={() => changed && handleUpdateOrderItem(orderItemId)}
-                            disabled={isUpdatingItem}
-                            style={{ padding: '0.4rem 0.5rem' }}
-                          />
-                          <Input
-                            type="number"
-                            label="PRICE"
-                            min={0}
-                            value={priceValue}
-                            onChange={(event) =>
-                              handleLineItemPriceChange(orderItemId, event.target.value)
-                            }
-                            onBlur={() => changed && handleUpdateOrderItem(orderItemId)}
-                            disabled={isUpdatingItem}
-                            style={{ padding: '0.4rem 0.5rem' }}
-                          />
+                        <div className="split-2" style={{ alignItems: 'flex-start', gap: '1rem' }}>
+                          <div className="form-group" style={{ marginBottom: '0.5rem', flex: 1 }}>
+                            <label style={{ fontWeight: 800, color: 'hsl(var(--primary))', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>QTY</label>
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'space-between', 
+                              background: 'white',
+                              border: '1px solid hsl(var(--primary) / 0.2)',
+                              borderRadius: '8px',
+                              height: '42px',
+                              padding: '0 6px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const newVal = Math.max(1, (Number(quantityValue) || 1) - 1);
+                                  handleLineItemQuantityChange(orderItemId, String(newVal));
+                                  if (newVal !== Number(currentQuantity)) handleUpdateOrderItem(orderItemId, String(newVal), priceValue);
+                                }}
+                                disabled={isUpdatingItem || (Number(quantityValue) || 1) <= 1}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '30px',
+                                  height: '30px',
+                                  borderRadius: '6px',
+                                  background: 'hsl(var(--primary))',
+                                  cursor: (Number(quantityValue) || 1) <= 1 ? 'not-allowed' : 'pointer',
+                                  opacity: (Number(quantityValue) || 1) <= 1 ? 0.3 : 1,
+                                  border: 'none',
+                                  padding: 0,
+                                  flexShrink: 0
+                                }}
+                              >
+                                <Minus size={16} stroke="white" strokeWidth={4} />
+                              </button>
+                              <span style={{ 
+                                fontWeight: 800, 
+                                fontSize: '1rem', 
+                                color: 'hsl(var(--primary))',
+                                flex: 1,
+                                textAlign: 'center',
+                                userSelect: 'none'
+                              }}>
+                                {quantityValue}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const newVal = (Number(quantityValue) || 0) + 1;
+                                  handleLineItemQuantityChange(orderItemId, String(newVal));
+                                  if (newVal !== Number(currentQuantity)) handleUpdateOrderItem(orderItemId, String(newVal), priceValue);
+                                }}
+                                disabled={isUpdatingItem}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '30px',
+                                  height: '30px',
+                                  borderRadius: '6px',
+                                  background: 'hsl(var(--primary))',
+                                  cursor: 'pointer',
+                                  border: 'none',
+                                  padding: 0,
+                                  flexShrink: 0
+                                }}
+                              >
+                                <Plus size={16} stroke="white" strokeWidth={4} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: '0.5rem', flex: 1 }}>
+                            <label style={{ fontWeight: 800, color: 'hsl(var(--primary))', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>PRICE</label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={priceValue}
+                              onChange={(event) =>
+                                handleLineItemPriceChange(orderItemId, event.target.value)
+                              }
+                              onBlur={() => changed && handleUpdateOrderItem(orderItemId)}
+                              disabled={isUpdatingItem}
+                              style={{ height: '42px', marginTop: 0 }}
+                              className="no-floating-label"
+                            />
+                          </div>
                         </div>
                       </div>
                     );
@@ -781,26 +850,94 @@ export default function OrderDetailsPage({ token }) {
                             disabled={addingItem}
                           />
                         </div>
-                        <div className="split-2" style={{ marginBottom: '1rem', gap: '1rem' }}>
-                          <Input
-                            type="number"
-                            label="Qty"
-                            min={1}
-                            value={newItemQuantity}
-                            onChange={(event) => setNewItemQuantity(event.target.value)}
-                            disabled={addingItem}
-                            style={{ height: '2.5rem' }}
-                          />
-                          <Input
-                            type="number"
-                            label="Price"
-                            min={0}
-                            step="1"
-                            value={newItemPrice}
-                            onChange={(event) => setNewItemPrice(event.target.value)}
-                            disabled={addingItem}
-                            style={{ height: '2.5rem' }}
-                          />
+                        <div className="split-2" style={{ marginBottom: '1rem', gap: '1rem', alignItems: 'flex-start' }}>
+                          <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+                            <label style={{ fontWeight: 800, color: 'hsl(var(--primary))', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>QTY</label>
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'space-between', 
+                              background: 'white',
+                              border: '1px solid hsl(var(--primary) / 0.2)',
+                              borderRadius: '8px',
+                              height: '42px',
+                              padding: '0 6px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setNewItemQuantity(prev => String(Math.max(1, (Number(prev) || 1) - 1)));
+                                }}
+                                disabled={addingItem || (Number(newItemQuantity) || 1) <= 1}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '30px',
+                                  height: '30px',
+                                  borderRadius: '6px',
+                                  background: 'hsl(var(--primary))',
+                                  cursor: (Number(newItemQuantity) || 1) <= 1 ? 'not-allowed' : 'pointer',
+                                  opacity: (Number(newItemQuantity) || 1) <= 1 ? 0.3 : 1,
+                                  border: 'none',
+                                  padding: 0,
+                                  flexShrink: 0
+                                }}
+                              >
+                                <Minus size={16} stroke="white" strokeWidth={4} />
+                              </button>
+                              <span style={{ 
+                                fontWeight: 800, 
+                                fontSize: '1rem', 
+                                color: 'hsl(var(--primary))',
+                                flex: 1,
+                                textAlign: 'center',
+                                userSelect: 'none'
+                              }}>
+                                {newItemQuantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setNewItemQuantity(prev => String((Number(prev) || 0) + 1));
+                                }}
+                                disabled={addingItem}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '30px',
+                                  height: '30px',
+                                  borderRadius: '6px',
+                                  background: 'hsl(var(--primary))',
+                                  cursor: 'pointer',
+                                  border: 'none',
+                                  padding: 0,
+                                  flexShrink: 0
+                                }}
+                              >
+                                <Plus size={16} stroke="white" strokeWidth={4} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+                            <label style={{ fontWeight: 800, color: 'hsl(var(--primary))', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>PRICE</label>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="1"
+                              value={newItemPrice}
+                              onChange={(event) => setNewItemPrice(event.target.value)}
+                              disabled={addingItem}
+                              style={{ height: '42px', marginTop: 0 }}
+                              className="no-floating-label"
+                            />
+                          </div>
                         </div>
                       </>
                     );
