@@ -123,14 +123,19 @@ export default function OrderDetailsPage({ token }) {
   }, [token, orderDetail?.customerId, orderDetail?.customer?.id]);
 
   const orderItems = useMemo(() => orderDetail?.items ?? [], [orderDetail]);
-  const calculatedTotal = useMemo(() => {
-    return orderItems.reduce((sum, item, index) => {
+  
+  const orderSummary = useMemo(() => {
+    return orderItems.reduce((acc, item, index) => {
       const orderItemId = item.id ?? item.itemId ?? `order-item-${index}`;
       const q = Number(quantityInputs[orderItemId] ?? item.quantity ?? 0);
       const p = Number(priceInputs[orderItemId] ?? item.unitPrice ?? 0);
-      return sum + (p * q);
-    }, 0);
+      acc.totalQuantity += q;
+      acc.totalAmount += (p * q);
+      return acc;
+    }, { totalItems: orderItems.length, totalQuantity: 0, totalAmount: 0 });
   }, [orderItems, quantityInputs, priceInputs]);
+
+  const calculatedTotal = orderSummary.totalAmount;
 
   useEffect(() => {
     const nextQty = {};
@@ -530,77 +535,81 @@ export default function OrderDetailsPage({ token }) {
 
   return (
     <section className="page" style={{ padding: 0 }}>
-      <div className="sticky-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+      <div className="sticky-header" style={{ paddingBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <button
             type="button"
             className="ghost-btn"
             onClick={() => navigate('/orders')}
-            style={{ padding: '0.5rem', marginLeft: '-0.5rem' }}
+            style={{ padding: '0.25rem', marginLeft: '-0.25rem' }}
           >
             <ArrowLeft size={20} />
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 'bolder', color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'hsl(var(--foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
                {orderDetail ? (
                  <>
-                   {customerName} <span style={{ fontSize: '0.875rem', fontWeight: 400, opacity: 0.8, marginLeft: '0.25rem' }}>
+                   {customerName} <span style={{ fontSize: '0.75rem', fontWeight: 400, opacity: 0.7, marginLeft: '0.25rem' }}>
                      {formatOnlyDate(orderDetail.orderDate || orderDetail.createdAt)}
                    </span>
                  </>
                ) : 'Order details'}
             </h2>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'hsl(var(--primary))' }}>
-              {formatCurrency(calculatedTotal)}
-            </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.25rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
               type="button"
-              className="ghost-btn"
+              className="primary"
+              onClick={openAddItemModal}
+              title="Add Item"
+              style={{ 
+                width: '2rem', 
+                height: '2rem', 
+                padding: 0, 
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px hsl(var(--primary) / 0.3)'
+              }}
+            >
+              <Plus size={18} />
+            </button>
+            <button
+              type="button"
+              className="danger"
               onClick={handleDeleteOrder}
               disabled={deleting}
               title="Delete Order"
-              style={{ padding: '0.5rem', color: 'hsl(var(--destructive))' }}
+              style={{ 
+                width: '2rem', 
+                height: '2rem', 
+                padding: 0, 
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px hsl(var(--destructive) / 0.3)',
+                color: 'white',
+                border: 'none'
+              }}
             >
-              <Trash2 size={20} />
+              <Trash2 size={16} />
             </button>
           </div>
         </div>
 
         {!loading && orderDetail && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginBottom: '0.25rem' }}>
-              {orderDetail.status === 'DELIVERED' && orderDetail.deliveredAt && (
-                <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
-                  Delivered: {formatOrderDate(orderDetail.deliveredAt)}
-                </div>
-              )}
-              {orderDetail.status === 'PAID' && (
-                <>
-                  {orderDetail.deliveredAt && (
-                    <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
-                      Delivered: {formatOrderDate(orderDetail.deliveredAt)}
-                    </div>
-                  )}
-                  {orderDetail.paidAt && (
-                    <div style={{ background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
-                      Paid: {formatOrderDate(orderDetail.paidAt)}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
               <select
                 id="order-status"
                 value={statusInput}
                 onChange={(event) => setStatusInput(event.target.value)}
                 style={{ 
-                  flex: 7, 
-                  height: '2.4rem', 
-                  fontSize: '0.875rem', 
+                  flex: 1, 
+                  height: '2.25rem', 
+                  fontSize: '0.8125rem', 
                   padding: '0 0.5rem',
                   minWidth: 0
                 }}
@@ -616,27 +625,41 @@ export default function OrderDetailsPage({ token }) {
                 className="primary"
                 onClick={handleStatusSave}
                 disabled={!statusChanged || updatingStatus || showPaymentSplitModal}
-                title="Update Status"
                 style={{ 
-                  flex: 3, 
-                  height: '2.4rem', 
-                  padding: '0 0.25rem', 
-                  borderRadius: 'var(--radius)',
+                  height: '2.25rem', 
+                  padding: '0 0.75rem', 
                   fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  whiteSpace: 'nowrap',
-                  minWidth: 'fit-content'
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap'
                 }}
               >
-                {updatingStatus ? (
-                  <RefreshCw size={14} className="animate-spin" />
-                ) : (
-                  'Update'
-                )}
+                {updatingStatus ? <RefreshCw size={14} className="animate-spin" /> : 'Update'}
               </button>
+            </div>
+            
+            <div 
+              className="customer-stats-bar"
+              style={{ 
+                background: 'hsl(var(--primary) / 0.1)',
+                borderColor: 'hsl(var(--primary) / 0.1)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                marginTop: '0.25rem',
+                flexShrink: 0
+              }}
+            >
+               <div className="stat-pill" style={{ textAlign: 'left' }}>
+                  <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700 }}>Items</span>
+                  <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '1rem', fontWeight: 800 }}>{orderSummary.totalItems}</span>
+               </div>
+               <div className="stat-pill" style={{ textAlign: 'center' }}>
+                  <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700 }}>Total Qty</span>
+                  <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '1rem', fontWeight: 800 }}>{orderSummary.totalQuantity}</span>
+               </div>
+               <div className="stat-pill" style={{ textAlign: 'right' }}>
+                  <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700 }}>Amount</span>
+                  <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '1.1rem', fontWeight: 900 }}>{formatCurrency(orderSummary.totalAmount)}</span>
+               </div>
             </div>
           </div>
         )}
@@ -806,43 +829,6 @@ export default function OrderDetailsPage({ token }) {
                 </div>
               )}
             </section>
-
-            {!addItemModalOpen && (
-              <div style={{ 
-                position: 'fixed', 
-                bottom: '3.5rem', 
-                left: 0,
-                right: 0,
-                background: 'hsl(var(--background) / 0.8)', 
-                backdropFilter: 'blur(8px)',
-                padding: '0.75rem 1rem', 
-                zIndex: 30,
-                borderTop: '1px solid hsl(var(--border) / 0.5)',
-                display: 'flex',
-                justifyContent: 'center'
-              }}>
-                <button 
-                  type="button" 
-                  className="primary" 
-                  onClick={openAddItemModal}
-                  style={{ 
-                    width: '100%', 
-                    minWidth: '200px',
-                    height: '2.5rem',
-                    padding: '0 1.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    fontWeight: 800,
-                    fontSize: '0.8125rem',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  <Plus size={16} /> ADD ANOTHER ITEM
-                </button>
-              </div>
-            )}
           </>
         )}
       </div>

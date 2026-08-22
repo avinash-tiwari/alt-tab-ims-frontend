@@ -302,7 +302,7 @@ export default function CustomerDetailPage({ token }) {
           <button
             type="button"
             className="ghost-btn"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/customers')}
             aria-label="Close"
             style={{ color: 'hsl(var(--primary))' }}
           >
@@ -353,7 +353,7 @@ export default function CustomerDetailPage({ token }) {
           {copyStatus && <p className="success-text" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>{copyStatus}</p>}
         </div>
         
-      <div className="customer-detail-content">
+      <div className="customer-detail-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div 
           className="customer-stats-bar"
           style={{
@@ -361,7 +361,8 @@ export default function CustomerDetailPage({ token }) {
             borderColor: Number(customer?.unSpentAmount || 0) > 0 ? 'hsl(var(--destructive) / 0.2)' : 'hsl(var(--primary) / 0.1)',
             borderWidth: '1px',
             borderStyle: 'solid',
-            marginBottom: '1rem'
+            marginBottom: '1rem',
+            flexShrink: 0
           }}
         >
           <div className="stat-pill">
@@ -430,13 +431,14 @@ export default function CustomerDetailPage({ token }) {
           </div>
         </div>
 
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column',  minHeight: 0, marginBottom: 0, overflow: 'hidden' }}>
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
             padding: '1rem',
-            borderBottom: '1px solid hsl(var(--border) / 0.5)'
+            borderBottom: '1px solid hsl(var(--border) / 0.5)',
+            flexShrink: 0
           }}>
             <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{customer?.name} Price</h4>
             {priceList.length > 0 && (
@@ -450,31 +452,33 @@ export default function CustomerDetailPage({ token }) {
               </button>
             )}
           </div>
-          <div className="items-data-container" style={{ overflowX: 'auto' }}>
+          <div className="items-data-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: '0.75rem' }}>
             {priceList.length > 0 ? (
-              <table className="chart-table" style={{ margin: 0, border: 'none' }}>
-                <thead style={{ backgroundColor: 'hsl(var(--primary))', color: 'white' }}>
-                  <tr>
-                    <th style={{ color: 'white', textAlign: 'left', padding: '0.75rem 1rem' }}>ITEM NAME</th>
-                    <th className="text-right" style={{ color: 'white', padding: '0.75rem 1rem' }}>BASE</th>
-                    <th className="text-right" style={{ color: 'white', padding: '0.75rem 1rem' }}>CUSTOM</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {priceList.map((price) => {
-                    const item = price.item || items.find((it) => it.id === price.itemId);
-                    return (
-                      <tr key={price.itemId} style={{ backgroundColor: '#ffffff', color: '#000000', borderBottom: '1px solid hsl(var(--border) / 0.3)' }}>
-                        <td style={{ fontWeight: 500, padding: '0.75rem 1rem' }}>{item?.name || price.itemId}</td>
-                        <td className="text-right" style={{ padding: '0.75rem 1rem' }}>{formatCurrency(item?.basePrice || 0)}</td>
-                        <td className="text-right" style={{ fontWeight: 700, color: 'hsl(var(--primary))', padding: '0.75rem 1rem' }}>
-                          {formatCurrency(price.customPrice)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div style={{ overflow: 'auto', flex: 1, borderRadius: 'var(--radius)' }}>
+                <table className="chart-table" style={{ margin: 0, border: 'none', width: '100%' }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                    <tr>
+                      <th style={{ backgroundColor: 'hsl(var(--primary))', color: 'white', textAlign: 'left', padding: '0.75rem 1rem' }}>ITEM NAME</th>
+                      <th className="text-right" style={{ backgroundColor: 'hsl(var(--primary))', color: 'white', padding: '0.75rem 1rem' }}>BASE</th>
+                      <th className="text-right" style={{ backgroundColor: 'hsl(var(--primary))', color: 'white', padding: '0.75rem 1rem' }}>CUSTOM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {priceList.map((price) => {
+                      const item = price.item || items.find((it) => it.id === price.itemId);
+                      return (
+                        <tr key={price.itemId} style={{ backgroundColor: '#ffffff', color: '#000000', borderBottom: '1px solid hsl(var(--border) / 0.3)' }}>
+                          <td style={{ fontWeight: 500, padding: '0.75rem 1rem' }}>{item?.name || price.itemId}</td>
+                          <td className="text-right" style={{ padding: '0.75rem 1rem' }}>{formatCurrency(item?.basePrice || 0)}</td>
+                          <td className="text-right" style={{ fontWeight: 700, color: 'hsl(var(--primary))', padding: '0.75rem 1rem' }}>
+                            {formatCurrency(price.customPrice)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div style={{ padding: '2rem 1rem', textAlign: 'center' }}>
                 <p className="muted" style={{ marginBottom: '1.25rem', fontSize: '0.875rem' }}><span style={{fontWeight: 'bold'}}>{customer?.name}</span> ke liye koi custom price set nahi hai.</p>

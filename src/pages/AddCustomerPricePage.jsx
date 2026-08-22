@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, X } from 'lucide-react';
 import {
@@ -20,6 +20,7 @@ export default function AddCustomerPricePage({ token }) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [showIncompleteError, setShowIncompleteError] = useState(false);
+  const scrollRef = useRef(null);
   
   const [priceEntries, setPriceEntries] = useState([{ itemId: '', customPrice: '' }]);
 
@@ -63,6 +64,15 @@ export default function AddCustomerPricePage({ token }) {
     setShowIncompleteError(false);
     setError('');
     setPriceEntries([...priceEntries, { itemId: '', customPrice: '' }]);
+    
+    setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({
+          top: scrollRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }, 0);
   };
 
   const handleRemoveEntry = (index) => {
@@ -106,7 +116,7 @@ export default function AddCustomerPricePage({ token }) {
       }));
       await setCustomerPrices(token, id, formattedPayload);
       setSaving(false);
-      navigate(`/customer/${id}`);
+      navigate(`/customer/${id}`, { replace: true });
     } catch (err) {
       setSaving(false);
       setError(err.message || 'Unable to save custom prices.');
@@ -116,6 +126,7 @@ export default function AddCustomerPricePage({ token }) {
   if (loading && !customer) return <div className="page"><p className="muted">Loading...</p></div>;
 
   const allItemsSelected = priceEntries.length >= items.length && priceEntries.every(e => e.itemId);
+  const isAddDisabled = priceEntries.find(entry => !entry.itemId || entry.customPrice === '');
 
   return (
     <section 
@@ -150,7 +161,7 @@ export default function AddCustomerPricePage({ token }) {
         <button
           type="button"
           className="ghost-btn"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(`/customer/${id}`)}
           aria-label="Close"
           style={{ color: 'hsl(var(--primary))' }}
         >
@@ -159,14 +170,17 @@ export default function AddCustomerPricePage({ token }) {
       </header>
 
       <form onSubmit={savePriceList} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-        <div style={{ 
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.5rem',
-          flex: 1,
-          overflowY: 'auto',
-          paddingRight: '4px',
-        }}>
+        <div 
+          ref={scrollRef}
+          style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.5rem',
+            flex: 1,
+            overflowY: 'auto',
+            paddingRight: '4px',
+          }}
+        >
           {error && <p className="error-text" style={{ margin: 0 }}>{error}</p>}
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -252,12 +266,22 @@ export default function AddCustomerPricePage({ token }) {
               );
             })}
           </div>
+        </div>
 
+        <div className="add-customer-sticky-footer" style={{ 
+          position: 'relative', 
+          bottom: 0, 
+          paddingTop: '1rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem'
+        }}>
           {!allItemsSelected && (
             <button
               type="button"
               onClick={handleAddEntry}
               className="primary"
+              disabled={isAddDisabled}
               style={{ 
                 width: '100%', 
                 height: '2.5rem', 
@@ -267,15 +291,13 @@ export default function AddCustomerPricePage({ token }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
-                marginTop: '0.5rem'
+                opacity: isAddDisabled ? 0.5 : 1,
+                cursor: isAddDisabled ? 'not-allowed' : 'pointer'
               }}
             >
               <Plus size={18} /> ADD ANOTHER ITEM
             </button>
           )}
-        </div>
-
-        <div className="add-customer-sticky-footer" style={{ position: 'relative', bottom: 0, paddingTop: '1rem' }}>
           <button 
             type="submit" 
             className="primary" 

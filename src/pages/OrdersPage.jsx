@@ -31,6 +31,7 @@ const getCustomerLabel = (customer) =>
 export default function OrdersPage({ token }) {
   const [orders, setOrders] = useState([]);
   const headerRef = useRef(null);
+  const itemsContainerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'NEW';
@@ -184,6 +185,14 @@ export default function OrdersPage({ token }) {
 
   const handleAddLineItem = () => {
     setLineItems([...lineItems, { itemId: '', quantity: 1, unitPrice: 0 }]);
+    setTimeout(() => {
+      if (itemsContainerRef.current) {
+        itemsContainerRef.current.scrollTo({
+          top: itemsContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }, 0);
   };
 
   const handleRemoveLineItem = (index) => {
@@ -214,9 +223,22 @@ export default function OrdersPage({ token }) {
     return (Number(line.unitPrice) || 0) * (Number(line.quantity) || 0);
   };
 
-  const orderTotal = useMemo(() => {
-    return lineItems.reduce((sum, line) => sum + getLineTotal(line), 0);
+  const orderSummary = useMemo(() => {
+    return lineItems.reduce((acc, line) => {
+      if (line.itemId) {
+        const qty = Number(line.quantity) || 0;
+        const price = Number(line.unitPrice) || 0;
+        if (qty > 0) {
+          acc.totalItems += 1;
+          acc.totalQuantity += qty;
+          acc.totalAmount += qty * price;
+        }
+      }
+      return acc;
+    }, { totalItems: 0, totalQuantity: 0, totalAmount: 0 });
   }, [lineItems, items, customerPrices]);
+
+  const orderTotal = orderSummary.totalAmount;
 
   const selectedCustomer = customers.find((customer) => String(customer.id) === String(customerId));
   const customerLabel = getCustomerLabel(selectedCustomer);
@@ -1140,11 +1162,11 @@ export default function OrdersPage({ token }) {
                     label: getCustomerLabel(customer)
                   }))}
                   placeholder="Select a customer"
-                  disabled={creatingOrder}
+                  disabled={creatingOrder || !!customerId}
                   required
                 />
               </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', opacity: customerId ? 1 : 0.5, pointerEvents: customerId ? 'auto' : 'none' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Order date</label>
                   <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1153,7 +1175,7 @@ export default function OrdersPage({ token }) {
                       type="date"
                       value={orderDate}
                       onChange={(e) => setOrderDate(e.target.value)}
-                      disabled={creatingOrder}
+                      disabled={creatingOrder || !customerId}
                       style={{ height: '2.5rem' }}
                     />
                   </div>
@@ -1165,7 +1187,7 @@ export default function OrdersPage({ token }) {
                       value={orderStatus}
                       onChange={(e) => setOrderStatus(e.target.value)}
                       style={{ width: '100%', height: '2.5rem' }}
-                      disabled={creatingOrder}
+                      disabled={creatingOrder || !customerId}
                     >
                       <option value="NEW">NEW</option>
                       <option value="DELIVERED">DELIVERED</option>
@@ -1176,15 +1198,20 @@ export default function OrdersPage({ token }) {
               </div>
             </div>
 
-            <div style={{
-              flex: 1,
-              overflowY: 'auto',
-              paddingRight: '4px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.5rem',
-              paddingBottom: '1rem'
-            }}>
+            <div 
+              ref={itemsContainerRef}
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                paddingRight: '4px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5rem',
+                paddingBottom: '1rem',
+                opacity: customerId ? 1 : 0.5,
+                pointerEvents: customerId ? 'auto' : 'none'
+              }}
+            >
 
               {/* ITEM LIST  */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1247,23 +1274,6 @@ export default function OrdersPage({ token }) {
                   </div>
                 ))}
               </div>
-
-              <button
-                type="button"
-                onClick={handleAddLineItem}
-                className="primary"
-                style={{
-                  width: '100%',
-                  height: '34px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  fontWeight: 800
-                }}
-              >
-                <Plus size={18} /> Add Another Item
-              </button>
             </div>
 
             <div style={{
@@ -1272,29 +1282,56 @@ export default function OrdersPage({ token }) {
               paddingTop: '1rem',
               zIndex: 10
             }}>
-              <div style={{
-                padding: '0 0 1rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'hsl(var(--primary))' }}>Total Amount</span>
-                <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'hsl(var(--primary))' }}>{formatCurrency(orderTotal)}</span>
-              </div>
+            <div 
+              className="customer-stats-bar"
+              style={{ 
+                background: 'hsl(var(--primary) / 0.1)',
+                borderColor: 'hsl(var(--primary) / 0.1)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                marginTop: '0.25rem',
+                marginBottom: '1rem',
+                flexShrink: 0
+              }}
+            >
+               <div className="stat-pill" style={{ textAlign: 'left' }}>
+                  <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700 }}>Items</span>
+                  <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '1rem', fontWeight: 800 }}>{orderSummary.totalItems}</span>
+               </div>
+               <div className="stat-pill" style={{ textAlign: 'center' }}>
+                  <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700 }}>Total Qty</span>
+                  <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '1rem', fontWeight: 800 }}>{orderSummary.totalQuantity}</span>
+               </div>
+               <div className="stat-pill" style={{ textAlign: 'right' }}>
+                  <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700 }}>Amount</span>
+                  <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '1.1rem', fontWeight: 900 }}>{formatCurrency(orderSummary.totalAmount)}</span>
+               </div>
+            </div>
 
-              <footer className="split-2" style={{ gap: '1rem' }}>
+              <footer className="split-2" style={{ gap: '1rem', opacity: customerId ? 1 : 0.5 }}>
                 <button
                   type="button"
-                  onClick={closeCreateModal}
-                  disabled={creatingOrder}
-                  style={{ width: '100%', height: '34px', fontWeight: 800 }}
+                  onClick={handleAddLineItem}
+                  disabled={creatingOrder || !customerId}
+                  style={{ 
+                    width: '100%', 
+                    height: '34px', 
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    background: 'hsl(var(--primary) / 0.05)',
+                    color: 'hsl(var(--primary))',
+                    border: '1px solid hsl(var(--primary) / 0.1)'
+                  }}
                 >
-                  Cancel
+                  <Plus size={18} /> ADD ITEM
                 </button>
                 <button
                   type="submit"
                   className="primary"
-                  disabled={creatingOrder}
+                  disabled={creatingOrder || !customerId}
                   style={{ width: '100%', height: '34px', fontSize: '1rem', fontWeight: 800 }}
                 >
                   {creatingOrder ? 'Saving...' : 'Save Order'}

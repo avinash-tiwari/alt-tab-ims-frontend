@@ -136,12 +136,19 @@ export default function PublicOrderPage() {
     setLineItems((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  const orderTotal = useMemo(() => {
-    return lineItems.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+  const orderSummary = useMemo(() => {
+    return lineItems.reduce((acc, line) => {
+      acc.totalItems += 1;
+      acc.totalQuantity += line.quantity;
+      acc.totalAmount += line.unitPrice * line.quantity;
+      return acc;
+    }, { totalItems: 0, totalQuantity: 0, totalAmount: 0 });
   }, [lineItems]);
 
+  const orderTotal = orderSummary.totalAmount;
+
   const handleSubmit = async (event) => {
-    event.preventDefault();
+    if (event) event.preventDefault();
 
     if (!identifierLabel) {
       setSubmitError('Customer identifier missing from the URL.');
@@ -234,8 +241,27 @@ export default function PublicOrderPage() {
   };
 
   return (
-    <main className="page" style={{ minHeight: '100vh', paddingTop: '1rem' }}>
-      <div className="page-tabs" style={{ marginBottom: '1rem', whiteSpace: 'nowrap', marginTop: '0', display: 'flex', gap: '0.5rem' }}>
+    <main className="page" style={{ 
+      height: '100dvh', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      padding: 0, 
+      overflow: 'hidden',
+      background: 'hsl(var(--background))'
+    }}>
+      <div 
+        className="page-tabs" 
+        style={{ 
+          zIndex: 100,
+          background: 'hsl(var(--background))',
+          padding: '1rem',
+          whiteSpace: 'nowrap', 
+          display: 'flex', 
+          gap: '0.5rem',
+          borderBottom: '1px solid hsl(var(--border) / 0.5)',
+          flexShrink: 0
+        }}
+      >
         {['new-order', 'processing-orders'].map((tab) => (
           <button
             key={tab}
@@ -248,7 +274,8 @@ export default function PublicOrderPage() {
               margin: 0,
               border: tab === activeTab ? '1px solid hsl(var(--primary))' : '1px solid transparent',
               background: tab === activeTab ? 'hsl(var(--primary))' : 'white',
-              color: tab === activeTab ? 'white' : 'inherit'
+              color: tab === activeTab ? 'white' : 'inherit',
+              transition: 'all 0.2s ease'
             }}
             onClick={() => setActiveTab(tab)}
           >
@@ -259,247 +286,293 @@ export default function PublicOrderPage() {
         ))}
       </div>
 
-      {activeTab === 'new-order' && (
-        <article className="card stack-form" style={{ 
-          gap: '1rem', 
-          background: 'hsl(var(--primary) / 0.05)',
-          borderColor: 'hsl(var(--primary) / 0.1)'
-        }}>
-          <div>
-            <h2 style={{ marginBottom: '0.25rem', color: 'hsl(var(--primary))', fontWeight: 800 }}>Place an order</h2>
-            <p className="helper-text" style={{ color: 'hsl(var(--primary))', opacity: 0.8 }}>
-              Use the secure customer portal to submit an order.
-            </p>
-          </div>
-
-          {!tenantToken && (
-            <p className="form-error">Tenant token missing from the URL.</p>
-          )}
-          {!identifierLabel && (
-            <p className="form-error">Customer identifier missing from the URL.</p>
-          )}
-          {itemsError && <p className="form-error">{itemsError}</p>}
-          {submitError && <p className="form-error">{submitError}</p>}
-          {successMessage && <p className="success-text">{successMessage}</p>}
-
-          <form className="stack-form" onSubmit={handleSubmit}>
-            <div className="orders-form-section">
-              <div className="orders-form-row">
-                <label htmlFor="public-order-item-select">Select item</label>
-                <p className="muted" style={{ marginTop: '0', marginBottom: '0.25rem' }}>
-                  Focus the dropdown and type to filter the catalog in place.
-                </p>
-                <SearchableSelect
-                  value={selectedItemId}
-                  onChange={(event) => setSelectedItemId(event.target.value)}
-                  options={items.map((item) => ({
-                    value: item.id,
-                    label: `${getItemLabel(item)} — ${formatCurrency(getItemUnitPrice(item))}`
-                  }))}
-                  placeholder="Select an item"
-                  disabled={!tenantToken || loadingItems}
-                />
-              </div>
-
-              <div className="orders-form-row split-2">
-                <Input
-                  id="public-order-quantity"
-                  label="Quantity"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={selectedQuantity}
-                  onChange={(event) => setSelectedQuantity(event.target.value)}
-                />
-              </div>
-
-              <button
-                type="button"
-                className="primary"
-                onClick={handleAddLineItem}
-                disabled={loadingItems || submitting || !selectedItemId}
-                style={{ height: '34px', fontWeight: 800 }}
-              >
-                Add item
-              </button>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 1rem 10rem 1rem' }}>
+        {activeTab === 'new-order' && (
+          <article className="card stack-form" style={{ 
+            gap: '1rem', 
+            background: 'hsl(var(--primary) / 0.05)',
+            borderColor: 'hsl(var(--primary) / 0.1)',
+            margin: '0.5rem 0'
+          }}>
+            <div>
+              <h2 style={{ marginBottom: '0.25rem', color: 'hsl(var(--primary))', fontWeight: 800, fontSize: '1.25rem' }}>Place Order</h2>
             </div>
 
-            {lineItems.length > 0 && (
-              <div className="orders-items-table-wrap" style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid hsl(var(--primary) / 0.1)' }}>
-                <table className="orders-items-table" style={{ background: 'white' }}>
-                  <thead style={{ background: 'hsl(var(--primary))' }}>
-                    <tr>
-                      <th style={{ color: 'white' }}>Item</th>
-                      <th style={{ color: 'white' }}>Quantity</th>
-                      <th style={{ color: 'white' }}>Unit price</th>
-                      <th style={{ color: 'white' }}>Line total</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lineItems.map((line, index) => (
-                      <tr key={`${line.itemId}-${index}`}>
-                        <td>
-                          <strong>{line.name}</strong>
-                        </td>
-                        <td>{line.quantity}</td>
-                        <td>{formatCurrency(line.unitPrice)}</td>
-                        <td>{formatCurrency(line.unitPrice * line.quantity)}</td>
-                        <td>
+            {!tenantToken && (
+              <p className="form-error">Tenant token missing from the URL.</p>
+            )}
+            {!identifierLabel && (
+              <p className="form-error">Customer identifier missing from the URL.</p>
+            )}
+            {itemsError && <p className="form-error">{itemsError}</p>}
+            {submitError && <p className="form-error">{submitError}</p>}
+            {successMessage && <p className="success-text">{successMessage}</p>}
+
+            <form className="stack-form">
+              <div className="orders-form-section">
+                <div className="orders-form-row">
+                  <label style={{ fontWeight: 800, color: 'hsl(var(--primary))' }}>Select item</label>
+                  <SearchableSelect
+                    value={selectedItemId}
+                    onChange={(event) => setSelectedItemId(event.target.value)}
+                    options={items.map((item) => ({
+                      value: item.id,
+                      label: `${getItemLabel(item)} — ${formatCurrency(getItemUnitPrice(item))}`
+                    }))}
+                    placeholder="Search item..."
+                    disabled={!tenantToken || loadingItems}
+                  />
+                </div>
+
+                <div className="orders-form-row">
+                  <Input
+                    id="public-order-quantity"
+                    label="Quantity"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={selectedQuantity}
+                    onChange={(event) => setSelectedQuantity(event.target.value)}
+                    labelStyle={{ fontWeight: 800, color: 'hsl(var(--primary))' }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={handleAddLineItem}
+                  disabled={loadingItems || submitting || !selectedItemId}
+                  style={{ height: '38px', fontWeight: 800 }}
+                >
+                  Add Item
+                </button>
+              </div>
+
+              {lineItems.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                  {lineItems.map((line, index) => (
+                    <div key={`${line.itemId}-${index}`} className="card" style={{ 
+                      padding: '0.75rem 1rem', 
+                      margin: 0, 
+                      position: 'relative', 
+                      background: 'white',
+                      border: '1px solid hsl(var(--border) / 0.5)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, display: 'block' }}>{line.name}</span>
+                          <span style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))' }}>
+                            {line.quantity} × {formatCurrency(line.unitPrice)}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                          <strong style={{ fontSize: '0.9rem' }}>{formatCurrency(line.unitPrice * line.quantity)}</strong>
                           <button
                             type="button"
                             className="ghost-btn"
                             onClick={() => handleRemoveLineItem(index)}
-                            style={{ color: 'hsl(var(--destructive))', fontWeight: 800 }}
+                            style={{ color: 'hsl(var(--destructive))', fontWeight: 700, fontSize: '0.75rem', padding: 0 }}
                           >
                             Remove
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </form>
+          </article>
+        )}
+
+        {activeTab === 'processing-orders' && (
+          <article className="card stack-form" style={{ 
+            gap: '1rem', 
+            background: 'hsl(var(--primary) / 0.05)',
+            borderColor: 'hsl(var(--primary) / 0.1)',
+            margin: '0.5rem 0'
+          }}>
+            <div>
+              <h2 style={{ marginBottom: '0.25rem', color: 'hsl(var(--primary))', fontWeight: 800, fontSize: '1.25rem' }}>Past Orders</h2>
+            </div>
+
+            {!tenantToken && (
+              <p className="form-error">Tenant token missing from the URL.</p>
+            )}
+            {!identifierLabel && (
+              <p className="form-error">Customer identifier missing from the URL.</p>
+            )}
+            {processingOrdersError && <p className="form-error">{processingOrdersError}</p>}
+
+            {processingOrdersLoading && !processingOrders.length ? (
+              <p className="helper-text">Loading orders…</p>
+            ) : processingOrders.length === 0 ? (
+              <div style={{
+                padding: '3rem 1rem',
+                textAlign: 'center',
+                opacity: 0.7
+              }}>
+                <p className="helper-text">No past orders found.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {processingOrders.map((order) => {
+                  const isExpanded = expandedOrderIds.includes(order.id);
+                  const orderTotalItems = Array.isArray(order.items) ? order.items.length : 0;
+                  const orderTotalQty = Array.isArray(order.items) ? order.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
+                  
+                  return (
+                    <div
+                      key={order.id}
+                      className="card"
+                      style={{ 
+                        padding: '1rem', 
+                        margin: 0, 
+                        cursor: 'pointer',
+                        background: 'white',
+                        border: '1px solid hsl(var(--border) / 0.5)'
+                      }}
+                      onClick={() => toggleOrderExpand(order.id)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              fontSize: '0.8rem',
+                              fontWeight: 800,
+                              color: 'hsl(var(--primary))',
+                              background: 'hsl(var(--primary) / 0.08)',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '4px'
+                            }}>
+                              #{String(order.id).slice(-6).toUpperCase()}
+                            </span>
+                            <div style={{
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              background: order.status === 'NEW'
+                                ? 'hsl(var(--primary) / 0.1)'
+                                : 'hsl(var(--muted))',
+                              color: order.status === 'NEW'
+                                ? 'hsl(var(--primary))'
+                                : 'hsl(var(--muted-foreground))',
+                            }}>
+                              {statusLabel(order.status)}
+                            </div>
+                          </div>
+                          <p className="helper-text" style={{ marginTop: '0.4rem', marginBottom: 0, fontSize: '0.8rem', fontWeight: 600 }}>
+                            {(() => {
+                              let displayDate = order.orderDate || order.createdAt;
+                              if (order.status === 'DELIVERED' && order.deliveredAt) {
+                                displayDate = order.deliveredAt;
+                              } else if (order.status === 'PAID' && order.paidAt) {
+                                displayDate = order.paidAt;
+                              }
+                              return formatOrderDate(displayDate);
+                            })()}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <strong style={{ fontSize: '1rem', color: 'hsl(var(--primary))' }}>{formatCurrency(order.totalAmount)}</strong>
+                          <div style={{ fontSize: '0.7rem', color: 'hsl(var(--muted-foreground))', marginTop: '0.2rem', fontWeight: 600 }}>
+                            {orderTotalItems} Items · {orderTotalQty} Qty
+                          </div>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div style={{ 
+                          marginTop: '1rem', 
+                          paddingTop: '0.75rem', 
+                          borderTop: '1px dashed hsl(var(--border))'
+                        }}>
+                          {Array.isArray(order.items) && order.items.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              {order.items.map((item) => (
+                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                  <span style={{ fontWeight: 600 }}>{item.item?.name || `Item #${item.itemId}`}</span>
+                                  <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    {item.quantity} × {formatCurrency(item.unitPrice)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {order.notes && (
+                            <div style={{ 
+                              marginTop: '0.75rem', 
+                              padding: '0.5rem', 
+                              background: 'hsl(var(--muted) / 0.3)', 
+                              borderRadius: '4px',
+                              fontSize: '0.8rem',
+                              fontStyle: 'italic',
+                              color: 'hsl(var(--muted-foreground))'
+                            }}>
+                              {order.notes}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
+          </article>
+        )}
+      </div>
 
-            <Input
-              id="public-order-notes"
-              label="Order notes"
-              type="textarea"
-              rows="3"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-            />
-
-            <div
-              className="row-actions"
-              style={{ justifyContent: 'space-between', alignItems: 'center', background: 'hsl(var(--primary) / 0.05)', padding: '1rem', margin: '0 -1rem -1rem -1rem', borderTop: '1px solid hsl(var(--primary) / 0.1)' }}
-            >
-              <div>
-                <p className="small-label" style={{ color: 'hsl(var(--primary))', fontWeight: 800 }}>Order total</p>
-                <strong style={{ color: 'hsl(var(--primary))', fontSize: '1.25rem' }}>{formatCurrency(orderTotal)}</strong>
-              </div>
-              <button type="submit" className="primary" disabled={isSubmitDisabled} style={{ height: '34px', fontWeight: 800 }}>
-                {submitting ? 'Placing order…' : 'Place order'}
-              </button>
-            </div>
-          </form>
-        </article>
-      )}
-
-      {activeTab === 'processing-orders' && (
-        <article className="card stack-form" style={{ 
-          gap: '1rem', 
-          background: 'hsl(var(--primary) / 0.05)',
-          borderColor: 'hsl(var(--primary) / 0.1)'
+      {activeTab === 'new-order' && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'hsl(var(--background))',
+          borderTop: '1px solid hsl(var(--border))',
+          padding: '0.75rem 1rem',
+          zIndex: 100,
+          flexShrink: 0
         }}>
-          <div>
-            <h2 style={{ marginBottom: '0.25rem', color: 'hsl(var(--primary))', fontWeight: 800 }}>Past Orders</h2>
+          <div 
+            className="customer-stats-bar"
+            style={{ 
+              background: 'hsl(var(--primary) / 0.08)',
+              borderColor: 'hsl(var(--primary) / 0.1)',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              marginBottom: '0.75rem',
+              display: 'flex',
+              borderRadius: 'var(--radius)',
+              overflow: 'hidden'
+            }}
+          >
+            <div className="stat-pill" style={{ flex: 1, padding: '0.5rem', textAlign: 'center', borderRight: '1px solid hsl(var(--primary) / 0.1)' }}>
+              <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.65rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Items</span>
+              <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '0.9rem', fontWeight: 800 }}>{orderSummary.totalItems}</span>
+            </div>
+            <div className="stat-pill" style={{ flex: 1, padding: '0.5rem', textAlign: 'center', borderRight: '1px solid hsl(var(--primary) / 0.1)' }}>
+              <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.65rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Qty</span>
+              <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '0.9rem', fontWeight: 800 }}>{orderSummary.totalQuantity}</span>
+            </div>
+            <div className="stat-pill" style={{ flex: 1, padding: '0.5rem', textAlign: 'center' }}>
+              <span className="stat-label" style={{ color: 'hsl(var(--primary))', fontSize: '0.65rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Amount</span>
+              <span className="stat-value" style={{ color: 'hsl(var(--primary))', fontSize: '1rem', fontWeight: 900 }}>{formatCurrency(orderSummary.totalAmount)}</span>
+            </div>
           </div>
-
-          {!tenantToken && (
-            <p className="form-error">Tenant token missing from the URL.</p>
-          )}
-          {!identifierLabel && (
-            <p className="form-error">Customer identifier missing from the URL.</p>
-          )}
-          {processingOrdersError && <p className="form-error">{processingOrdersError}</p>}
-
-          {processingOrdersLoading && !processingOrders.length ? (
-            <p className="helper-text">Loading orders…</p>
-          ) : processingOrders.length === 0 ? (
-            <div style={{
-              padding: '3rem 1rem',
-              textAlign: 'center',
-              opacity: 0.7
-            }}>
-              <p className="helper-text">No past orders found.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {processingOrders.map((order) => {
-                const isExpanded = expandedOrderIds.includes(order.id);
-                return (
-                  <div
-                    key={order.id}
-                    className="card"
-                    style={{ padding: '1rem', margin: 0, cursor: 'pointer' }}
-                    onClick={() => toggleOrderExpand(order.id)}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                      <div>
-                        <span style={{
-                          fontSize: '0.85rem',
-                          fontWeight: 700,
-                          color: 'hsl(var(--primary))',
-                          background: 'hsl(var(--primary) / 0.08)',
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: '4px'
-                        }}>
-                          Order #{String(order.id).slice(-6).toUpperCase()}
-                        </span>
-                        <p className="helper-text" style={{ marginTop: '0.25rem', marginBottom: 0 }}>
-                          {(() => {
-                            let displayDate = order.orderDate || order.createdAt;
-                            if (order.status === 'DELIVERED' && order.deliveredAt) {
-                              displayDate = order.deliveredAt;
-                            } else if (order.status === 'PAID' && order.paidAt) {
-                              displayDate = order.paidAt;
-                            }
-                            return formatOrderDate(displayDate);
-                          })()}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <strong style={{ fontSize: '1.1rem' }}>{formatCurrency(order.totalAmount)}</strong>
-                      </div>
-                    </div>
-
-                    <div style={{
-                      display: 'inline-block',
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      background: order.status === 'NEW'
-                        ? 'hsl(var(--primary) / 0.1)'
-                        : 'hsl(var(--muted))',
-                      color: order.status === 'NEW'
-                        ? 'hsl(var(--primary))'
-                        : 'hsl(var(--muted-foreground))',
-                    }}>
-                      {statusLabel(order.status)}
-                    </div>
-
-                    {isExpanded && (
-                      <>
-                        {Array.isArray(order.items) && order.items.length > 0 && (
-                          <div style={{ marginTop: '0.75rem' }}>
-                            <p className="small-label" style={{ marginBottom: '0.25rem' }}>Items</p>
-                            {order.items.map((item) => (
-                              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.9rem' }}>
-                                <span>{item.item?.name || `Item #${item.itemId}`}</span>
-                                <span style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                  {item.quantity} × {formatCurrency(item.unitPrice)} = {formatCurrency(item.quantity * item.unitPrice)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {order.notes && (
-                          <p className="helper-text" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-                            {order.notes}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </article>
+          <button 
+            onClick={handleSubmit}
+            type="button"
+            className="primary" 
+            disabled={isSubmitDisabled} 
+            style={{ width: '100%', height: '44px', fontWeight: 800, fontSize: '1rem' }}
+          >
+            {submitting ? 'Placing Order...' : 'Place Order'}
+          </button>
+        </div>
       )}
     </main>
   );
