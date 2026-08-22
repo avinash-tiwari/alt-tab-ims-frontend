@@ -106,6 +106,17 @@ export default function OrdersPage({ token }) {
 
   const shareSupported = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isCreateModalOpen]);
+
   const loadOrders = async () => {
     setLoading(true);
     setError('');
@@ -1116,7 +1127,8 @@ export default function OrdersPage({ token }) {
           zIndex: 1000,
           padding: '1rem',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          overscrollBehavior: 'contain'
         }}>
           <header style={{
             display: 'flex',
